@@ -165,19 +165,29 @@ export interface EdenFetchError<
 }
 
 /**
+ * Helper type to extract error types from response record.
+ * Maps each error status code to EdenFetchError.
+ */
+type ExtractErrorsFromResponse<TResponse extends Record<number, unknown>> = {
+	[K in keyof TResponse]: K extends ErrorStatusCode
+		? EdenFetchError<K & number, TResponse[K]>
+		: never
+}[keyof TResponse]
+
+/**
  * Extract error response types from a route (status 300-599).
  *
  * @example
  * type Error = InferRouteError<RouteSchema>
  * // EdenFetchError<404, { message: string }> | EdenFetchError<500, { error: string }>
+ *
+ * If no error status codes are defined, returns EdenFetchError<number, unknown> as fallback.
  */
 export type InferRouteError<TRoute extends RouteSchema> =
 	TRoute["response"] extends Record<number, unknown>
-		? {
-				[K in keyof TRoute["response"]]: K extends ErrorStatusCode
-					? EdenFetchError<K & number, TRoute["response"][K]>
-					: never
-			}[keyof TRoute["response"]]
+		? ExtractErrorsFromResponse<TRoute["response"]> extends never
+			? EdenFetchError<number, unknown>
+			: ExtractErrorsFromResponse<TRoute["response"]>
 		: EdenFetchError<number, unknown>
 
 // ============================================================================

@@ -507,5 +507,47 @@ describe("useMutation integration", () => {
 				message: "User 999 not found",
 			})
 		})
+
+		test("error.value is NOT never when route has no defined error responses", async () => {
+			// CRITICAL: This test verifies the InferRouteError fix
+			// When a route only has success responses (200), error.value should be 'unknown', not 'never'
+			const { Wrapper } = createErrorWrapper()
+
+			const { result } = renderHook(
+				() => {
+					const eden = useEden()
+					const mutation = useMutation(eden.users.post.mutationOptions())
+
+					// CRITICAL: Compile-time type check
+					// error.value should be accessible (not never)
+					// If InferRouteError returns never, this would fail to compile
+					if (mutation.error) {
+						type ErrorType = typeof mutation.error
+						type ValueType = ErrorType["value"]
+
+						// value should NOT be never - it should be unknown (the fallback)
+						type IsNotNever = [ValueType] extends [never] ? false : true
+						const _isNotNever: IsNotNever = true
+						void _isNotNever
+
+						// We should be able to access value without TS error
+						const _value: unknown = mutation.error.value
+						void _value
+					}
+
+					return mutation
+				},
+				{ wrapper: Wrapper },
+			)
+
+			result.current.mutate({ name: "Test", email: "test@example.com" })
+
+			await waitFor(() => {
+				expect(result.current.isError).toBe(true)
+			})
+
+			// Runtime check - value should be accessible
+			expect(result.current.error?.value).toBeDefined()
+		})
 	})
 })

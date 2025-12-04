@@ -643,5 +643,52 @@ describe("useInfiniteQuery integration", () => {
 				message: "Post 999 not found",
 			})
 		})
+
+		test("error.value is NOT never when route has no defined error responses", async () => {
+			// CRITICAL: This test verifies the InferRouteError fix
+			// When a route only has success responses (200), error.value should be 'unknown', not 'never'
+			const { Wrapper } = createErrorWrapper()
+
+			const { result } = renderHook(
+				() => {
+					const eden = useEden()
+					const query = useInfiniteQuery(
+						eden.posts.get.infiniteQueryOptions(
+							{ limit: 10 },
+							{
+								getNextPageParam: () => undefined,
+							},
+						),
+					)
+
+					// CRITICAL: Compile-time type check
+					// error.value should be accessible (not never)
+					// If InferRouteError returns never, this would fail to compile
+					if (query.error) {
+						type ErrorType = typeof query.error
+						type ValueType = ErrorType["value"]
+
+						// value should NOT be never - it should be unknown (the fallback)
+						type IsNotNever = [ValueType] extends [never] ? false : true
+						const _isNotNever: IsNotNever = true
+						void _isNotNever
+
+						// We should be able to access value without TS error
+						const _value: unknown = query.error.value
+						void _value
+					}
+
+					return query
+				},
+				{ wrapper: Wrapper },
+			)
+
+			await waitFor(() => {
+				expect(result.current.isError).toBe(true)
+			})
+
+			// Runtime check - value should be accessible
+			expect(result.current.error?.value).toBeDefined()
+		})
 	})
 })

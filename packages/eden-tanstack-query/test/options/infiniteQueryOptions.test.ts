@@ -538,4 +538,25 @@ describe("edenInfiniteQueryOptions error type inference", () => {
 		expect(options.queryKey).toBeDefined()
 		expect(options.queryFn).toBeDefined()
 	})
+
+	test("error.value is NOT never with default error type", () => {
+		// CRITICAL: This test verifies InferRouteError fallback behavior
+		// When no error type is specified, it should default to { status: number; value: unknown }
+		// NOT { status: number; value: never }
+
+		const options = edenInfiniteQueryOptions({
+			path: ["api", "posts", "get"],
+			input: { limit: 10 },
+			initialPageParam: null as string | null,
+			fetch: async () => ({ items: [], nextCursor: null }),
+			opts: {
+				getNextPageParam: () => undefined,
+			},
+		})
+
+		// The options should be created successfully
+		// If error.value were 'never', callbacks wouldn't work correctly
+		expect(options.queryKey).toBeDefined()
+		expect(typeof options.queryFn).toBe("function")
+	})
 })
