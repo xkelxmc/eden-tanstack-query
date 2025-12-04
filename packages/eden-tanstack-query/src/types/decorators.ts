@@ -13,6 +13,7 @@ import type {
 } from "@tanstack/react-query"
 import type { AnyElysia, RouteSchema } from "elysia"
 
+import type { EdenMutationKey, EdenQueryKey } from "../keys/types"
 import type { DeepPartial, Simplify } from "../utils/types"
 import type {
 	EdenFetchError,
@@ -25,37 +26,13 @@ import type {
 	RouteDefinition,
 } from "./infer"
 
-// ============================================================================
-// Query Key Types
-// ============================================================================
-
-/** Query type discriminator for cache key organization */
-export type QueryType = "any" | "infinite" | "query"
-
-/**
- * Eden Query Key structure.
- * Format: [path[], { input?, type? }?]
- *
- * @example
- * // Simple query
- * [['users', 'get']]
- *
- * // Query with input
- * [['users', 'get'], { input: { id: '123' } }]
- *
- * // Infinite query
- * [['users', 'list'], { input: { limit: 10 }, type: 'infinite' }]
- */
-export type EdenQueryKey = [
-	path: string[],
-	opts?: { input?: unknown; type?: Exclude<QueryType, "any"> },
-]
-
-/**
- * Eden Mutation Key structure.
- * Format: [path[]]
- */
-export type EdenMutationKey = [path: string[]]
+// Re-export key types for convenience
+export type {
+	EdenMutationKey,
+	EdenQueryKey,
+	EdenQueryKeyMeta,
+	QueryType,
+} from "../keys/types"
 
 // ============================================================================
 // Query Options Types

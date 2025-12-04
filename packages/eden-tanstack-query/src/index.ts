@@ -1,6 +1,14 @@
 // @eden-tanstack-query/react
 // TanStack Query integration for Elysia Eden
 
+// Query key types
+export type {
+	EdenMutationKey,
+	EdenQueryKey,
+	EdenQueryKeyMeta,
+	QueryType,
+} from "./keys/types"
+
 // Route type inference utilities
 export type {
 	EdenFetchError,
@@ -46,11 +54,9 @@ export type {
 	DecorateRoute,
 	DecorateRoutes,
 	EdenInfiniteQueryOptions,
-	EdenMutationKey,
 	EdenMutationOptions,
 	EdenOptionsProxy,
 	EdenQueryBaseOptions,
-	EdenQueryKey,
 	EdenQueryOptions,
 	EdenQueryOptionsResult,
 	ExtractCursorType,
@@ -59,5 +65,4 @@ export type {
 	inferError,
 	inferInput,
 	inferOutput,
-	QueryType,
 } from "./types/decorators"
