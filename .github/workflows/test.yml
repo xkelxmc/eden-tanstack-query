@@ -27,7 +27,7 @@ jobs:
         run: bun run test:types
 
       - name: Run tests with coverage
-        run: bun test --coverage --coverage-reporter=lcov --preload ./packages/eden-tanstack-query/test-utils/happydom.ts
+        run: bun test --coverage --coverage-reporter=lcov --preload ./test-utils/happydom.ts
         working-directory: packages/eden-tanstack-query
 
       - name: Report coverage to PR
