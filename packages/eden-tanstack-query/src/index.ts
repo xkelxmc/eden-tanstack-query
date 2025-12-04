@@ -12,6 +12,12 @@ export type {
 	QueryType,
 } from "./keys/types"
 export type {
+	EdenInfiniteQueryOptionsArgs,
+	EdenInfiniteQueryOptionsResult,
+} from "./options/infiniteQueryOptions"
+// Infinite query options factory
+export { edenInfiniteQueryOptions } from "./options/infiniteQueryOptions"
+export type {
 	EdenMutationOptionsArgs,
 	EdenMutationOptionsIn,
 	EdenMutationOptionsOut,
