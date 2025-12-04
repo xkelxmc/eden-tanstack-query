@@ -40,6 +40,8 @@ function UserList() {
 
 See [full documentation](./packages/eden-tanstack-query/README.md) for details.
 
+See [CHANGELOG](./packages/eden-tanstack-query/CHANGELOG.md) for release history.
+
 ## Development
 
 ```bash

@@ -1,6 +1,6 @@
 {
 	"name": "eden-tanstack-react-query",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Type-safe TanStack Query integration for Elysia Eden - like tRPC for Elysia",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -14,7 +14,8 @@
 	},
 	"files": [
 		"dist",
-		"src"
+		"src",
+		"CHANGELOG.md"
 	],
 	"scripts": {
 		"build": "bun run build:js && bun run build:types",
