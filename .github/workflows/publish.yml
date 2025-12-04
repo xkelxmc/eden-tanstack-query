@@ -30,15 +30,15 @@ jobs:
       - name: Run lint
         run: bun run lint
 
+      - name: Build package
+        run: bun run build
+
       - name: Type check
         run: bun run test:types
 
       - name: Run tests
         run: bun test --preload ./test-utils/happydom.ts
         working-directory: packages/eden-tanstack-query
-
-      - name: Build package
-        run: bun run build
 
       - name: Publish to npm
         run: npm publish --access public --provenance
