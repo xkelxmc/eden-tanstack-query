@@ -4,10 +4,14 @@
  */
 import type {
 	DataTag,
+	DefinedInitialDataInfiniteOptions,
 	DefinedInitialDataOptions,
+	InfiniteData,
 	QueryFilters,
 	SkipToken,
+	UndefinedInitialDataInfiniteOptions,
 	UndefinedInitialDataOptions,
+	UnusedSkipTokenInfiniteOptions,
 	UnusedSkipTokenOptions,
 	UseMutationOptions,
 } from "@tanstack/react-query"
@@ -268,31 +272,214 @@ type CursorInput = { cursor?: unknown }
 /** Check if input has optional cursor */
 export type HasCursorInput<TInput> = TInput extends CursorInput ? true : false
 
-// Note: Full infinite query options implementation will be in task 3.4
-// For now, we define the interface shape
+/** Reserved options that are set by the library for infinite queries */
+type ReservedInfiniteQueryOptions =
+	| "queryKey"
+	| "queryFn"
+	| "queryHashFn"
+	| "queryHash"
+	| "initialPageParam"
+
+/**
+ * Input options for undefined initial data infinite queries.
+ */
+interface UndefinedEdenInfiniteQueryOptionsIn<
+	TQueryFnData,
+	TData,
+	TError,
+	TPageParam,
+> extends Omit<
+			UndefinedInitialDataInfiniteOptions<
+				TQueryFnData,
+				TError,
+				TData,
+				EdenQueryKey,
+				TPageParam
+			>,
+			ReservedInfiniteQueryOptions
+		>,
+		EdenQueryBaseOptions {
+	initialCursor?: TPageParam
+}
+
+/**
+ * Output options for undefined initial data infinite queries.
+ * TData is the final data type (InfiniteData<TQueryFnData, TPageParam> by default).
+ */
+interface UndefinedEdenInfiniteQueryOptionsOut<
+	TQueryFnData,
+	TData,
+	TError,
+	TPageParam,
+> extends UndefinedInitialDataInfiniteOptions<
+			TQueryFnData,
+			TError,
+			InfiniteData<TData, TPageParam>,
+			EdenQueryKey,
+			TPageParam
+		>,
+		EdenQueryOptionsResult {
+	queryKey: DataTag<EdenQueryKey, InfiniteData<TData, TPageParam>, TError>
+	initialPageParam: TPageParam
+}
+
+/**
+ * Input options for defined initial data infinite queries.
+ */
+interface DefinedEdenInfiniteQueryOptionsIn<
+	TQueryFnData,
+	TData,
+	TError,
+	TPageParam,
+> extends Omit<
+			DefinedInitialDataInfiniteOptions<
+				NoInfer<TQueryFnData>,
+				TError,
+				TData,
+				EdenQueryKey,
+				TPageParam
+			>,
+			ReservedInfiniteQueryOptions
+		>,
+		EdenQueryBaseOptions {
+	initialCursor?: TPageParam
+}
+
+/**
+ * Output options for defined initial data infinite queries.
+ * TData is the final data type (InfiniteData<TQueryFnData, TPageParam> by default).
+ */
+interface DefinedEdenInfiniteQueryOptionsOut<
+	TQueryFnData,
+	TData,
+	TError,
+	TPageParam,
+> extends DefinedInitialDataInfiniteOptions<
+			TQueryFnData,
+			TError,
+			InfiniteData<TData, TPageParam>,
+			EdenQueryKey,
+			TPageParam
+		>,
+		EdenQueryOptionsResult {
+	queryKey: DataTag<EdenQueryKey, InfiniteData<TData, TPageParam>, TError>
+	initialPageParam: TPageParam
+}
+
+/**
+ * Input options when skipToken is not used for infinite queries.
+ */
+interface UnusedSkipTokenEdenInfiniteQueryOptionsIn<
+	TQueryFnData,
+	TData,
+	TError,
+	TPageParam,
+> extends Omit<
+			UnusedSkipTokenInfiniteOptions<
+				TQueryFnData,
+				TError,
+				TData,
+				EdenQueryKey,
+				TPageParam
+			>,
+			ReservedInfiniteQueryOptions
+		>,
+		EdenQueryBaseOptions {
+	initialCursor?: TPageParam
+}
+
+/**
+ * Output options when skipToken is not used for infinite queries.
+ * TData is the final data type (InfiniteData<TQueryFnData, TPageParam> by default).
+ */
+interface UnusedSkipTokenEdenInfiniteQueryOptionsOut<
+	TQueryFnData,
+	TData,
+	TError,
+	TPageParam,
+> extends UnusedSkipTokenInfiniteOptions<
+			TQueryFnData,
+			TError,
+			InfiniteData<TData, TPageParam>,
+			EdenQueryKey,
+			TPageParam
+		>,
+		EdenQueryOptionsResult {
+	queryKey: DataTag<EdenQueryKey, InfiniteData<TData, TPageParam>, TError>
+	initialPageParam: TPageParam
+}
 
 /**
  * Infinite query options function type.
  * Only available for routes where input has a `cursor` property.
  */
-export type EdenInfiniteQueryOptions<TDef extends RouteDefinition> = <
-	TData = TDef["output"],
->(
-	input: Omit<TDef["input"], "cursor">,
-	opts: {
-		getNextPageParam: (
-			lastPage: TDef["output"],
-		) => ExtractCursorType<TDef["input"]> | undefined
-		getPreviousPageParam?: (
-			firstPage: TDef["output"],
-		) => ExtractCursorType<TDef["input"]> | undefined
-		initialCursor?: ExtractCursorType<TDef["input"]>
-	} & EdenQueryBaseOptions,
-) => UndefinedEdenQueryOptionsOut<
-	TDef["output"],
-	TData,
-	EdenFetchError<number, TDef["error"]>
->
+export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
+	/**
+	 * Create infinite query options with defined initial data.
+	 */
+	<
+		TQueryFnData extends TDef["output"] = TDef["output"],
+		TData = TQueryFnData,
+		TPageParam = ExtractCursorType<TDef["input"]> | null,
+	>(
+		input: EmptyToVoid<Omit<TDef["input"], "cursor">> | SkipToken,
+		opts: DefinedEdenInfiniteQueryOptionsIn<
+			TQueryFnData,
+			TData,
+			EdenFetchError<number, TDef["error"]>,
+			TPageParam
+		>,
+	): DefinedEdenInfiniteQueryOptionsOut<
+		TQueryFnData,
+		TData,
+		EdenFetchError<number, TDef["error"]>,
+		TPageParam
+	>
+
+	/**
+	 * Create infinite query options without skipToken.
+	 */
+	<
+		TQueryFnData extends TDef["output"] = TDef["output"],
+		TData = TQueryFnData,
+		TPageParam = ExtractCursorType<TDef["input"]> | null,
+	>(
+		input: EmptyToVoid<Omit<TDef["input"], "cursor">>,
+		opts: UnusedSkipTokenEdenInfiniteQueryOptionsIn<
+			TQueryFnData,
+			TData,
+			EdenFetchError<number, TDef["error"]>,
+			TPageParam
+		>,
+	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
+		TQueryFnData,
+		TData,
+		EdenFetchError<number, TDef["error"]>,
+		TPageParam
+	>
+
+	/**
+	 * Create infinite query options with skipToken support.
+	 */
+	<
+		TQueryFnData extends TDef["output"] = TDef["output"],
+		TData = TQueryFnData,
+		TPageParam = ExtractCursorType<TDef["input"]> | null,
+	>(
+		input?: EmptyToVoid<Omit<TDef["input"], "cursor">> | SkipToken,
+		opts?: UndefinedEdenInfiniteQueryOptionsIn<
+			TQueryFnData,
+			TData,
+			EdenFetchError<number, TDef["error"]>,
+			TPageParam
+		>,
+	): UndefinedEdenInfiniteQueryOptionsOut<
+		TQueryFnData,
+		TData,
+		EdenFetchError<number, TDef["error"]>,
+		TPageParam
+	>
+}
 
 // ============================================================================
 // Procedure Decorators

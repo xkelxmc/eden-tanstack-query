@@ -4,6 +4,7 @@
  * These tests verify that decorator types correctly add queryOptions,
  * mutationOptions, etc. to routes based on HTTP method.
  */
+import type { DataTag } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 
 import type {
@@ -748,7 +749,9 @@ describe("EdenQueryOptions callable interface", () => {
 		type LastOverloadReturn = ReturnType<QueryOptionsMethod>
 
 		// Check that return type has expected properties
-		type HasQueryKey = "queryKey" extends keyof LastOverloadReturn ? true : false
+		type HasQueryKey = "queryKey" extends keyof LastOverloadReturn
+			? true
+			: false
 		type HasEden = "eden" extends keyof LastOverloadReturn ? true : false
 
 		const hasQueryKey: HasQueryKey = true
@@ -846,9 +849,8 @@ describe("EdenMutationOptions callable interface", () => {
 	type TestMutationProcedure = DecorateMutationProcedure<TestDef>
 
 	test("DecorateMutationProcedure.mutationOptions exists", () => {
-		type HasMutationOptions = "mutationOptions" extends keyof TestMutationProcedure
-			? true
-			: false
+		type HasMutationOptions =
+			"mutationOptions" extends keyof TestMutationProcedure ? true : false
 
 		const hasMutationOptions: HasMutationOptions = true
 		expect(hasMutationOptions).toBe(true)
@@ -889,7 +891,11 @@ describe("EdenMutationOptions callable interface", () => {
 		type InputCorrect = InputType extends { name: string; email: string }
 			? true
 			: false
-		type OutputCorrect = OutputType extends { id: string; name: string; email: string }
+		type OutputCorrect = OutputType extends {
+			id: string
+			name: string
+			email: string
+		}
 			? true
 			: false
 
@@ -954,5 +960,209 @@ describe("EdenInfiniteQueryOptions callable interface", () => {
 
 		expect(inputHasLimit).toBe(true)
 		expect(outputHasItems).toBe(true)
+	})
+
+	test("infiniteQueryOptions return type has initialPageParam", () => {
+		type InfiniteQueryOptionsMethod =
+			TestInfiniteQueryProcedure["infiniteQueryOptions"]
+		type CallResult = ReturnType<InfiniteQueryOptionsMethod>
+
+		type HasInitialPageParam = "initialPageParam" extends keyof CallResult
+			? true
+			: false
+
+		const hasInitialPageParam: HasInitialPageParam = true
+		expect(hasInitialPageParam).toBe(true)
+	})
+
+	test("infiniteQueryOptions return type has getNextPageParam", () => {
+		type InfiniteQueryOptionsMethod =
+			TestInfiniteQueryProcedure["infiniteQueryOptions"]
+		type CallResult = ReturnType<InfiniteQueryOptionsMethod>
+
+		type HasGetNextPageParam = "getNextPageParam" extends keyof CallResult
+			? true
+			: false
+
+		const hasGetNextPageParam: HasGetNextPageParam = true
+		expect(hasGetNextPageParam).toBe(true)
+	})
+
+	test("infiniteQueryOptions return type has queryKey and eden", () => {
+		type InfiniteQueryOptionsMethod =
+			TestInfiniteQueryProcedure["infiniteQueryOptions"]
+		type CallResult = ReturnType<InfiniteQueryOptionsMethod>
+
+		type HasQueryKey = "queryKey" extends keyof CallResult ? true : false
+		type HasEden = "eden" extends keyof CallResult ? true : false
+
+		const hasQueryKey: HasQueryKey = true
+		const hasEden: HasEden = true
+
+		expect(hasQueryKey).toBe(true)
+		expect(hasEden).toBe(true)
+	})
+
+	test("infiniteQueryOptions return type is not a function", () => {
+		type InfiniteQueryOptionsMethod =
+			TestInfiniteQueryProcedure["infiniteQueryOptions"]
+		type CallResult = ReturnType<InfiniteQueryOptionsMethod>
+
+		type IsNotFunction = CallResult extends (...args: unknown[]) => unknown
+			? false
+			: true
+
+		const isNotFunction: IsNotFunction = true
+		expect(isNotFunction).toBe(true)
+	})
+})
+
+// ============================================================================
+// EdenInfiniteQueryOptions InfiniteData Type Tests
+// ============================================================================
+
+describe("EdenInfiniteQueryOptions InfiniteData types", () => {
+	type TestDef = {
+		input: { limit: number; cursor?: string }
+		output: { items: { id: string }[]; nextCursor: string | null }
+		error: { message: string }
+	}
+
+	type TestInfiniteQueryProcedure = DecorateInfiniteQueryProcedure<TestDef>
+	type InfiniteQueryOptionsMethod =
+		TestInfiniteQueryProcedure["infiniteQueryOptions"]
+	type CallResult = ReturnType<InfiniteQueryOptionsMethod>
+
+	test("queryKey is tagged with DataTag type", () => {
+		type QueryKeyType = CallResult["queryKey"]
+
+		// queryKey should be a DataTag
+		type HasDataTag =
+			QueryKeyType extends DataTag<EdenQueryKey, unknown, unknown>
+				? true
+				: false
+
+		const hasDataTag: HasDataTag = true
+		expect(hasDataTag).toBe(true)
+	})
+
+	test("return type has required infinite query properties", () => {
+		// The return type should have all properties needed for useInfiniteQuery
+		type HasQueryKey = "queryKey" extends keyof CallResult ? true : false
+		type HasQueryFn = "queryFn" extends keyof CallResult ? true : false
+		type HasInitialPageParam = "initialPageParam" extends keyof CallResult
+			? true
+			: false
+		type HasGetNextPageParam = "getNextPageParam" extends keyof CallResult
+			? true
+			: false
+
+		const hasQueryKey: HasQueryKey = true
+		const hasQueryFn: HasQueryFn = true
+		const hasInitialPageParam: HasInitialPageParam = true
+		const hasGetNextPageParam: HasGetNextPageParam = true
+
+		expect(hasQueryKey).toBe(true)
+		expect(hasQueryFn).toBe(true)
+		expect(hasInitialPageParam).toBe(true)
+		expect(hasGetNextPageParam).toBe(true)
+	})
+})
+
+// ============================================================================
+// Error Type Tests for Decorated Procedures
+// ============================================================================
+
+describe("Error type in decorated procedures", () => {
+	// EdenFetchError has status and value, NOT message at top level
+	// This is critical for proper error handling
+
+	describe("DecorateQueryProcedure error type", () => {
+		type TestDef = {
+			input: { id: string }
+			output: { id: string; name: string }
+			error: { message: string; code: string }
+		}
+
+		type Decorated = DecorateQueryProcedure<TestDef>
+
+		test("~types.error exposes error type", () => {
+			type ErrorType = Decorated["~types"]["error"]
+			type HasMessage = ErrorType extends { message: string } ? true : false
+			type HasCode = ErrorType extends { code: string } ? true : false
+
+			const hasMessage: HasMessage = true
+			const hasCode: HasCode = true
+
+			expect(hasMessage).toBe(true)
+			expect(hasCode).toBe(true)
+		})
+	})
+
+	describe("DecorateMutationProcedure error type", () => {
+		type TestDef = {
+			input: { name: string }
+			output: { id: string }
+			error: { message: string; errors: string[] }
+		}
+
+		type Decorated = DecorateMutationProcedure<TestDef>
+
+		test("~types.error exposes error type", () => {
+			type ErrorType = Decorated["~types"]["error"]
+			type HasMessage = ErrorType extends { message: string } ? true : false
+			type HasErrors = ErrorType extends { errors: string[] } ? true : false
+
+			const hasMessage: HasMessage = true
+			const hasErrors: HasErrors = true
+
+			expect(hasMessage).toBe(true)
+			expect(hasErrors).toBe(true)
+		})
+	})
+
+	describe("DecorateInfiniteQueryProcedure error type", () => {
+		type TestDef = {
+			input: { limit: number; cursor?: string }
+			output: { items: { id: string }[]; nextCursor: string | null }
+			error: { message: string; statusCode: number }
+		}
+
+		type Decorated = DecorateInfiniteQueryProcedure<TestDef>
+
+		test("~types.error exposes error type", () => {
+			type ErrorType = Decorated["~types"]["error"]
+			type HasMessage = ErrorType extends { message: string } ? true : false
+			type HasStatusCode = ErrorType extends { statusCode: number }
+				? true
+				: false
+
+			const hasMessage: HasMessage = true
+			const hasStatusCode: HasStatusCode = true
+
+			expect(hasMessage).toBe(true)
+			expect(hasStatusCode).toBe(true)
+		})
+	})
+
+	describe("EdenFetchError structure in decorators", () => {
+		test("error type wraps route error in EdenFetchError", () => {
+			// When using decorators, the error is wrapped in EdenFetchError<status, value>
+			// So the final error type has { status: number, value: RouteError }
+			type RouteError = { message: string }
+			type TestDef = {
+				input: { id: string }
+				output: { name: string }
+				error: RouteError
+			}
+
+			type Decorated = DecorateQueryProcedure<TestDef>
+			type ErrorType = Decorated["~types"]["error"]
+
+			// The error type from decorators should be the route's error type
+			type IsRouteError = ErrorType extends RouteError ? true : false
+			const isRouteError: IsRouteError = true
+			expect(isRouteError).toBe(true)
+		})
 	})
 })
