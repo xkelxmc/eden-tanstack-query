@@ -16,7 +16,7 @@
 	],
 	"scripts": {
 		"dev": "bun run --filter=* dev",
-		"build": "bun run --filter=@eden-tanstack-query/* build",
+		"build": "bun run --filter=eden-tanstack-react-query build",
 		"postbuild": "bun run scripts/update-sizes.ts",
 		"size": "bun run scripts/update-sizes.ts",
 		"example:basic": "bun run --filter=@eden-tanstack-query/example-basic dev",
