@@ -1,8 +1,8 @@
-import { QueryClient } from "@tanstack/react-query"
 import { edenMutationOptions } from "../../src/options/mutationOptions"
+import { createTestQueryClient } from "../../test-utils"
 
 describe("edenMutationOptions", () => {
-	const queryClient = new QueryClient()
+	const queryClient = createTestQueryClient()
 	const mutationContext = { client: queryClient, meta: undefined }
 
 	test("creates valid mutation options", () => {

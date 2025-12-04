@@ -147,8 +147,11 @@ export type InferRouteOutputAll<TRoute extends RouteSchema> =
 // Route Error Extraction
 // ============================================================================
 
-/** Error status code range (300-599) */
-type ErrorStatusCode = Exclude<keyof RouteSchema["response"], 200 | 201 | 204>
+/** Success status codes (2xx) */
+type SuccessStatusCode = 200 | 201 | 202 | 204
+
+/** Error status code range (non-2xx) */
+type ErrorStatusCode = Exclude<keyof RouteSchema["response"], SuccessStatusCode>
 
 /**
  * Eden-compatible fetch error class shape.

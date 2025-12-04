@@ -9,6 +9,29 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * Dangerous keys that could cause prototype pollution
+ */
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"])
+
+/**
+ * Sanitizes input to prevent prototype pollution attacks.
+ * Removes dangerous keys like __proto__, constructor, prototype.
+ */
+function sanitizeInput(value: unknown): unknown {
+	if (!isObject(value)) {
+		return Array.isArray(value) ? value.map(sanitizeInput) : value
+	}
+
+	const result: Record<string, unknown> = {}
+	for (const key of Object.keys(value)) {
+		if (!DANGEROUS_KEYS.has(key)) {
+			result[key] = sanitizeInput(value[key])
+		}
+	}
+	return result
+}
+
+/**
  * Options for generating a query key
  */
 export interface GetQueryKeyOptions {
@@ -41,17 +64,20 @@ export interface GetQueryKeyOptions {
  * // => [['posts', 'list'], { input: { limit: 10 }, type: 'infinite' }]
  */
 export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
-	const { path, input, type } = opts
+	const { path, type } = opts
 
 	// Handle skipToken - return key without input
-	if (input === skipToken) {
+	if (opts.input === skipToken) {
 		return [path]
 	}
 
 	// No input and type is 'any' → just path
-	if (input === undefined && (!type || type === "any")) {
+	if (opts.input === undefined && (!type || type === "any")) {
 		return [path]
 	}
+
+	// Sanitize input to prevent prototype pollution
+	const input = sanitizeInput(opts.input)
 
 	// For infinite queries, strip cursor/direction from input
 	if (type === "infinite" && isObject(input)) {

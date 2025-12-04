@@ -1,14 +1,9 @@
-import { QueryClient, skipToken } from "@tanstack/react-query"
+import { skipToken } from "@tanstack/react-query"
 import { edenInfiniteQueryOptions } from "../../src/options/infiniteQueryOptions"
+import { createTestQueryClient } from "../../test-utils"
 
 describe("edenInfiniteQueryOptions", () => {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				retry: false,
-			},
-		},
-	})
+	const queryClient = createTestQueryClient()
 
 	afterEach(() => {
 		queryClient.clear()

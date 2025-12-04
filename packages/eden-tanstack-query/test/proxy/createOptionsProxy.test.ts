@@ -1,7 +1,7 @@
 import type { treaty } from "@elysiajs/eden"
-import { QueryClient } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 import { createEdenOptionsProxy } from "../../src/proxy/createOptionsProxy"
+import { createTestQueryClient } from "../../test-utils"
 
 // ============================================================================
 // Test App Definition
@@ -94,13 +94,7 @@ type App = typeof app
 // ============================================================================
 
 describe("createEdenOptionsProxy", () => {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				retry: false,
-			},
-		},
-	})
+	const queryClient = createTestQueryClient()
 
 	// Create typed Eden client (mock - doesn't make real requests)
 	// We use the app type but create a mock implementation

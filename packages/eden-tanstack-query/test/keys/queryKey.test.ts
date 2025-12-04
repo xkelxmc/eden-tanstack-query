@@ -129,6 +129,70 @@ describe("getQueryKey", () => {
 		})
 		expect(key).toEqual([["api", "users", "batch"], { input: ["1", "2", "3"] }])
 	})
+
+	describe("prototype pollution protection", () => {
+		test("strips __proto__ from input", () => {
+			const key = getQueryKey({
+				path: ["api", "users", "get"],
+				input: { id: "1", __proto__: { isAdmin: true } },
+			})
+			expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
+		})
+
+		test("strips constructor from input", () => {
+			const key = getQueryKey({
+				path: ["api", "users", "get"],
+				input: { id: "1", constructor: { prototype: {} } },
+			})
+			expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
+		})
+
+		test("strips prototype from input", () => {
+			const key = getQueryKey({
+				path: ["api", "users", "get"],
+				input: { id: "1", prototype: { evil: true } },
+			})
+			expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
+		})
+
+		test("strips dangerous keys from nested objects", () => {
+			const key = getQueryKey({
+				path: ["api", "users", "get"],
+				input: {
+					user: { name: "test", __proto__: { isAdmin: true } },
+				},
+			})
+			expect(key).toEqual([
+				["api", "users", "get"],
+				{ input: { user: { name: "test" } } },
+			])
+		})
+
+		test("strips dangerous keys from arrays of objects", () => {
+			const key = getQueryKey({
+				path: ["api", "users", "batch"],
+				input: [
+					{ id: "1", __proto__: { isAdmin: true } },
+					{ id: "2", constructor: {} },
+				],
+			})
+			expect(key).toEqual([
+				["api", "users", "batch"],
+				{ input: [{ id: "1" }, { id: "2" }] },
+			])
+		})
+
+		test("preserves valid input with similar-looking keys", () => {
+			const key = getQueryKey({
+				path: ["api", "users", "get"],
+				input: { id: "1", proto: "value", constructorName: "test" },
+			})
+			expect(key).toEqual([
+				["api", "users", "get"],
+				{ input: { id: "1", proto: "value", constructorName: "test" } },
+			])
+		})
+	})
 })
 
 describe("getMutationKey", () => {
