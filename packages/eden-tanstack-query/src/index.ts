@@ -37,5 +37,27 @@ export type {
 // TODO: Export main factory
 // export { createEdenTanStackQuery } from './createEdenTanStackQuery'
 
-// TODO: Export key types
-// export type { EdenQueryKey, EdenMutationKey } from './keys/types'
+// Decorator types for query/mutation procedures
+export type {
+	DecoratedRouteMethods,
+	DecorateInfiniteQueryProcedure,
+	DecorateMutationProcedure,
+	DecorateQueryProcedure,
+	DecorateRoute,
+	DecorateRoutes,
+	EdenInfiniteQueryOptions,
+	EdenMutationKey,
+	EdenMutationOptions,
+	EdenOptionsProxy,
+	EdenQueryBaseOptions,
+	EdenQueryKey,
+	EdenQueryOptions,
+	EdenQueryOptionsResult,
+	ExtractCursorType,
+	ExtractRouteDef,
+	HasCursorInput,
+	inferError,
+	inferInput,
+	inferOutput,
+	QueryType,
+} from "./types/decorators"
