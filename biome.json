@@ -15,7 +15,10 @@
 			"**/*.json",
 			"!**/node_modules",
 			"!**/dist",
-			"!**/plan"
+			"!**/plan",
+			"!**/.git",
+			"!**/.claude",
+			"!bun.lock"
 		]
 	},
 	"formatter": {

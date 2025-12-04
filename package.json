@@ -9,7 +9,8 @@
 	],
 	"scripts": {
 		"dev": "bun run --filter=* dev",
-		"build": "bun run --filter=@eden-query/* build",
+		"build": "bun run --filter=@eden-tanstack-query/* build",
+		"example:basic": "bun run --filter=@eden-tanstack-query/example-basic dev",
 		"test": "bun test",
 		"test:types": "bunx tsc --noEmit",
 		"test:all": "bun run test && bun run test:types",

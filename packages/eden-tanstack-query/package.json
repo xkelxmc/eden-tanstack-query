@@ -1,0 +1,26 @@
+{
+	"name": "@eden-tanstack-query/react",
+	"version": "0.0.1",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		}
+	},
+	"peerDependencies": {
+		"@tanstack/react-query": "^5.0.0",
+		"@elysiajs/eden": "^1.0.0",
+		"elysia": "^1.0.0",
+		"react": "^18.0.0 || ^19.0.0"
+	},
+	"devDependencies": {
+		"@tanstack/react-query": "^5.66.0",
+		"@elysiajs/eden": "^1.2.0",
+		"elysia": "^1.2.0",
+		"react": "^19.0.0",
+		"@types/react": "^19.0.0"
+	}
+}
