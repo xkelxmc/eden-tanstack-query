@@ -49,6 +49,41 @@ function formatSizeLine(sizes: PackageSize): string {
 	return `**Size:** ${sizes.esm.raw} (gzipped: ${sizes.esm.gzipped})`
 }
 
+async function updateReadme(
+	readmePath: string,
+	sizeString: string,
+): Promise<boolean> {
+	const readmeFile = Bun.file(readmePath)
+
+	if (!(await readmeFile.exists())) {
+		return false
+	}
+
+	const readmeContent = await readmeFile.text()
+
+	// Pattern: **Size:** X KB (gzipped: Y KB)
+	const sizePattern = /\*\*Size:\*\* [\d.]+ KB \(gzipped: [\d.]+ KB\)/g
+
+	const currentSizes = readmeContent.match(sizePattern) || []
+
+	if (currentSizes.length === 0) {
+		return false
+	}
+
+	// Check if all sizes are already up to date
+	const allUpToDate = currentSizes.every((s) => s === sizeString)
+	if (allUpToDate) {
+		return false
+	}
+
+	// Replace all size occurrences
+	const newReadmeContent = readmeContent.replace(sizePattern, sizeString)
+
+	await Bun.write(readmePath, newReadmeContent)
+
+	return true
+}
+
 async function main() {
 	console.log("\n📦 Calculating bundle sizes...\n")
 
@@ -61,43 +96,25 @@ async function main() {
 		`  ${size.name}: ESM ${size.esm.raw} (gzipped: ${size.esm.gzipped})`,
 	)
 
-	// Check if README.md exists
-	const readmePath = "README.md"
-	const readmeFile = Bun.file(readmePath)
-
-	if (!(await readmeFile.exists())) {
-		console.log("\n⚠️  README.md not found, skipping update.\n")
-		console.log(`📦 Bundle size: ${formatSizeLine(size)}\n`)
-		return
-	}
-
-	const readmeContent = await readmeFile.text()
 	const sizeString = formatSizeLine(size)
 
-	// Pattern: **Size:** X KB (gzipped: Y KB)
-	const sizePattern = /\*\*Size:\*\* [\d.]+ KB \(gzipped: [\d.]+ KB\)/g
+	// Update both READMEs
+	const readmePaths = ["README.md", "packages/eden-tanstack-query/README.md"]
 
-	const currentSizes = readmeContent.match(sizePattern) || []
-
-	if (currentSizes.length === 0) {
-		console.log("\n⚠️  No size placeholder found in README.md")
-		console.log(`📦 Bundle size: ${sizeString}\n`)
-		return
+	let updatedCount = 0
+	for (const readmePath of readmePaths) {
+		const updated = await updateReadme(readmePath, sizeString)
+		if (updated) {
+			console.log(`  ✅ Updated ${readmePath}`)
+			updatedCount++
+		}
 	}
 
-	// Check if size changed
-	if (currentSizes[0] === sizeString) {
-		console.log("\n✅ Bundle size is up to date. No changes needed.\n")
-		return
+	if (updatedCount === 0) {
+		console.log("\n✅ Bundle sizes are up to date. No changes needed.\n")
+	} else {
+		console.log(`\n✅ Updated ${updatedCount} file(s) with: ${sizeString}\n`)
 	}
-
-	// Replace size in README
-	const newReadmeContent = readmeContent.replace(sizePattern, sizeString)
-
-	await Bun.write(readmePath, newReadmeContent)
-
-	console.log("\n✅ Bundle size updated in README.md:")
-	console.log(`  ${currentSizes[0]} → ${sizeString}\n`)
 }
 
 main().catch((error) => {
