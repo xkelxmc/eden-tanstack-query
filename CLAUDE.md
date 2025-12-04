@@ -109,3 +109,24 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+## Git Commits
+
+Short, one-line commit messages. No task numbers or phase references.
+
+Format: `type: what was done`
+
+Types:
+- `feat:` — new feature
+- `fix:` — bug fix
+- `refactor:` — code refactoring
+- `docs:` — documentation
+- `test:` — tests
+- `chore:` — maintenance
+
+Emoji optional (at the start): `🎨 refactor: clean up types`
+
+Examples:
+- `feat: add route type inference`
+- `fix: handle optional body params`
+- `refactor: simplify query key generation`
