@@ -8,7 +8,6 @@ export default defineConfig({
 			"./packages/eden-tanstack-query/test-utils/testing-library.ts",
 		],
 		coverage: {
-			enabled: true,
 			provider: "v8",
 			reporter: ["text", "html", "lcov"],
 			include: ["packages/eden-tanstack-query/src/**/*.ts"],
