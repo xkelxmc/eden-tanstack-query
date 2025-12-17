@@ -6,7 +6,7 @@
 
 Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, but for Elysia.
 
-**Size:** 9.85 KB (gzipped: 2.44 KB)
+**Size:** 9.76 KB (gzipped: 2.42 KB)
 
 ## ✨ Features
 

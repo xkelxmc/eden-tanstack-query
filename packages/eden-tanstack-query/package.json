@@ -19,7 +19,7 @@
 	],
 	"scripts": {
 		"build": "bun run build:js && bun run build:types",
-		"build:js": "bun build ./src/index.ts --outdir ./dist --target browser --format esm --sourcemap=external --external react --external @tanstack/react-query --external @elysiajs/eden --external elysia",
+		"build:js": "NODE_ENV=production bun build ./src/index.ts --outdir ./dist --target browser --format esm --sourcemap=external --external react --external @tanstack/react-query --external @elysiajs/eden --external elysia",
 		"build:types": "bunx tsc -p tsconfig.build.json",
 		"dev": "bun run build --watch",
 		"test": "bun test --preload ./test-utils/happydom.ts",
