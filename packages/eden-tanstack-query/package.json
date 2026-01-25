@@ -1,6 +1,6 @@
 {
 	"name": "eden-tanstack-react-query",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "Type-safe TanStack Query integration for Elysia Eden - like tRPC for Elysia",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -33,17 +33,17 @@
 		"react": "^18.0.0 || >=19.0.3 <19.1.0 || >=19.1.4 <19.2.0 || >=19.2.3 <20.0.0"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^18.0.0",
-		"@tanstack/react-query": "^5.66.0",
-		"@elysiajs/eden": "^1.2.0",
-		"@testing-library/dom": "^10.0.0",
-		"@testing-library/jest-dom": "^6.6.0",
-		"@testing-library/react": "^16.3.0",
-		"elysia": "^1.2.0",
-		"react": "^19.0.3",
-		"react-dom": "^19.0.3",
-		"@types/react": "^19.0.0",
-		"@types/react-dom": "^19.0.0"
+		"@happy-dom/global-registrator": "^20.3.7",
+		"@tanstack/react-query": "5.90.20",
+		"@elysiajs/eden": "^1.4.6",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"elysia": "^1.4.22",
+		"react": "^19.2.3",
+		"react-dom": "^19.2.3",
+		"@types/react": "^19.2.9",
+		"@types/react-dom": "^19.2.3"
 	},
 	"keywords": [
 		"elysia",

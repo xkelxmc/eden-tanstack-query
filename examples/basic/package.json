@@ -9,18 +9,18 @@
 	},
 	"dependencies": {
 		"eden-tanstack-react-query": "workspace:*",
-		"@tanstack/react-query": "^5.66.0",
-		"@elysiajs/eden": "^1.2.0",
-		"@elysiajs/cors": "^1.2.0",
-		"elysia": "^1.2.0",
-		"react": "^19.0.3",
-		"react-dom": "^19.0.3"
+		"@tanstack/react-query": "5.90.20",
+		"@elysiajs/eden": "^1.4.6",
+		"@elysiajs/cors": "^1.4.1",
+		"elysia": "^1.4.22",
+		"react": "^19.2.3",
+		"react-dom": "^19.2.3"
 	},
 	"devDependencies": {
-		"@types/react": "^19.0.0",
-		"@types/react-dom": "^19.0.0",
-		"@vitejs/plugin-react": "^4.0.0",
-		"concurrently": "^9.0.0",
-		"vite": "^6.0.0"
+		"@types/react": "^19.2.9",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.1.2",
+		"concurrently": "^9.2.1",
+		"vite": "^7.3.1"
 	}
 }
