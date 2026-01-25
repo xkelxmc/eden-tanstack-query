@@ -15,16 +15,18 @@
 		"examples/*"
 	],
 	"scripts": {
+		"postinstall": "bun run --filter='@examples/*' db:generate",
 		"dev": "bun run --filter=* dev",
 		"build": "bun run --filter=eden-tanstack-react-query build",
 		"postbuild": "bun run scripts/update-sizes.ts",
 		"size": "bun run scripts/update-sizes.ts",
 		"example:basic": "bun run --filter=@eden-tanstack-query/example-basic dev",
-		"test": "bun test",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:cov": "vitest run --coverage",
 		"test:types": "bunx tsc --noEmit",
-		"test:all": "bun run test && bun run test:types",
+		"test:all": "vitest run && bunx tsc --noEmit",
 		"lint": "bunx biome check .",
 		"lint:fix": "bunx biome check --write .",
 		"format": "bunx biome format --write ."

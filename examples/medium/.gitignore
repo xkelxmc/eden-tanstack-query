@@ -1,0 +1,4 @@
+node_modules/
+src/db/generated/
+prisma/dev.db
+prisma/dev.db-journal

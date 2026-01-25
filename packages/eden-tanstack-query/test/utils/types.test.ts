@@ -341,7 +341,6 @@ describe("EmptyToVoid", () => {
 		type Result = EmptyToVoid<{}>
 
 		// void should extend Result (making it optional in function args)
-		// biome-ignore lint/suspicious/noConfusingVoidType: Testing void behavior in EmptyToVoid
 		type VoidExtends = void extends Result ? true : false
 		const voidExtends: VoidExtends = true
 		expect(voidExtends).toBe(true)
@@ -376,7 +375,6 @@ describe("EmptyToVoid", () => {
 		type Result = EmptyToVoid<Input>
 
 		// Object with optional property extends {}, so should include void
-		// biome-ignore lint/suspicious/noConfusingVoidType: Testing void behavior in EmptyToVoid
 		type VoidExtends = void extends Result ? true : false
 		const voidExtends: VoidExtends = true
 		expect(voidExtends).toBe(true)

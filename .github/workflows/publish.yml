@@ -46,12 +46,31 @@ jobs:
         run: npm publish --access public --provenance
         working-directory: packages/eden-tanstack-query
 
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          # Extract section between ## [X.Y.Z] and next ## [
+          NOTES=$(awk '/^## \['"$VERSION"'\]/{flag=1; next} /^## \[/{flag=0} flag' packages/eden-tanstack-query/CHANGELOG.md)
+          # Handle empty notes
+          if [ -z "$NOTES" ]; then
+            NOTES="Release $VERSION"
+          fi
+          # Save to file for gh release
+          echo "$NOTES" > release_notes.md
+
       - name: Create GitHub Release
         run: |
           if gh release view ${{ github.ref_name }} > /dev/null 2>&1; then
             echo "Release ${{ github.ref_name }} already exists, skipping"
           else
-            gh release create ${{ github.ref_name }} --generate-notes
+            gh release create ${{ github.ref_name }} \
+              --title "eden-tanstack-react-query ${{ steps.version.outputs.VERSION }}" \
+              --notes-file release_notes.md
           fi
         env:
           GH_TOKEN: ${{ github.token }}

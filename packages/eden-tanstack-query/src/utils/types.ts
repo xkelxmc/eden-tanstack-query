@@ -58,7 +58,6 @@ export type OmitNever<T> = Pick<T, NonNeverKeys<T>>
  * ```
  */
 // biome-ignore lint/complexity/noBannedTypes: {} check is standard pattern for empty object detection
-// biome-ignore lint/suspicious/noConfusingVoidType: void allows calling function without arguments
 export type EmptyToVoid<T> = {} extends T
 	? void | T
 	: undefined extends T

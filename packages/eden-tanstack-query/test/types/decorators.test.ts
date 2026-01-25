@@ -560,7 +560,6 @@ describe("EdenMutationFunction", () => {
 		>
 
 		// Should allow void (no args) due to EmptyToVoid
-		// biome-ignore lint/suspicious/noConfusingVoidType: Testing void in EmptyToVoid
 		type AllowsVoid = void extends Parameters<MutFn>[0] ? true : false
 		const allowsVoid: AllowsVoid = true
 		expect(allowsVoid).toBe(true)
@@ -767,7 +766,6 @@ describe("EdenQueryOptions callable interface", () => {
 
 		// Parameters should allow void/undefined for first argument
 		type FirstParam = Parameters<QueryOptionsMethod>[0]
-		// biome-ignore lint/suspicious/noConfusingVoidType: testing void type
 		type AllowsVoid = void extends FirstParam ? true : false
 
 		const allowsVoid: AllowsVoid = true
@@ -1163,6 +1161,108 @@ describe("Error type in decorated procedures", () => {
 			type IsRouteError = ErrorType extends RouteError ? true : false
 			const isRouteError: IsRouteError = true
 			expect(isRouteError).toBe(true)
+		})
+	})
+})
+
+// ============================================================================
+// Callable Path Params Tests (eden.users({ id }).get.queryOptions())
+// ============================================================================
+
+describe("EdenOptionsProxy callable path params", () => {
+	type Proxy = EdenOptionsProxy<App>
+	type UsersFn = Proxy["users"]
+
+	describe("proxy.users is callable when :id exists", () => {
+		test("users is a callable function", () => {
+			// biome-ignore lint/suspicious/noExplicitAny: testing callable
+			type IsCallable = UsersFn extends (...args: any[]) => any ? true : false
+			const isCallable: IsCallable = true
+			expect(isCallable).toBe(true)
+		})
+
+		test("users accepts { id } parameter", () => {
+			type AcceptsId = UsersFn extends (params: {
+				id: string | number
+			}) => unknown
+				? true
+				: false
+			const acceptsId: AcceptsId = true
+			expect(acceptsId).toBe(true)
+		})
+
+		test("users({ id }) return type has get, put, delete", () => {
+			type Result = ReturnType<UsersFn>
+			type HasGet = "get" extends keyof Result ? true : false
+			type HasPut = "put" extends keyof Result ? true : false
+			type HasDelete = "delete" extends keyof Result ? true : false
+
+			const hasGet: HasGet = true
+			const hasPut: HasPut = true
+			const hasDelete: HasDelete = true
+
+			expect(hasGet).toBe(true)
+			expect(hasPut).toBe(true)
+			expect(hasDelete).toBe(true)
+		})
+	})
+
+	describe("proxy.users({ id }).get has queryOptions", () => {
+		test("get has queryOptions property", () => {
+			type Result = ReturnType<UsersFn>
+			type GetProc = Result["get"]
+			type HasQueryOptions = "queryOptions" extends keyof GetProc ? true : false
+			type HasQueryKey = "queryKey" extends keyof GetProc ? true : false
+
+			const hasQueryOptions: HasQueryOptions = true
+			const hasQueryKey: HasQueryKey = true
+
+			expect(hasQueryOptions).toBe(true)
+			expect(hasQueryKey).toBe(true)
+		})
+	})
+
+	describe("proxy.users({ id }).put has mutationOptions", () => {
+		test("put has mutationOptions property", () => {
+			type Result = ReturnType<UsersFn>
+			type PutProc = Result["put"]
+			type HasMutationOptions = "mutationOptions" extends keyof PutProc
+				? true
+				: false
+			type HasMutationKey = "mutationKey" extends keyof PutProc ? true : false
+
+			const hasMutationOptions: HasMutationOptions = true
+			const hasMutationKey: HasMutationKey = true
+
+			expect(hasMutationOptions).toBe(true)
+			expect(hasMutationKey).toBe(true)
+		})
+	})
+
+	describe("proxy.users({ id }).delete has mutationOptions", () => {
+		test("delete has mutationOptions property", () => {
+			type Result = ReturnType<UsersFn>
+			type DeleteProc = Result["delete"]
+			type HasMutationOptions = "mutationOptions" extends keyof DeleteProc
+				? true
+				: false
+
+			const hasMutationOptions: HasMutationOptions = true
+			expect(hasMutationOptions).toBe(true)
+		})
+	})
+
+	describe("proxy.users also has direct .get and .post (for /users without :id)", () => {
+		test("users has direct .get property", () => {
+			type HasGet = "get" extends keyof UsersFn ? true : false
+			const hasGet: HasGet = true
+			expect(hasGet).toBe(true)
+		})
+
+		test("users has direct .post property", () => {
+			type HasPost = "post" extends keyof UsersFn ? true : false
+			const hasPost: HasPost = true
+			expect(hasPost).toBe(true)
 		})
 	})
 })

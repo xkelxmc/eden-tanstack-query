@@ -1,0 +1,49 @@
+{
+	"name": "@examples/large",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+		"dev:server": "bun run --watch server/index.ts",
+		"dev:client": "vite",
+		"typecheck": "tsc --noEmit",
+		"bench:types": "tsc --noEmit --extendedDiagnostics",
+		"db:generate": "prisma generate",
+		"db:push": "prisma db push",
+		"db:studio": "prisma studio"
+	},
+	"dependencies": {
+		"@base-ui/react": "^1.1.0",
+		"@elysiajs/cors": "^1.4.1",
+		"@elysiajs/eden": "1.4.6",
+		"@fontsource-variable/inter": "^5.2.8",
+		"@prisma/client": "6.15.0",
+		"@sinclair/typebox": "^0.34.0",
+		"@tanstack/react-query": "5.90.20",
+		"@tanstack/react-query-devtools": "^5.91.2",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"eden-tanstack-react-query": "workspace:*",
+		"elysia": "1.4.22",
+		"lucide-react": "^0.563.0",
+		"react": "19.2.3",
+		"react-dom": "19.2.3",
+		"shadcn": "^3.7.0",
+		"tailwind-merge": "^3.4.0",
+		"tailwindcss": "^4.1.17",
+		"tw-animate-css": "^1.4.0"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.1.17",
+		"@types/node": "^24.10.1",
+		"@types/react": "19.2.9",
+		"@types/react-dom": "19.2.3",
+		"@vitejs/plugin-react": "^5.1.2",
+		"concurrently": "^9.2.1",
+		"prisma": "6.15.0",
+		"prismabox": "^1.1.26",
+		"typescript": "5.9.3",
+		"vite": "^7.3.1"
+	}
+}

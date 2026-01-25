@@ -408,6 +408,57 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(options.eden.path).toBe("api.users.get")
 			expect(options.queryKey[0]).toEqual(["api", "users", "get"])
+			// pathParams should be included in queryKey metadata
+			expect(options.queryKey[1]).toEqual({
+				input: { id: "123" },
+				type: "query",
+			})
+		})
+
+		test("queryKey includes pathParams for cache differentiation", () => {
+			const eden = createEden()
+
+			// /api/users (list) vs /api/users/:id (single)
+			const listKey = eden.api.users.get.queryKey()
+			const singleKey = eden.api.users({ id: "123" }).get.queryKey()
+
+			// Keys should be different
+			expect(listKey).not.toEqual(singleKey)
+
+			// List has no input
+			expect(listKey).toEqual([["api", "users", "get"], { type: "query" }])
+
+			// Single has id in input
+			expect(singleKey).toEqual([
+				["api", "users", "get"],
+				{ input: { id: "123" }, type: "query" },
+			])
+		})
+
+		test("queryKey with pathParams and additional input", () => {
+			const eden = createEden()
+
+			// Path: /api/users/:id with additional query params
+			const key = eden.api
+				.users({ id: "123" })
+				.get.queryKey({ status: "active" })
+
+			// Should merge pathParams and input
+			expect(key).toEqual([
+				["api", "users", "get"],
+				{ input: { id: "123", status: "active" }, type: "query" },
+			])
+		})
+
+		test("queryFilter includes pathParams", () => {
+			const eden = createEden()
+
+			const filter = eden.api.users({ id: "123" }).get.queryFilter()
+
+			// type: "any" is omitted by getQueryKey when type is "any"
+			expect(filter.queryKey[1]).toEqual({
+				input: { id: "123" },
+			})
 		})
 
 		test("fetches data with path params", async () => {

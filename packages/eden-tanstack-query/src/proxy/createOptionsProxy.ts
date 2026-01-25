@@ -138,10 +138,17 @@ function createQueryProcedure(opts: ProcedureOptions) {
 
 	return {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
+			// Merge pathParams into input for unique cache keys
+			const inputForKey =
+				pathParams.length > 0
+					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					: input
 			return edenQueryOptions({
 				path: paths,
-				input,
-				fetch: async (actualInput, signal) => {
+				input: inputForKey,
+				fetch: async (_inputForKey, signal) => {
+					// Use original input for fetch, not merged
+					const actualInput = input
 					// Build path without the method
 					const pathWithoutMethod = paths.slice(0, -1)
 					const method = getMethod(paths)
@@ -171,16 +178,25 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		queryKey: (input?: unknown): EdenQueryKey => {
-			return getQueryKey({ path: paths, input, type: "query" })
+			// Merge pathParams into input for unique cache keys
+			const mergedInput =
+				pathParams.length > 0
+					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					: input
+			return getQueryKey({ path: paths, input: mergedInput, type: "query" })
 		},
 
 		queryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
+			const mergedInput =
+				pathParams.length > 0
+					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					: input
 			return {
 				...filters,
-				queryKey: getQueryKey({ path: paths, input, type: "any" }),
+				queryKey: getQueryKey({ path: paths, input: mergedInput, type: "any" }),
 			}
 		},
 
@@ -193,12 +209,27 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			},
 		) => {
 			const { initialCursor = null, ...restOpts } = infiniteOpts
+			// Merge pathParams into input for unique cache keys
+			const inputForKey =
+				pathParams.length > 0
+					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					: input
 
 			return edenInfiniteQueryOptions({
 				path: paths,
-				input,
+				input: inputForKey,
 				initialPageParam: initialCursor,
-				fetch: async (fullInput, signal) => {
+				fetch: async (inputWithCursor, signal) => {
+					// inputWithCursor has pathParams merged + cursor
+					// Extract cursor and use original input for query
+					const { cursor, direction } = (inputWithCursor ?? {}) as {
+						cursor?: unknown
+						direction?: unknown
+					}
+					const fullInput =
+						cursor !== undefined || direction !== undefined
+							? { ...(input as object), cursor, direction }
+							: input
 					// Build path without the method
 					const pathWithoutMethod = paths.slice(0, -1)
 					const method = getMethod(paths)
@@ -230,16 +261,28 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		infiniteQueryKey: (input?: unknown): EdenQueryKey => {
-			return getQueryKey({ path: paths, input, type: "infinite" })
+			const mergedInput =
+				pathParams.length > 0
+					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					: input
+			return getQueryKey({ path: paths, input: mergedInput, type: "infinite" })
 		},
 
 		infiniteQueryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
+			const mergedInput =
+				pathParams.length > 0
+					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					: input
 			return {
 				...filters,
-				queryKey: getQueryKey({ path: paths, input, type: "infinite" }),
+				queryKey: getQueryKey({
+					path: paths,
+					input: mergedInput,
+					type: "infinite",
+				}),
 			}
 		},
 	}

@@ -16,7 +16,7 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 
 | Package | Version | Size |
 |---------|---------|------|
-| [eden-tanstack-react-query](./packages/eden-tanstack-query) | 0.1.0 | **Size:** 9.76 KB (gzipped: 2.42 KB) |
+| [eden-tanstack-react-query](./packages/eden-tanstack-query) | 0.1.0 | **Size:** 10.82 KB (gzipped: 2.55 KB) |
 
 ## Quick Start
 
@@ -47,6 +47,21 @@ function UserList() {
 See [full documentation](./packages/eden-tanstack-query/README.md) for details.
 
 See [CHANGELOG](./packages/eden-tanstack-query/CHANGELOG.md) for release history.
+
+## Examples
+
+| Example | Description |
+|---------|-------------|
+| [basic](./examples/basic) | Simple CRUD with users |
+| [medium](./examples/medium) | Blog with posts, comments, users |
+| [large](./examples/large) | Full app with organizations, members, posts, comments, categories, tags |
+
+```bash
+# Run an example
+cd examples/basic
+bun install
+bun run dev
+```
 
 ## Development
 
