@@ -1,0 +1,3 @@
+# Empty bunfig.toml isolates this package from root config.
+# Required for NODE_ENV=production to work in build:js script.
+# See: https://github.com/xkelxmc/eden-tanstack-query/issues/3
