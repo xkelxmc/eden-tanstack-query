@@ -497,6 +497,99 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(result).toEqual({ success: true, id: "123" })
 		})
+
+		test("path params applied at correct position after multiple static segments", async () => {
+			// Verifies path params being applied at the correct position
+			// Path: /api/v1/users/address/:userId
+			let capturedParams: Record<string, unknown> | null = null
+
+			const mockClient = {
+				api: {
+					v1: {
+						users: {
+							address: (params: { userId: string }) => {
+								capturedParams = params
+								return {
+									get: async () => ({
+										data: { userId: params.userId, address: "123 Main St" },
+										error: null,
+									}),
+								}
+							},
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: mockClient,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const options = (eden as any).api.v1.users
+				.address({ userId: "456" })
+				.get.queryOptions({})
+
+			const result = await queryClient.fetchQuery(options)
+
+			expect(capturedParams).toEqual({ userId: "456" })
+			expect(result).toEqual({ userId: "456", address: "123 Main St" })
+		})
+
+		test("multiple path params at different positions work correctly", async () => {
+			// Path: /api/v1/orgs/:orgId/teams/:teamId/members
+			const capturedOrgId: string[] = []
+			const capturedTeamId: string[] = []
+
+			const mockClient = {
+				api: {
+					v1: {
+						orgs: (params: { orgId: string }) => {
+							capturedOrgId.push(params.orgId)
+							return {
+								teams: (teamParams: { teamId: string }) => {
+									capturedTeamId.push(teamParams.teamId)
+									return {
+										members: {
+											get: async () => ({
+												data: [
+													{
+														id: "member1",
+														orgId: params.orgId,
+														teamId: teamParams.teamId,
+													},
+												],
+												error: null,
+											}),
+										},
+									}
+								},
+							}
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: mockClient,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const options = (eden as any).api.v1
+				.orgs({ orgId: "org-123" })
+				.teams({ teamId: "team-456" })
+				.members.get.queryOptions({})
+
+			const result = await queryClient.fetchQuery(options)
+
+			expect(capturedOrgId).toContain("org-123")
+			expect(capturedTeamId).toContain("team-456")
+			expect(result).toEqual([
+				{ id: "member1", orgId: "org-123", teamId: "team-456" },
+			])
+		})
 	})
 
 	describe("infinite query options", () => {
