@@ -44,9 +44,7 @@ function UserList() {
 }
 ```
 
-See [full documentation](./packages/eden-tanstack-query/README.md) for details.
-
-See [CHANGELOG](./packages/eden-tanstack-query/CHANGELOG.md) for release history.
+**[Documentation](https://eden-query.xkel.me)** · [Package README](./packages/eden-tanstack-query/README.md) · [CHANGELOG](./packages/eden-tanstack-query/CHANGELOG.md)
 
 ## Examples
 
@@ -83,4 +81,4 @@ bun run test:types
 
 [Apache-2.0](./LICENSE)
 
-Copyright 2025 Ilya Zhidkov
+Copyright 2025-2026 Ilya Zhidkov
