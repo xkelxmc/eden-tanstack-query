@@ -157,7 +157,7 @@ eden.route.get.infiniteQueryOptions(input, opts): InfiniteQueryOptions
 |-----------|------|-------------|
 | `input` | `TInput \| SkipToken` | Query params (excluding cursor) or `skipToken` |
 | `opts.getNextPageParam` | `(lastPage) => TCursor \| undefined` | **Required.** Returns next page cursor |
-| `opts.initialCursor` | `TCursor` | **Required.** Initial cursor value |
+| `opts.initialCursor` | `TCursor` | Initial cursor value. Defaults to `null` |
 | `opts.getPreviousPageParam` | `(firstPage) => TCursor \| undefined` | For bi-directional pagination |
 | `opts.maxPages` | `number` | Max pages to keep in memory |
 

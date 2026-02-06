@@ -19,7 +19,7 @@ Query keys follow this structure:
 eden.users.get.queryKey()
 // => [['users', 'get'], { type: 'query' }]
 
-eden.users.get.queryKey({ query: { role: 'admin' } })
+eden.users.get.queryKey({ role: 'admin' })
 // => [['users', 'get'], { input: { role: 'admin' }, type: 'query' }]
 
 eden.users({ id: '1' }).get.queryKey()
@@ -41,7 +41,7 @@ Returns the query key for a specific route. Optionally accepts input for more sp
 
 ```ts
 eden.users.get.queryKey()                              // all users queries
-eden.users.get.queryKey({ query: { role: 'admin' } })  // specific input
+eden.users.get.queryKey({ role: 'admin' })  // specific input
 eden.users({ id: '1' }).get.queryKey()                 // specific path params
 ```
 
@@ -51,9 +51,13 @@ Returns a filter object (including `queryKey`) for use with TanStack Query's fil
 
 ```ts
 eden.users.get.queryFilter()
-eden.users.get.queryFilter({ query: { role: 'admin' } })
+eden.users.get.queryFilter({ role: 'admin' })
 eden.users.get.queryFilter(undefined, { exact: true, stale: true })
 ```
+
+<Callout type="info">
+`queryKey()` generates keys with `type: "query"`, which only matches regular queries. `queryFilter()` uses `type: "any"`, which matches both regular and infinite queries — making it better suited for broad cache invalidation.
+</Callout>
 
 ### infiniteQueryKey()
 
@@ -157,7 +161,7 @@ queryClient.invalidateQueries({
 
 // Only invalidates the specific query with role='admin'
 queryClient.invalidateQueries({
-  queryKey: eden.users.get.queryKey({ query: { role: 'admin' } })
+  queryKey: eden.users.get.queryKey({ role: 'admin' })
 })
 ```
 

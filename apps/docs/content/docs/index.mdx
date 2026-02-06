@@ -165,13 +165,13 @@ Pass query parameters or request body:
 
 ```ts
 // Query params: GET /users?role=admin
-eden.users.get.queryOptions({ query: { role: 'admin' } })
+eden.users.get.queryOptions({ role: 'admin' })
 
-// With headers
-eden.users.get.queryOptions({
-  query: { role: 'admin' },
-  headers: { 'X-Custom': 'value' }
-})
+// With TanStack Query options
+eden.users.get.queryOptions(
+  { role: 'admin' },
+  { staleTime: 5 * 60 * 1000 }
+)
 ```
 
 ### Infinite Queries

@@ -42,9 +42,7 @@ Pass query parameters as the first argument:
 ```tsx
 // GET /users?role=admin&status=active
 const { data } = useQuery(
-  eden.users.get.queryOptions({
-    query: { role: 'admin', status: 'active' }
-  })
+  eden.users.get.queryOptions({ role: 'admin', status: 'active' })
 )
 ```
 
@@ -53,7 +51,7 @@ Pass additional TanStack Query options as the second argument:
 ```tsx
 const { data } = useQuery(
   eden.users.get.queryOptions(
-    { query: { role: 'admin' } },
+    { role: 'admin' },
     { staleTime: 5 * 60 * 1000 }
   )
 )
@@ -104,7 +102,7 @@ queryClient.invalidateQueries({
 
 // Invalidate with specific input
 queryClient.invalidateQueries({
-  queryKey: eden.users.get.queryKey({ query: { role: 'admin' } })
+  queryKey: eden.users.get.queryKey({ role: 'admin' })
 })
 ```
 
@@ -121,7 +119,7 @@ queryClient.invalidateQueries(
 
 // With input filtering
 queryClient.invalidateQueries(
-  eden.users.get.queryFilter({ query: { role: 'admin' } })
+  eden.users.get.queryFilter({ role: 'admin' })
 )
 
 // With additional filter options
