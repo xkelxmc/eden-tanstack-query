@@ -590,6 +590,129 @@ describe("createEdenOptionsProxy", () => {
 				{ id: "member1", orgId: "org-123", teamId: "team-456" },
 			])
 		})
+
+		test("path param at first segment works correctly", async () => {
+			// Path: /tenants/:tenantId/users
+			const mockClient = {
+				tenants: (params: { tenantId: string }) => ({
+					users: {
+						get: async () => ({
+							data: [{ id: "u1", tenantId: params.tenantId }],
+							error: null,
+						}),
+					},
+				}),
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: mockClient,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const options = (eden as any)
+				.tenants({ tenantId: "t-1" })
+				.users.get.queryOptions({})
+
+			const result = await queryClient.fetchQuery(options)
+			expect(result).toEqual([{ id: "u1", tenantId: "t-1" }])
+		})
+
+		test("mutation with deep path params applies params correctly", async () => {
+			// Path: /api/v1/orgs/:orgId/settings (POST)
+			let capturedParams: Record<string, unknown> | null = null
+
+			const mockClient = {
+				api: {
+					v1: {
+						orgs: (params: { orgId: string }) => {
+							capturedParams = params
+							return {
+								settings: {
+									post: async (body: unknown) => ({
+										data: { orgId: params.orgId, ...(body as object) },
+										error: null,
+									}),
+								},
+							}
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: mockClient,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const options = (eden as any).api.v1
+				.orgs({ orgId: "org-99" })
+				.settings.post.mutationOptions()
+
+			const result = await options.mutationFn({ name: "New Settings" })
+
+			expect(capturedParams).toEqual({ orgId: "org-99" })
+			expect(result).toEqual({ orgId: "org-99", name: "New Settings" })
+		})
+
+		test("different path param values produce different cache keys", () => {
+			const mockClient = {
+				api: {
+					v1: {
+						users: {
+							address: () => ({
+								get: async () => ({ data: null, error: null }),
+							}),
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: mockClient,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const proxy = eden as any
+			const key1 = proxy.api.v1.users.address({ userId: "aaa" }).get.queryKey()
+			const key2 = proxy.api.v1.users.address({ userId: "bbb" }).get.queryKey()
+
+			expect(key1).not.toEqual(key2)
+			expect(key1[1]).toEqual({ input: { userId: "aaa" }, type: "query" })
+			expect(key2[1]).toEqual({ input: { userId: "bbb" }, type: "query" })
+		})
+
+		test("multiple path params merge into queryKey correctly", () => {
+			const mockClient = {
+				api: {
+					orgs: () => ({
+						teams: () => ({
+							members: {
+								get: async () => ({ data: [], error: null }),
+							},
+						}),
+					}),
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: mockClient,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const key = (eden as any).api
+				.orgs({ orgId: "o1" })
+				.teams({ teamId: "t2" })
+				.members.get.queryKey({ role: "admin" })
+
+			expect(key[1]).toEqual({
+				input: { orgId: "o1", teamId: "t2", role: "admin" },
+				type: "query",
+			})
+		})
 	})
 
 	describe("infinite query options", () => {
