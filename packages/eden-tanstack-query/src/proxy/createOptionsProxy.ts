@@ -45,6 +45,17 @@ type WithRequired<TObj, TKey extends keyof TObj> = TObj & {
 	[P in TKey]-?: TObj[P]
 }
 
+/**
+ * Path parameter with its associated path index.
+ * Records which path segment the param was applied to.
+ */
+export interface PositionedPathParam {
+	/** The index in the path array where this param should be applied */
+	pathIndex: number
+	/** The actual parameter values */
+	params: Record<string, unknown>
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -75,17 +86,38 @@ function getMethod(paths: string[]): string {
 }
 
 /**
- * Navigate to the correct Eden client path with path params applied
+ * Extract and merge all params from PositionedPathParam array for cache keys.
+ */
+function mergePathParams(
+	pathParams: PositionedPathParam[],
+): Record<string, unknown> {
+	return Object.assign({}, ...pathParams.map((path) => path.params))
+}
+
+/**
+ * Navigate to the correct Eden client path with path params applied.
+ * Applies params at their recorded path indices to ensure correct URL structure.
  */
 function navigateToEdenPath(
 	client: unknown,
 	pathSegments: string[],
-	pathParams: Record<string, unknown>[],
+	pathParams: PositionedPathParam[],
 ): unknown {
 	let edenPath = client
-	let paramIndex = 0
 
-	for (const segment of pathSegments) {
+	// Build a Map for O(1) param lookup by index
+	const positionedParamsIndex = new Map(
+		pathParams.map((p) => [p.pathIndex, p.params]),
+	)
+
+	for (let i = 0; i < pathSegments.length; i++) {
+		const segment = pathSegments[i]
+
+		// TypeScript guard: segment is always defined within valid loop bounds
+		if (segment === undefined) {
+			continue
+		}
+
 		if (edenPath == null) {
 			throw new Error(
 				`Invalid path: cannot access '${segment}' on null/undefined`,
@@ -103,17 +135,13 @@ function navigateToEdenPath(
 
 		edenPath = nextPath
 
-		// If there's a path param to apply at this level, call as function
-		if (
-			paramIndex < pathParams.length &&
-			typeof edenPath === "function" &&
-			!isQueryMethod(segment) &&
-			!isMutationMethod(segment)
-		) {
-			edenPath = (edenPath as (params: unknown) => unknown)(
-				pathParams[paramIndex],
-			)
-			paramIndex++
+		// Apply path param if one was recorded at this index
+		// Skip if current segment is a query/mutation method
+		if (!isQueryMethod(segment) && !isMutationMethod(segment)) {
+			const params = positionedParamsIndex.get(i)
+			if (params && typeof edenPath === "function") {
+				edenPath = (edenPath as (params: unknown) => unknown)(params)
+			}
 		}
 	}
 
@@ -127,7 +155,7 @@ function navigateToEdenPath(
 interface ProcedureOptions {
 	client: unknown
 	paths: string[]
-	pathParams: Record<string, unknown>[]
+	pathParams: PositionedPathParam[]
 }
 
 /**
@@ -141,7 +169,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			// Merge pathParams into input for unique cache keys
 			const inputForKey =
 				pathParams.length > 0
-					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					? { ...mergePathParams(pathParams), ...(input as object) }
 					: input
 			return edenQueryOptions({
 				path: paths,
@@ -181,7 +209,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			// Merge pathParams into input for unique cache keys
 			const mergedInput =
 				pathParams.length > 0
-					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					? { ...mergePathParams(pathParams), ...(input as object) }
 					: input
 			return getQueryKey({ path: paths, input: mergedInput, type: "query" })
 		},
@@ -192,7 +220,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		): WithRequired<QueryFilters, "queryKey"> => {
 			const mergedInput =
 				pathParams.length > 0
-					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					? { ...mergePathParams(pathParams), ...(input as object) }
 					: input
 			return {
 				...filters,
@@ -212,7 +240,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			// Merge pathParams into input for unique cache keys
 			const inputForKey =
 				pathParams.length > 0
-					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					? { ...mergePathParams(pathParams), ...(input as object) }
 					: input
 
 			return edenInfiniteQueryOptions({
@@ -263,7 +291,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		infiniteQueryKey: (input?: unknown): EdenQueryKey => {
 			const mergedInput =
 				pathParams.length > 0
-					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					? { ...mergePathParams(pathParams), ...(input as object) }
 					: input
 			return getQueryKey({ path: paths, input: mergedInput, type: "infinite" })
 		},
@@ -274,7 +302,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		): WithRequired<QueryFilters, "queryKey"> => {
 			const mergedInput =
 				pathParams.length > 0
-					? { ...Object.assign({}, ...pathParams), ...(input as object) }
+					? { ...mergePathParams(pathParams), ...(input as object) }
 					: input
 			return {
 				...filters,
@@ -364,7 +392,7 @@ function createMutationProcedure(opts: ProcedureOptions) {
 export function createEdenOptionsProxy<TApp extends AnyElysia>(
 	opts: CreateEdenOptionsProxyOptions<TApp>,
 	paths: string[] = [],
-	pathParams: Record<string, unknown>[] = [],
+	pathParams: PositionedPathParam[] = [],
 ): EdenOptionsProxy<TApp> {
 	const { client } = opts
 
@@ -403,8 +431,20 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 		apply: (_target, _thisArg, args) => {
 			// Function call = path params
 			// e.g., eden.api.users({ id: '1' }) → adds path param
-			const params = args[0] as Record<string, unknown>
-			return createEdenOptionsProxy(opts, [...paths], [...pathParams, params])
+			// Record the current path index so params are applied at the correct position
+			const params =
+				args && args.length > 0 && args[0] !== undefined
+					? (args[0] as Record<string, unknown>)
+					: {}
+			const positionedPathParam: PositionedPathParam = {
+				pathIndex: paths.length - 1,
+				params,
+			}
+			return createEdenOptionsProxy(
+				opts,
+				[...paths],
+				[...pathParams, positionedPathParam],
+			)
 		},
 	})
 
