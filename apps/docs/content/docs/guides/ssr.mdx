@@ -1,0 +1,211 @@
+---
+title: Server-Side Rendering
+description: SSR and hydration setup for Eden TanStack Query
+---
+
+# Server-Side Rendering
+
+Eden TanStack Query supports SSR with `createEdenOptionsProxy`, which creates a server-side proxy for prefetching data that hydrates seamlessly on the client.
+
+## createEdenOptionsProxy
+
+The key to SSR is `createEdenOptionsProxy` -- it creates an Eden proxy bound to a specific client and QueryClient, generating the same query keys as the client-side `useEden()` hook:
+
+```ts
+import { createEdenOptionsProxy } from 'eden-tanstack-react-query'
+
+const eden = createEdenOptionsProxy<App>({
+  client: serverClient,
+  queryClient
+})
+
+// Use the same API as useEden()
+await queryClient.prefetchQuery(eden.users.get.queryOptions())
+```
+
+## Next.js App Router
+
+### Layout and Providers
+
+```tsx title="app/layout.tsx"
+import { Providers } from './providers'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}
+```
+
+```tsx title="app/providers.tsx"
+'use client'
+
+import { useState } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { getQueryClient } from '@/lib/query-client'
+import { EdenProvider, edenClient } from '@/lib/eden'
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => getQueryClient())
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <EdenProvider client={edenClient} queryClient={queryClient}>
+        {children}
+      </EdenProvider>
+    </QueryClientProvider>
+  )
+}
+```
+
+### QueryClient Factory
+
+```ts title="lib/query-client.ts"
+import { QueryClient } from '@tanstack/react-query'
+
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000,
+      }
+    }
+  })
+}
+
+let browserQueryClient: QueryClient | undefined
+
+export function getQueryClient() {
+  if (typeof window === 'undefined') {
+    return makeQueryClient()
+  }
+  if (!browserQueryClient) {
+    browserQueryClient = makeQueryClient()
+  }
+  return browserQueryClient
+}
+```
+
+### Server Component Prefetching
+
+```tsx title="app/users/page.tsx"
+import { HydrationBoundary, dehydrate } from '@tanstack/react-query'
+import { createEdenOptionsProxy } from 'eden-tanstack-react-query'
+import { getQueryClient } from '@/lib/query-client'
+import { getServerEdenClient } from '@/lib/eden'
+import type { App } from '@/lib/server'
+import { UserList } from './user-list'
+
+export default async function UsersPage() {
+  const queryClient = getQueryClient()
+  const serverClient = getServerEdenClient()
+
+  const eden = createEdenOptionsProxy<App>({
+    client: serverClient,
+    queryClient
+  })
+
+  // Prefetch on server
+  await queryClient.prefetchQuery(eden.users.get.queryOptions())
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <UserList />
+    </HydrationBoundary>
+  )
+}
+```
+
+```tsx title="app/users/user-list.tsx"
+'use client'
+
+import { useQuery } from '@tanstack/react-query'
+import { useEden } from '@/lib/eden'
+
+export function UserList() {
+  const eden = useEden()
+
+  // Uses prefetched data -- no loading state on initial render
+  const { data: users } = useQuery(eden.users.get.queryOptions())
+
+  return (
+    <ul>
+      {users?.map(user => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+### Prefetching Multiple Queries
+
+```tsx
+export default async function DashboardPage() {
+  const queryClient = getQueryClient()
+  const eden = createEdenOptionsProxy<App>({ client: getServerEdenClient(), queryClient })
+
+  await Promise.all([
+    queryClient.prefetchQuery(eden.users.get.queryOptions()),
+    queryClient.prefetchQuery(eden.stats.get.queryOptions()),
+  ])
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <Dashboard />
+    </HydrationBoundary>
+  )
+}
+```
+
+## Next.js Pages Router
+
+The same pattern works with `getServerSideProps`:
+
+```tsx title="pages/users/index.tsx"
+import type { GetServerSideProps } from 'next'
+import { dehydrate, QueryClient } from '@tanstack/react-query'
+import { createEdenOptionsProxy } from 'eden-tanstack-react-query'
+import { treaty } from '@elysiajs/eden'
+import type { App } from '@/lib/server'
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const queryClient = new QueryClient()
+  const serverClient = treaty<App>(process.env.INTERNAL_API_URL!)
+
+  const eden = createEdenOptionsProxy<App>({ client: serverClient, queryClient })
+  await queryClient.prefetchQuery(eden.users.get.queryOptions())
+
+  return {
+    props: { dehydratedState: dehydrate(queryClient) }
+  }
+}
+```
+
+Wrap your app with `HydrationBoundary` in `_app.tsx` and provide `EdenProvider` as shown in the [Getting Started](/docs/getting-started) guide. See the [TanStack Query SSR docs](https://tanstack.com/query/latest/docs/framework/react/guides/ssr) for the full Pages Router setup.
+
+## TanStack Start
+
+Use `ensureQueryData` in route loaders for server-side prefetching:
+
+```tsx title="app/routes/users.tsx"
+import { createFileRoute } from '@tanstack/react-router'
+import { createEdenOptionsProxy } from 'eden-tanstack-react-query'
+import { treaty } from '@elysiajs/eden'
+import type { App } from '@/lib/server'
+
+export const Route = createFileRoute('/users')({
+  loader: async ({ context: { queryClient } }) => {
+    const serverClient = treaty<App>(import.meta.env.VITE_API_URL)
+    const eden = createEdenOptionsProxy<App>({ client: serverClient, queryClient })
+    await queryClient.ensureQueryData(eden.users.get.queryOptions())
+  },
+  component: UsersPage
+})
+```
+
+See the [TanStack Start docs](https://tanstack.com/start/latest/docs/framework/react/guide/ssr) for router and QueryClient setup.

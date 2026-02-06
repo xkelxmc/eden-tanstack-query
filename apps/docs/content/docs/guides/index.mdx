@@ -1,0 +1,44 @@
+---
+title: Overview
+description: Learn how to use eden-tanstack-query effectively
+---
+
+# Guides
+
+These guides cover the core patterns for using eden-tanstack-query in your applications.
+
+<Cards>
+  <Card title="Queries" href="/docs/guides/queries">
+    Fetch data with type-safe query options
+  </Card>
+  <Card title="Mutations" href="/docs/guides/mutations">
+    Create, update, and delete data with mutations
+  </Card>
+  <Card title="Infinite Queries" href="/docs/guides/infinite-queries">
+    Cursor-based pagination with infinite queries
+  </Card>
+  <Card title="Path Parameters" href="/docs/guides/path-parameters">
+    Working with dynamic route segments
+  </Card>
+  <Card title="Query Keys" href="/docs/guides/query-keys">
+    Cache operations, invalidation, and key structure
+  </Card>
+  <Card title="SSR" href="/docs/guides/ssr">
+    Server-side rendering with Next.js and TanStack Start
+  </Card>
+  <Card title="Testing" href="/docs/guides/testing">
+    Testing patterns with Vitest and Testing Library
+  </Card>
+</Cards>
+
+## HTTP Methods to Procedures
+
+| HTTP Method | Procedure Type | Options Method |
+|-------------|----------------|----------------|
+| GET | Query | `queryOptions()` |
+| HEAD | Query | `queryOptions()` |
+| OPTIONS | Query | `queryOptions()` |
+| POST | Mutation | `mutationOptions()` |
+| PUT | Mutation | `mutationOptions()` |
+| PATCH | Mutation | `mutationOptions()` |
+| DELETE | Mutation | `mutationOptions()` |

@@ -1,0 +1,200 @@
+---
+title: Getting Started
+description: Install Eden TanStack Query and build your first type-safe query
+---
+
+# Getting Started
+
+Eden TanStack Query brings end-to-end type safety to your React applications using [Elysia](https://elysiajs.com/) and [TanStack Query](https://tanstack.com/query).
+
+## Installation
+
+Install the package with its peer dependencies:
+
+<Tabs items={["bun", "npm", "pnpm", "yarn"]}>
+  <Tab value="bun">
+```bash
+bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+```
+  </Tab>
+  <Tab value="npm">
+```bash
+npm install eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+```
+  </Tab>
+  <Tab value="pnpm">
+```bash
+pnpm add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+```
+  </Tab>
+  <Tab value="yarn">
+```bash
+yarn add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+```
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+The `elysia` package is only needed for its type definitions. You don't need to run Elysia on the client — just import the `typeof app` type from your server.
+</Callout>
+
+Ensure your `tsconfig.json` has `strict: true` and `moduleResolution` set to `"bundler"` (or `"node16"` / `"nodenext"`).
+
+## Define Your Elysia Server
+
+Create an Elysia server with typed routes. These route definitions are what provide end-to-end type safety.
+
+```ts title="server/index.ts"
+import { Elysia, t } from 'elysia'
+import { cors } from '@elysiajs/cors'
+
+const app = new Elysia()
+  .use(cors())
+  .get('/hello', () => ({ message: 'Hello from Elysia!' }))
+  .get('/users', () => [
+    { id: '1', name: 'Alice', email: 'alice@example.com' },
+    { id: '2', name: 'Bob', email: 'bob@example.com' },
+  ])
+  .get('/users/:id', ({ params }) => ({
+    id: params.id,
+    name: `User ${params.id}`,
+    email: `user${params.id}@example.com`,
+  }))
+  .post(
+    '/users',
+    ({ body }) => ({ id: String(Date.now()), ...body }),
+    {
+      body: t.Object({
+        name: t.String(),
+        email: t.String(),
+      }),
+    }
+  )
+  .listen(3000)
+
+// This type export is what enables type inference on the client
+export type App = typeof app
+```
+
+<Callout type="warning">
+The `export type App = typeof app` line is crucial — it's what makes the entire type-safe chain work.
+</Callout>
+
+## Create Eden Instance
+
+Set up the Eden TanStack Query instance and treaty client.
+
+```ts title="src/lib/eden.ts"
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import { treaty } from '@elysiajs/eden'
+import type { App } from '../../server'
+
+export const { EdenProvider, useEden } = createEdenTanStackQuery<App>()
+export const edenClient = treaty<App>('http://localhost:3000')
+```
+
+## Set Up Providers
+
+Wrap your app with `QueryClientProvider` and `EdenProvider`.
+
+```tsx title="src/App.tsx"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { EdenProvider, edenClient } from './lib/eden'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <EdenProvider client={edenClient} queryClient={queryClient}>
+        <YourApp />
+      </EdenProvider>
+    </QueryClientProvider>
+  )
+}
+```
+
+## Use in Components
+
+### Query
+
+```tsx title="src/components/UserList.tsx"
+import { useQuery } from '@tanstack/react-query'
+import { useEden } from '../lib/eden'
+
+export function UserList() {
+  const eden = useEden()
+
+  const { data: users, isLoading } = useQuery(
+    eden.users.get.queryOptions()
+  )
+
+  if (isLoading) return <div>Loading...</div>
+
+  return (
+    <ul>
+      {users?.map((user) => (
+        <li key={user.id}>{user.name} ({user.email})</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+### Path Parameters
+
+For routes like `/users/:id`, call the path segment as a function:
+
+```tsx
+const { data: user } = useQuery(
+  eden.users({ id: userId }).get.queryOptions()
+)
+```
+
+### Mutation
+
+```tsx title="src/components/CreateUser.tsx"
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEden } from '../lib/eden'
+
+export function CreateUser() {
+  const eden = useEden()
+  const queryClient = useQueryClient()
+
+  const createUser = useMutation({
+    ...eden.users.post.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: eden.users.get.queryKey(),
+      })
+    },
+  })
+
+  return (
+    <button
+      onClick={() => createUser.mutate({ name: 'Alice', email: 'alice@example.com' })}
+      disabled={createUser.isPending}
+    >
+      Create User
+    </button>
+  )
+}
+```
+
+## Monorepo Setup
+
+If your Elysia server and React client live in separate packages, export the app type from your server package and import it in the client:
+
+```ts title="packages/server/src/index.ts"
+export type App = typeof app
+```
+
+```ts title="packages/client/src/lib/eden.ts"
+import type { App } from '@myorg/server'
+```
+
+## Next Steps
+
+- **[Query Options](/docs/api-reference)** — All available methods and options
+- **[Infinite Queries](/docs/guides)** — Pagination with `infiniteQueryOptions()`
+- **[Query Keys](/docs/guides)** — How query keys are generated and used

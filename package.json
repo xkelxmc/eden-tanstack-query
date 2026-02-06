@@ -12,6 +12,7 @@
 	"homepage": "https://github.com/xkelxmc/eden-tanstack-query#readme",
 	"workspaces": [
 		"packages/*",
+		"apps/*",
 		"examples/*"
 	],
 	"scripts": {
@@ -21,6 +22,8 @@
 		"postbuild": "bun run scripts/update-sizes.ts",
 		"size": "bun run scripts/update-sizes.ts",
 		"example:basic": "bun run --filter=@eden-tanstack-query/example-basic dev",
+		"docs": "bun run --filter=@eden-tanstack-query/docs dev",
+		"docs:build": "bun run --filter=@eden-tanstack-query/docs build",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",

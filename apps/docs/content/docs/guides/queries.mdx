@@ -1,0 +1,199 @@
+---
+title: Queries
+description: Fetch data with type-safe query options
+---
+
+# Queries
+
+Any route using GET, HEAD, or OPTIONS is treated as a query procedure. Use `queryOptions()` to create options for TanStack Query's `useQuery`.
+
+## Basic Query
+
+Using the server from the [Getting Started](/docs/getting-started) guide:
+
+```tsx
+import { useQuery } from '@tanstack/react-query'
+import { useEden } from './lib/eden'
+
+function UserList() {
+  const eden = useEden()
+
+  const { data, isLoading, error } = useQuery(
+    eden.users.get.queryOptions()
+  )
+
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message}</div>
+
+  return (
+    <ul>
+      {data?.map(user => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+## Query with Input
+
+Pass query parameters as the first argument:
+
+```tsx
+// GET /users?role=admin&status=active
+const { data } = useQuery(
+  eden.users.get.queryOptions({
+    query: { role: 'admin', status: 'active' }
+  })
+)
+```
+
+Pass additional TanStack Query options as the second argument:
+
+```tsx
+const { data } = useQuery(
+  eden.users.get.queryOptions(
+    { query: { role: 'admin' } },
+    { staleTime: 5 * 60 * 1000 }
+  )
+)
+```
+
+## Path Parameters
+
+For routes with dynamic segments, call the path segment as a function. See the [Path Parameters](/docs/guides/path-parameters) guide for details.
+
+```tsx
+// GET /users/:id
+const { data } = useQuery(
+  eden.users({ id: userId }).get.queryOptions()
+)
+```
+
+## useSuspenseQuery
+
+Works with `useSuspenseQuery` for React Suspense support:
+
+```tsx
+import { useSuspenseQuery } from '@tanstack/react-query'
+
+function UserProfile({ userId }: { userId: string }) {
+  const eden = useEden()
+
+  // data is guaranteed to be defined
+  const { data } = useSuspenseQuery(
+    eden.users({ id: userId }).get.queryOptions()
+  )
+
+  return <div>{data.name}</div>
+}
+```
+
+## Query Key
+
+Use `queryKey()` for cache operations:
+
+```tsx
+const queryClient = useQueryClient()
+const eden = useEden()
+
+// Invalidate all users queries
+queryClient.invalidateQueries({
+  queryKey: eden.users.get.queryKey()
+})
+
+// Invalidate with specific input
+queryClient.invalidateQueries({
+  queryKey: eden.users.get.queryKey({ query: { role: 'admin' } })
+})
+```
+
+See the [Query Keys](/docs/guides/query-keys) guide for full details on key structure and cache operations.
+
+## Query Filter
+
+Use `queryFilter()` for invalidation with additional filter options:
+
+```tsx
+queryClient.invalidateQueries(
+  eden.users.get.queryFilter()
+)
+
+// With input filtering
+queryClient.invalidateQueries(
+  eden.users.get.queryFilter({ query: { role: 'admin' } })
+)
+
+// With additional filter options
+queryClient.invalidateQueries(
+  eden.users.get.queryFilter(undefined, { exact: true, stale: true })
+)
+```
+
+## Conditional Queries with skipToken
+
+Use `skipToken` to conditionally disable queries:
+
+```tsx
+import { useQuery, skipToken } from '@tanstack/react-query'
+
+function UserProfile({ userId }: { userId: string | null }) {
+  const eden = useEden()
+
+  const { data } = useQuery(
+    eden.users({ id: userId ?? '' }).get.queryOptions(
+      userId ? undefined : skipToken
+    )
+  )
+
+  if (!userId) return <div>Select a user</div>
+  return <div>{data?.name}</div>
+}
+```
+
+## Abort on Unmount
+
+Enable request cancellation when the component unmounts:
+
+```tsx
+const { data } = useQuery(
+  eden.users.get.queryOptions(
+    undefined,
+    {
+      eden: {
+        abortOnUnmount: true
+      }
+    }
+  )
+)
+```
+
+## Prefetching
+
+Prefetch data before it's needed:
+
+```tsx
+const queryClient = useQueryClient()
+const eden = useEden()
+
+const handleMouseEnter = () => {
+  queryClient.prefetchQuery(
+    eden.users({ id: userId }).get.queryOptions()
+  )
+}
+```
+
+## Error Handling
+
+Errors are typed as `EdenFetchError` with access to the HTTP status and response body:
+
+```tsx
+const { data, error } = useQuery(eden.users.get.queryOptions())
+
+if (error) {
+  if (error.status === 401) {
+    return <div>Please log in</div>
+  }
+  return <div>Error: {error.value?.message}</div>
+}
+```

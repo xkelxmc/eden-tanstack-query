@@ -1,0 +1,386 @@
+---
+title: Types
+description: All exported types from Eden TanStack Query
+---
+
+
+# Types
+
+This page documents all exported types from `eden-tanstack-react-query`.
+
+## Route Types
+
+### RouteDefinition
+
+Base structure representing extracted type information from an Elysia route.
+
+```ts
+interface RouteDefinition {
+  input: unknown   // Combined input type
+  output: unknown  // Response type
+  error: unknown   // Error type
+}
+```
+
+### HttpQueryMethod
+
+HTTP methods used for query operations (read).
+
+```ts
+type HttpQueryMethod = 'get' | 'options' | 'head'
+```
+
+### HttpMutationMethod
+
+HTTP methods used for mutation operations (write).
+
+```ts
+type HttpMutationMethod = 'post' | 'put' | 'patch' | 'delete'
+```
+
+### HttpMethod
+
+All HTTP methods.
+
+```ts
+type HttpMethod = HttpQueryMethod | HttpMutationMethod
+```
+
+## Error Types
+
+### EdenFetchError
+
+Error type for Eden requests. Contains status code and error value.
+
+```ts
+interface EdenFetchError<TStatus extends number = number, TValue = unknown> {
+  status: TStatus
+  value: TValue
+}
+```
+
+#### Usage
+
+```tsx
+import { useMutation } from '@tanstack/react-query'
+import type { EdenFetchError } from 'eden-tanstack-react-query'
+
+const { mutate, error } = useMutation(eden.users.post.mutationOptions())
+
+// error is typed as EdenFetchError
+if (error) {
+  if (error.status === 400) {
+    // Validation error
+    console.log('Validation:', error.value)
+  } else if (error.status === 500) {
+    // Server error
+    console.log('Server error:', error.value)
+  }
+}
+```
+
+## Query Key Types
+
+### EdenQueryKey
+
+Query key structure for TanStack Query cache.
+
+```ts
+type EdenQueryKey<TInput = unknown> =
+  | [path: string[]]
+  | [path: string[], meta: EdenQueryKeyMeta<TInput>]
+
+// Examples:
+[['users', 'get']]
+[['users', 'get'], { input: { role: 'admin' } }]
+[['posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
+```
+
+### EdenMutationKey
+
+Mutation key structure.
+
+```ts
+type EdenMutationKey = [path: string[]]
+
+// Example:
+[['users', 'post']]
+```
+
+### EdenQueryKeyMeta
+
+Metadata included in query keys.
+
+```ts
+type EdenQueryKeyMeta<TInput = unknown> = {
+  input?: TInput
+  type?: 'query' | 'infinite'
+}
+```
+
+### QueryType
+
+Query type discriminator for cache organization.
+
+```ts
+type QueryType = 'query' | 'infinite' | 'any'
+```
+
+## Type Inference Utilities
+
+### Route Type Inference
+
+| Type | Description |
+|------|-------------|
+| `InferRouteInput<TRoute, TMethod>` | Input type for route/method |
+| `InferRouteOutput<TRoute>` | Success response type (status 200) |
+| `InferRouteError<TRoute>` | Error response types (3xx-5xx) |
+
+### InferRouteInput
+
+Extract input type from a RouteSchema.
+
+```ts
+// For GET/HEAD/OPTIONS: returns query parameters type
+// For POST/PUT/PATCH/DELETE: returns body type
+type InferRouteInput<TRoute, TMethod> = TMethod extends 'get' | 'head' | 'options'
+  ? QueryParams
+  : Body
+```
+
+### InferRouteOutput
+
+Extract successful response type (status 200) from a route.
+
+### InferRouteError
+
+Extract error response types (status 300-599) from a route.
+
+### InferRouteBody
+
+Extract body type from a route.
+
+### InferRouteQuery
+
+Extract query parameters type from a route.
+
+### InferRouteParams
+
+Extract path parameters type from a route.
+
+### InferRouteHeaders
+
+Extract headers type from a route.
+
+### ExtractRoutes
+
+Extract routes schema from an Elysia app type.
+
+```ts
+type ExtractRoutes<TApp extends AnyElysia> = TApp['~Routes']
+```
+
+### GetRoute
+
+Get a specific route by path and method.
+
+```ts
+type UserRoute = GetRoute<typeof app, '/users/:id', 'get'>
+```
+
+### ExtractPathParams
+
+Extract path parameter names from a route path string.
+
+```ts
+type Params = ExtractPathParams<'/users/:id/posts/:postId'>
+// => 'id' | 'postId'
+```
+
+### PathParamsToObject
+
+Create params object type from path string.
+
+```ts
+type Params = PathParamsToObject<'/users/:id/posts/:postId'>
+// => { id: string; postId: string }
+```
+
+### IsQueryMethod / IsMutationMethod
+
+Type guards for method categorization.
+
+## Decorator Types
+
+### EdenOptionsProxy
+
+Full decorated options proxy type for an Elysia app.
+
+```ts
+// Usage
+type Proxy = EdenOptionsProxy<typeof app>
+// Proxy.users.get.queryOptions(...)
+// Proxy.users({ id: '1' }).get.queryOptions(...)
+// Proxy.users.post.mutationOptions(...)
+```
+
+### DecorateQueryProcedure
+
+Decorator for query procedures (GET, OPTIONS, HEAD).
+
+### DecorateMutationProcedure
+
+Decorator for mutation procedures (POST, PUT, PATCH, DELETE).
+
+### DecorateInfiniteQueryProcedure
+
+Decorator for infinite query procedures.
+
+### DecorateRoute
+
+Decorate a route based on HTTP method.
+
+### DecoratedRouteMethods
+
+Decorate all methods of a route path.
+
+### DecorateRoutes
+
+Recursively decorate all routes in an app's route tree.
+
+## Procedure Type Inference
+
+| Type | Description |
+|------|-------------|
+| `inferInput<TProcedure>` | Extract input type from decorated procedure |
+| `inferOutput<TProcedure>` | Extract output type from decorated procedure |
+| `inferError<TProcedure>` | Extract error type from decorated procedure |
+
+### inferInput
+
+Infer input type from a decorated procedure.
+
+```ts
+import type { inferInput } from 'eden-tanstack-react-query'
+
+type UserInput = inferInput<typeof eden.users.get>
+```
+
+### inferOutput
+
+Infer output type from a decorated procedure.
+
+```ts
+import type { inferOutput } from 'eden-tanstack-react-query'
+
+type UserOutput = inferOutput<typeof eden.users.get>
+```
+
+### inferError
+
+Infer error type from a decorated procedure.
+
+```ts
+import type { inferError } from 'eden-tanstack-react-query'
+
+type UserError = inferError<typeof eden.users.get>
+```
+
+## Options Types
+
+### EdenQueryOptions
+
+Query options function type.
+
+### EdenMutationOptions
+
+Mutation options function type.
+
+### EdenInfiniteQueryOptions
+
+Infinite query options function type.
+
+### EdenQueryBaseOptions
+
+Base options for Eden requests.
+
+```ts
+interface EdenQueryBaseOptions {
+  eden?: {
+    /** Abort request on component unmount */
+    abortOnUnmount?: boolean
+  }
+}
+```
+
+### EdenQueryOptionsResult
+
+Result metadata added to query options.
+
+```ts
+interface EdenQueryOptionsResult {
+  eden: {
+    path: string
+  }
+}
+```
+
+## Cursor Types
+
+### ExtractCursorType
+
+Extract cursor type from input that has a cursor property.
+
+```ts
+type Cursor = ExtractCursorType<{ cursor?: string; limit: number }>
+// => string
+```
+
+### HasCursorInput
+
+Check if input has optional cursor.
+
+```ts
+type HasCursor = HasCursorInput<{ cursor?: string }>  // true
+type NoCursor = HasCursorInput<{ limit: number }>     // false
+```
+
+## Utility Types
+
+| Type | Description |
+|------|-------------|
+| `DeepPartial<T>` | Makes all properties optional recursively |
+| `Simplify<T>` | Expands/simplifies complex types |
+| `IsAny<T>` | Check if type is `any` |
+| `IsNever<T>` | Check if type is `never` |
+
+### DeepPartial
+
+Make all properties optional deeply.
+
+```ts
+type Partial = DeepPartial<{ user: { name: string; email: string } }>
+// => { user?: { name?: string; email?: string } }
+```
+
+### Simplify
+
+Simplify a type by expanding it (improves IDE display).
+
+### IsAny
+
+Check if type is `any`.
+
+### IsNever
+
+Check if type is `never`.
+
+### IsUnknown
+
+Check if type is `unknown`.
+
+## See Also
+
+- [Query Keys](/docs/api-reference/query-keys) - Query key utilities
+- [queryOptions](/docs/api-reference/query-options) - Query options factory
+- [mutationOptions](/docs/api-reference/mutation-options) - Mutation options factory

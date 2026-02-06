@@ -1,0 +1,157 @@
+---
+title: createEdenTanStackQuery
+description: Main factory function for creating typed Eden TanStack Query utilities
+---
+
+
+# createEdenTanStackQuery
+
+The main factory function that creates typed providers and hooks for using Eden with TanStack Query.
+
+## Signature
+
+```ts
+function createEdenTanStackQuery<TApp extends AnyElysia>(): CreateEdenTanStackQueryResult<TApp>
+```
+
+### Type Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `TApp` | Your Elysia application type, extends `AnyElysia` |
+
+### Returns
+
+Returns an object containing:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `EdenProvider` | `React.FC<EdenProviderProps<TApp>>` | Provider component for wrapping your app |
+| `useEden` | `() => EdenOptionsProxy<TApp>` | Hook to get the typed options proxy |
+| `useEdenClient` | `() => Treaty.Create<TApp>` | Hook to get the raw Eden client |
+
+## Usage
+
+### Basic Setup
+
+```ts title="lib/eden.ts"
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import { treaty } from '@elysiajs/eden'
+import type { App } from './server'
+
+// Create typed hooks and provider
+export const { EdenProvider, useEden, useEdenClient } = createEdenTanStackQuery<App>()
+
+// Create the Eden client
+export const edenClient = treaty<App>('http://localhost:3000')
+```
+
+### Provider Setup
+
+```tsx title="App.tsx"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { EdenProvider, edenClient } from './lib/eden'
+
+const queryClient = new QueryClient()
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <EdenProvider client={edenClient} queryClient={queryClient}>
+        <YourApp />
+      </EdenProvider>
+    </QueryClientProvider>
+  )
+}
+```
+
+### Using in Components
+
+```tsx title="UserList.tsx"
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEden } from './lib/eden'
+
+function UserList() {
+  const eden = useEden()
+  const queryClient = useQueryClient()
+
+  // Fully typed query
+  const { data: users } = useQuery(eden.users.get.queryOptions())
+
+  // Fully typed mutation
+  const createUser = useMutation({
+    ...eden.users.post.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+    }
+  })
+
+  return (
+    <div>
+      <ul>
+        {users?.map(user => <li key={user.id}>{user.name}</li>)}
+      </ul>
+      <button onClick={() => createUser.mutate({ name: 'New User' })}>
+        Add User
+      </button>
+    </div>
+  )
+}
+```
+
+## Types
+
+### CreateEdenTanStackQueryResult
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `EdenProvider` | `React.FC<EdenProviderProps>` | Provider component that supplies Eden client to children |
+| `useEden` | `() => EdenOptionsProxy<TApp>` | Hook returning the options proxy with decorated routes |
+| `useEdenClient` | `() => Treaty.Create<TApp>` | Hook returning the raw Eden Treaty client |
+
+### EdenProviderProps
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `client` | `Treaty.Create<TApp>` | Eden Treaty client instance |
+| `queryClient` | `QueryClient` | TanStack Query client instance |
+| `children` | `React.ReactNode` | React children |
+
+## How It Works
+
+1. **Type Extraction**: The factory uses TypeScript's type inference to extract route definitions from your Elysia app type.
+
+2. **Provider Creation**: Creates a React context provider that holds both the Eden client and query client references.
+
+3. **Proxy Generation**: When `useEden()` is called, it creates a proxy object that mirrors your API structure but returns TanStack Query options instead of making API calls directly.
+
+4. **Method Decoration**: Each route is decorated with appropriate methods:
+   - GET, HEAD, OPTIONS routes get `queryOptions`, `queryKey`, `queryFilter`, and infinite query variants
+   - POST, PUT, PATCH, DELETE routes get `mutationOptions` and `mutationKey`
+
+## Multiple API Instances
+
+You can create multiple instances for different backends:
+
+```ts
+// Internal API
+const internalApi = createEdenTanStackQuery<InternalApp>()
+
+// External API
+const externalApi = createEdenTanStackQuery<ExternalApp>()
+```
+
+Then use separate providers (or nest them):
+
+```tsx
+<internalApi.EdenProvider client={internalClient} queryClient={queryClient}>
+  <externalApi.EdenProvider client={externalClient} queryClient={queryClient}>
+    <App />
+  </externalApi.EdenProvider>
+</internalApi.EdenProvider>
+```
+
+## See Also
+
+- [useEden](/docs/api-reference/use-eden) - The main hook for accessing query options
+- [EdenProvider](/docs/api-reference/eden-provider) - Provider component details

@@ -1,0 +1,174 @@
+---
+title: Mutations
+description: Create, update, and delete data with type-safe mutations
+---
+
+# Mutations
+
+Any route using POST, PUT, PATCH, or DELETE is treated as a mutation procedure. Use `mutationOptions()` to create options for TanStack Query's `useMutation`.
+
+## Basic Mutation
+
+```tsx
+import { useMutation } from '@tanstack/react-query'
+import { useEden } from './lib/eden'
+
+function CreateUserForm() {
+  const eden = useEden()
+
+  const createUser = useMutation(
+    eden.users.post.mutationOptions()
+  )
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    createUser.mutate({
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="name" placeholder="Name" required />
+      <input name="email" type="email" placeholder="Email" required />
+      <button type="submit" disabled={createUser.isPending}>
+        {createUser.isPending ? 'Creating...' : 'Create User'}
+      </button>
+    </form>
+  )
+}
+```
+
+## Cache Invalidation
+
+Invalidate related queries after a successful mutation using `queryKey()` or `queryFilter()`:
+
+```tsx
+import { useQueryClient, useMutation } from '@tanstack/react-query'
+
+function CreateUserForm() {
+  const eden = useEden()
+  const queryClient = useQueryClient()
+
+  const createUser = useMutation({
+    ...eden.users.post.mutationOptions(),
+    onSuccess: () => {
+      // Using queryKey
+      queryClient.invalidateQueries({
+        queryKey: eden.users.get.queryKey()
+      })
+
+      // Or using queryFilter
+      queryClient.invalidateQueries(
+        eden.users.get.queryFilter()
+      )
+    },
+  })
+}
+```
+
+Invalidate multiple related queries:
+
+```tsx
+const createPost = useMutation({
+  ...eden.posts.post.mutationOptions(),
+  onSuccess: (newPost) => {
+    queryClient.invalidateQueries({ queryKey: eden.posts.get.queryKey() })
+    queryClient.invalidateQueries({
+      queryKey: eden.users({ id: newPost.authorId }).posts.get.queryKey()
+    })
+  },
+})
+```
+
+## Optimistic Updates
+
+Update the UI immediately while the mutation runs in the background:
+
+```tsx
+const toggleTodo = useMutation({
+  ...eden.todos({ id: todo.id }).patch.mutationOptions(),
+
+  onMutate: async (newTodo) => {
+    await queryClient.cancelQueries({ queryKey: eden.todos.get.queryKey() })
+
+    const previousTodos = queryClient.getQueryData(eden.todos.get.queryKey())
+
+    queryClient.setQueryData(
+      eden.todos.get.queryKey(),
+      (old: Todo[] | undefined) =>
+        old?.map(t => t.id === todo.id ? { ...t, completed: !t.completed } : t)
+    )
+
+    return { previousTodos }
+  },
+
+  onError: (_err, _newTodo, context) => {
+    queryClient.setQueryData(eden.todos.get.queryKey(), context?.previousTodos)
+  },
+
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: eden.todos.get.queryKey() })
+  },
+})
+```
+
+## Mutation Key
+
+Get the mutation key for tracking mutation state:
+
+```tsx
+import { useMutationState } from '@tanstack/react-query'
+
+const eden = useEden()
+
+// Get mutation key
+const key = eden.users.post.mutationKey()
+
+// Track pending mutations
+const pendingMutations = useMutationState({
+  filters: {
+    mutationKey: eden.users.post.mutationKey(),
+    status: 'pending',
+  },
+})
+```
+
+## Path Parameters
+
+Path parameters work the same way as with queries:
+
+```tsx
+// PUT /users/:id
+const updateUser = useMutation(
+  eden.users({ id: userId }).put.mutationOptions()
+)
+
+updateUser.mutate({ name: 'New Name' })
+
+// DELETE /users/:id
+const deleteUser = useMutation(
+  eden.users({ id: userId }).delete.mutationOptions()
+)
+
+deleteUser.mutate()
+```
+
+## mutateAsync
+
+Use `mutateAsync` for promise-based control flow:
+
+```tsx
+const createUser = useMutation(eden.users.post.mutationOptions())
+
+async function handleSubmit(data: CreateUserInput) {
+  try {
+    const user = await createUser.mutateAsync(data)
+    navigate(`/users/${user.id}`)
+  } catch (error) {
+    console.error('Failed:', error)
+  }
+}
+```

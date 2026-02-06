@@ -1,0 +1,178 @@
+---
+title: Query Keys
+description: Understanding query key structure and cache operations
+---
+
+# Query Keys
+
+Eden TanStack Query generates deterministic query keys from your route paths and input. These keys are used by TanStack Query for caching, deduplication, and invalidation.
+
+## Key Structure
+
+Query keys follow this structure:
+
+```ts
+// queryKey() returns:
+[['path', 'segments', 'method'], { input: { ... }, type: 'query' }]
+
+// Examples:
+eden.users.get.queryKey()
+// => [['users', 'get'], { type: 'query' }]
+
+eden.users.get.queryKey({ query: { role: 'admin' } })
+// => [['users', 'get'], { input: { role: 'admin' }, type: 'query' }]
+
+eden.users({ id: '1' }).get.queryKey()
+// => [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+```
+
+The `type` field differentiates regular queries from infinite queries:
+
+```ts
+eden.posts.get.infiniteQueryKey({ limit: 10 })
+// => [['posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
+```
+
+## Available Methods
+
+### queryKey()
+
+Returns the query key for a specific route. Optionally accepts input for more specific targeting:
+
+```ts
+eden.users.get.queryKey()                              // all users queries
+eden.users.get.queryKey({ query: { role: 'admin' } })  // specific input
+eden.users({ id: '1' }).get.queryKey()                 // specific path params
+```
+
+### queryFilter()
+
+Returns a filter object (including `queryKey`) for use with TanStack Query's filter-based methods:
+
+```ts
+eden.users.get.queryFilter()
+eden.users.get.queryFilter({ query: { role: 'admin' } })
+eden.users.get.queryFilter(undefined, { exact: true, stale: true })
+```
+
+### infiniteQueryKey()
+
+Returns the query key for infinite queries:
+
+```ts
+eden.posts.get.infiniteQueryKey()
+eden.posts.get.infiniteQueryKey({ limit: 10 })
+```
+
+### infiniteQueryFilter()
+
+Returns a filter object for infinite queries:
+
+```ts
+eden.posts.get.infiniteQueryFilter()
+eden.posts.get.infiniteQueryFilter({ category: 'tech' })
+```
+
+### mutationKey()
+
+Returns the mutation key for a mutation route:
+
+```ts
+eden.users.post.mutationKey()
+// => [['users', 'post']]
+```
+
+## Cache Operations
+
+### invalidateQueries
+
+Mark queries as stale and trigger a refetch:
+
+```tsx
+const queryClient = useQueryClient()
+const eden = useEden()
+
+// Invalidate all users queries (partial matching)
+queryClient.invalidateQueries({
+  queryKey: eden.users.get.queryKey()
+})
+
+// Invalidate with queryFilter
+queryClient.invalidateQueries(
+  eden.users.get.queryFilter()
+)
+
+// Invalidate a specific user
+queryClient.invalidateQueries({
+  queryKey: eden.users({ id: '1' }).get.queryKey()
+})
+```
+
+### cancelQueries
+
+Cancel in-flight queries (useful for optimistic updates):
+
+```tsx
+await queryClient.cancelQueries({
+  queryKey: eden.todos.get.queryKey()
+})
+```
+
+### getQueryData / setQueryData
+
+Read and write the cache directly:
+
+```tsx
+// Read cached data
+const user = queryClient.getQueryData(
+  eden.users({ id: '1' }).get.queryKey()
+)
+
+// Write to cache
+queryClient.setQueryData(
+  eden.users({ id: '1' }).get.queryKey(),
+  { id: '1', name: 'Updated Name', email: 'updated@example.com' }
+)
+```
+
+### removeQueries
+
+Remove queries from the cache entirely:
+
+```tsx
+queryClient.removeQueries({
+  queryKey: eden.users({ id: '1' }).get.queryKey()
+})
+```
+
+## Partial Matching
+
+TanStack Query uses partial matching for query keys. A key without input matches all queries for that route:
+
+```tsx
+// Invalidates ALL users queries, regardless of input
+queryClient.invalidateQueries({
+  queryKey: eden.users.get.queryKey()
+})
+
+// Only invalidates the specific query with role='admin'
+queryClient.invalidateQueries({
+  queryKey: eden.users.get.queryKey({ query: { role: 'admin' } })
+})
+```
+
+This is useful for broad invalidation after mutations:
+
+```tsx
+const createUser = useMutation({
+  ...eden.users.post.mutationOptions(),
+  onSuccess: () => {
+    // Invalidates all users queries (list, filtered, by id, etc.)
+    queryClient.invalidateQueries({
+      queryKey: eden.users.get.queryKey()
+    })
+  },
+})
+```
+
+For more details on how partial matching works, see the [TanStack Query docs on query invalidation](https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation).

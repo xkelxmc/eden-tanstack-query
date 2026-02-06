@@ -1,0 +1,189 @@
+---
+title: Infinite Queries
+description: Implement pagination with cursor-based infinite queries
+---
+
+# Infinite Queries
+
+Use `infiniteQueryOptions()` for cursor-based pagination with TanStack Query's `useInfiniteQuery`.
+
+## Server Route
+
+A typical cursor-based pagination endpoint:
+
+```ts
+app.get('/posts', ({ query }) => {
+  const { limit, cursor } = query
+  const posts = getPosts({ limit, after: cursor })
+
+  return {
+    items: posts,
+    nextCursor: posts.length === limit ? posts[posts.length - 1].id : null,
+  }
+}, {
+  query: t.Object({
+    limit: t.Number({ default: 10 }),
+    cursor: t.Optional(t.String()),
+  })
+})
+```
+
+## Basic Usage
+
+```tsx
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { useEden } from './lib/eden'
+
+function PostList() {
+  const eden = useEden()
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery(
+    eden.posts.get.infiniteQueryOptions(
+      { limit: 10 },
+      {
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+        initialCursor: null,
+      }
+    )
+  )
+
+  if (isLoading) return <div>Loading...</div>
+
+  return (
+    <div>
+      {data?.pages.map((page) =>
+        page.items.map((post) => (
+          <article key={post.id}>
+            <h2>{post.title}</h2>
+          </article>
+        ))
+      )}
+
+      <button
+        onClick={() => fetchNextPage()}
+        disabled={!hasNextPage || isFetchingNextPage}
+      >
+        {isFetchingNextPage ? 'Loading more...' : hasNextPage ? 'Load More' : 'No more posts'}
+      </button>
+    </div>
+  )
+}
+```
+
+## Required Options
+
+Two options are required when using `infiniteQueryOptions()`:
+
+**getNextPageParam** -- determines the cursor for the next page. Return `undefined` to indicate there are no more pages:
+
+```tsx
+{
+  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined
+}
+```
+
+**initialCursor** -- the cursor value for the first page:
+
+```tsx
+{
+  initialCursor: null  // or 0, '', depending on your API
+}
+```
+
+## Input Parameters
+
+The first argument is your query input (excluding cursor). The library automatically adds the cursor to each page request:
+
+```tsx
+eden.posts.get.infiniteQueryOptions(
+  { limit: 10, category: 'technology' },
+  {
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialCursor: null,
+  }
+)
+```
+
+## Path Parameters
+
+Combine path parameters with pagination:
+
+```tsx
+// GET /users/:id/posts
+function UserPosts({ userId }: { userId: string }) {
+  const eden = useEden()
+
+  const { data } = useInfiniteQuery(
+    eden.users({ id: userId }).posts.get.infiniteQueryOptions(
+      { limit: 10 },
+      {
+        getNextPageParam: (page) => page.nextCursor ?? undefined,
+        initialCursor: null,
+      }
+    )
+  )
+}
+```
+
+## Infinite Query Key and Filter
+
+Use `infiniteQueryKey()` and `infiniteQueryFilter()` for cache operations:
+
+```tsx
+const queryClient = useQueryClient()
+const eden = useEden()
+
+// Get the infinite query key
+const key = eden.posts.get.infiniteQueryKey({ limit: 10 })
+
+// Invalidate infinite query
+queryClient.invalidateQueries({
+  queryKey: eden.posts.get.infiniteQueryKey()
+})
+
+// Using infiniteQueryFilter
+queryClient.invalidateQueries(
+  eden.posts.get.infiniteQueryFilter({ category: 'tech' })
+)
+```
+
+## Conditional with skipToken
+
+```tsx
+import { skipToken } from '@tanstack/react-query'
+
+function UserPosts({ userId }: { userId: string | null }) {
+  const eden = useEden()
+
+  const { data } = useInfiniteQuery(
+    eden.users({ id: userId ?? '' }).posts.get.infiniteQueryOptions(
+      userId ? { limit: 10 } : skipToken,
+      {
+        getNextPageParam: (page) => page.nextCursor ?? undefined,
+        initialCursor: null,
+      }
+    )
+  )
+}
+```
+
+## Abort on Unmount
+
+```tsx
+const { data } = useInfiniteQuery(
+  eden.posts.get.infiniteQueryOptions(
+    { limit: 10 },
+    {
+      getNextPageParam: (page) => page.nextCursor ?? undefined,
+      initialCursor: null,
+      eden: { abortOnUnmount: true },
+    }
+  )
+)
+```

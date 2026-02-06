@@ -1,0 +1,213 @@
+---
+title: Testing
+description: Testing patterns for Eden TanStack Query with Vitest
+---
+
+# Testing
+
+Testing patterns for components that use eden-tanstack-query, using Vitest and Testing Library.
+
+## Setup
+
+### Dependencies
+
+```bash
+bun add -D vitest @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom @vitejs/plugin-react
+```
+
+### Vitest Config
+
+```ts title="vitest.config.ts"
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./test/setup.ts'],
+    globals: true
+  }
+})
+```
+
+### Setup File
+
+```ts title="test/setup.ts"
+import '@testing-library/jest-dom/vitest'
+import { afterEach, vi } from 'vitest'
+import { cleanup } from '@testing-library/react'
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
+```
+
+## Test Utilities
+
+### Test QueryClient
+
+```ts title="test/utils.ts"
+import { QueryClient } from '@tanstack/react-query'
+
+export function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false }
+    }
+  })
+}
+```
+
+### Test Wrapper
+
+```tsx title="test/utils.tsx"
+import { ReactNode } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import type { App } from '@/lib/server'
+
+export function createTestWrapper(mockClient: any) {
+  const queryClient = createTestQueryClient()
+  const { EdenProvider } = createEdenTanStackQuery<App>()
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <EdenProvider client={mockClient} queryClient={queryClient}>
+          {children}
+        </EdenProvider>
+      </QueryClientProvider>
+    )
+  }
+
+  return { Wrapper, queryClient }
+}
+```
+
+### Mock Eden Client
+
+```ts title="test/mocks/eden-client.ts"
+import { vi } from 'vitest'
+
+export function createMockEdenClient() {
+  return {
+    users: Object.assign(
+      (params: { id: string }) => ({
+        get: vi.fn().mockResolvedValue({
+          data: { id: params.id, name: 'User', email: 'user@example.com' },
+          error: null
+        }),
+      }),
+      {
+        get: vi.fn().mockResolvedValue({
+          data: [
+            { id: '1', name: 'Alice', email: 'alice@example.com' },
+            { id: '2', name: 'Bob', email: 'bob@example.com' }
+          ],
+          error: null
+        }),
+        post: vi.fn().mockResolvedValue({
+          data: { id: '3', name: 'New User', email: 'new@example.com' },
+          error: null
+        }),
+      }
+    )
+  }
+}
+```
+
+## Testing a Query
+
+```tsx title="test/components/user-list.test.tsx"
+import { describe, it, expect } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { useQuery } from '@tanstack/react-query'
+import { useEden } from '@/lib/eden'
+import { createTestWrapper, createMockEdenClient } from '../utils'
+
+function UserList() {
+  const eden = useEden()
+  const { data: users, isPending } = useQuery(eden.users.get.queryOptions())
+
+  if (isPending) return <div>Loading...</div>
+  return (
+    <ul>
+      {users?.map(user => <li key={user.id}>{user.name}</li>)}
+    </ul>
+  )
+}
+
+describe('UserList', () => {
+  it('renders users after loading', async () => {
+    const mockClient = createMockEdenClient()
+    const { Wrapper } = createTestWrapper(mockClient)
+
+    render(<UserList />, { wrapper: Wrapper })
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+      expect(screen.getByText('Bob')).toBeInTheDocument()
+    })
+  })
+})
+```
+
+## Testing a Mutation
+
+```tsx title="test/components/create-user.test.tsx"
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useMutation } from '@tanstack/react-query'
+import { useEden } from '@/lib/eden'
+import { createTestWrapper, createMockEdenClient } from '../utils'
+
+function CreateUserForm() {
+  const eden = useEden()
+  const createUser = useMutation(eden.users.post.mutationOptions())
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      const formData = new FormData(e.currentTarget)
+      createUser.mutate({
+        name: formData.get('name') as string,
+        email: formData.get('email') as string,
+      })
+    }}>
+      <input name="name" placeholder="Name" />
+      <input name="email" placeholder="Email" />
+      <button type="submit">Create</button>
+      {createUser.isSuccess && <span>Created!</span>}
+    </form>
+  )
+}
+
+describe('CreateUserForm', () => {
+  it('submits form and calls mutation', async () => {
+    const user = userEvent.setup()
+    const mockClient = createMockEdenClient()
+    const { Wrapper } = createTestWrapper(mockClient)
+
+    render(<CreateUserForm />, { wrapper: Wrapper })
+
+    await user.type(screen.getByPlaceholderText('Name'), 'New User')
+    await user.type(screen.getByPlaceholderText('Email'), 'new@example.com')
+    await user.click(screen.getByText('Create'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Created!')).toBeInTheDocument()
+    })
+
+    expect(mockClient.users.post).toHaveBeenCalledWith({
+      name: 'New User',
+      email: 'new@example.com'
+    })
+  })
+})
+```

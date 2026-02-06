@@ -1,0 +1,6 @@
+{
+	"buildCommand": "bunx fumadocs-mdx && bun run build",
+	"outputDirectory": ".output",
+	"installCommand": "bun install",
+	"bunVersion": "1.x"
+}

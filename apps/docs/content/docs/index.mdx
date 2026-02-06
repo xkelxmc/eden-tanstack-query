@@ -1,0 +1,203 @@
+---
+title: Introduction
+description: Type-safe TanStack Query integration for Elysia Eden
+---
+
+# Eden TanStack Query
+
+Type-safe TanStack Query integration for Elysia Eden. Like `@trpc/react-query`, but for Elysia.
+
+## Features
+
+- **End-to-end type safety** - Full TypeScript inference from Elysia routes
+- **Native TanStack Query patterns** - Use standard `useQuery`, `useMutation`, `useInfiniteQuery`
+- **Query options factories** - `queryOptions()`, `mutationOptions()`, `infiniteQueryOptions()`
+- **Automatic query key generation** - Type-safe keys derived from route paths
+- **Path parameter support** - `eden.users({ id: '1' }).get.queryOptions()`
+- **Query invalidation helpers** - `queryFilter()` for cache management
+
+## Installation
+
+```npm
+npm i eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+```
+
+## Quick Start
+
+### 1. Define your Elysia server
+
+```ts title="server.ts"
+import { Elysia, t } from 'elysia'
+
+const app = new Elysia()
+  .get('/users', () => [
+    { id: '1', name: 'Alice' },
+    { id: '2', name: 'Bob' }
+  ])
+  .get('/users/:id', ({ params }) => ({
+    id: params.id,
+    name: `User ${params.id}`
+  }))
+  .post('/users', ({ body }) => ({
+    id: String(Date.now()),
+    ...body
+  }), {
+    body: t.Object({ name: t.String() })
+  })
+  .listen(3000)
+
+export type App = typeof app
+```
+
+### 2. Create typed hooks
+
+```ts title="lib/eden.ts"
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import { treaty } from '@elysiajs/eden'
+import type { App } from './server'
+
+export const { EdenProvider, useEden, useEdenClient } = createEdenTanStackQuery<App>()
+export const edenClient = treaty<App>('http://localhost:3000')
+```
+
+### 3. Set up providers
+
+```tsx title="App.tsx"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { EdenProvider, edenClient } from './lib/eden'
+
+const queryClient = new QueryClient()
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <EdenProvider client={edenClient} queryClient={queryClient}>
+        <YourApp />
+      </EdenProvider>
+    </QueryClientProvider>
+  )
+}
+```
+
+### 4. Use in components
+
+```tsx title="UserList.tsx"
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEden } from './lib/eden'
+
+function UserList() {
+  const eden = useEden()
+  const queryClient = useQueryClient()
+
+  // Query
+  const { data: users } = useQuery(eden.users.get.queryOptions())
+
+  // Query with path params
+  const { data: user } = useQuery(
+    eden.users({ id: '1' }).get.queryOptions()
+  )
+
+  // Mutation with cache invalidation
+  const createUser = useMutation({
+    ...eden.users.post.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+    }
+  })
+
+  return (
+    <div>
+      <ul>
+        {users?.map(user => <li key={user.id}>{user.name}</li>)}
+      </ul>
+      <button onClick={() => createUser.mutate({ name: 'New User' })}>
+        Add User
+      </button>
+    </div>
+  )
+}
+```
+
+## API Reference
+
+### createEdenTanStackQuery
+
+Creates typed providers and hooks for your Elysia app.
+
+```ts
+const { EdenProvider, useEden, useEdenClient } = createEdenTanStackQuery<App>()
+```
+
+### useEden
+
+Returns the Eden options proxy with methods for each route.
+
+#### Query Methods (GET, HEAD, OPTIONS)
+
+| Method | Description |
+|--------|-------------|
+| `.queryOptions(input?, opts?)` | Options for `useQuery` |
+| `.queryKey(input?)` | Query key for cache operations |
+| `.infiniteQueryOptions(input, opts)` | Options for `useInfiniteQuery` |
+
+#### Mutation Methods (POST, PUT, PATCH, DELETE)
+
+| Method | Description |
+|--------|-------------|
+| `.mutationOptions(opts?)` | Options for `useMutation` |
+| `.mutationKey()` | Mutation key |
+
+### Path Parameters
+
+Access routes with path params using function calls:
+
+```ts
+// Route: /users/:id
+eden.users({ id: '123' }).get.queryOptions()
+
+// Nested: /posts/:postId/comments/:commentId
+eden.posts({ postId: '1' }).comments({ commentId: '2' }).get.queryOptions()
+```
+
+### Query with Input
+
+Pass query parameters or request body:
+
+```ts
+// Query params: GET /users?role=admin
+eden.users.get.queryOptions({ query: { role: 'admin' } })
+
+// With headers
+eden.users.get.queryOptions({
+  query: { role: 'admin' },
+  headers: { 'X-Custom': 'value' }
+})
+```
+
+### Infinite Queries
+
+For paginated data:
+
+```tsx
+import { useInfiniteQuery } from '@tanstack/react-query'
+
+const { data, fetchNextPage, hasNextPage } = useInfiniteQuery(
+  eden.posts.get.infiniteQueryOptions(
+    { limit: 10 },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      initialPageParam: null,
+    }
+  )
+)
+```
+
+## Comparison
+
+| Feature | eden-tanstack-react-query | eden-query |
+|---------|---------------------------|------------|
+| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` |
+| TanStack Query Native | ✅ Standard hooks | ❌ Custom wrappers |
+| Query Options | ✅ Full access | ❌ Limited |
+| Learning Curve | Standard TanStack Query | Custom API |
+| Bundle Size | ~2.5 KB gzipped | Larger |

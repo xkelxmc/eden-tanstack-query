@@ -1,0 +1,195 @@
+---
+title: Troubleshooting
+description: Solutions for common issues with Eden TanStack Query
+---
+
+# Troubleshooting
+
+## Installation
+
+### Peer Dependencies
+
+Ensure all required packages are installed:
+
+```bash
+bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+```
+
+### Version Compatibility
+
+| Package | Minimum Version |
+|---------|-----------------|
+| `eden-tanstack-react-query` | 0.1.0 |
+| `@tanstack/react-query` | 5.0.0 |
+| `@elysiajs/eden` | 1.0.0 |
+| `elysia` | 1.0.0 |
+| `typescript` | 5.0.0 |
+
+---
+
+## Provider Errors
+
+### "useEden must be used within an EdenProvider"
+
+The `useEden` hook is called outside the provider tree.
+
+```tsx
+// Wrong — useEden is outside provider
+function App() {
+  const eden = useEden() // Error!
+  return (
+    <EdenProvider client={edenClient} queryClient={queryClient}>
+      <YourApp />
+    </EdenProvider>
+  )
+}
+
+// Correct — useEden inside provider
+function App() {
+  return (
+    <EdenProvider client={edenClient} queryClient={queryClient}>
+      <YourApp /> {/* useEden works here */}
+    </EdenProvider>
+  )
+}
+```
+
+### "No QueryClient set"
+
+Ensure `QueryClientProvider` wraps `EdenProvider`:
+
+```tsx
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <EdenProvider client={edenClient} queryClient={queryClient}>
+        <YourApp />
+      </EdenProvider>
+    </QueryClientProvider>
+  )
+}
+```
+
+---
+
+## Cache Issues
+
+### Cache Not Updating After Mutation
+
+Mutations don't automatically refresh queries. Use `invalidateQueries` in `onSuccess`:
+
+```tsx
+const createUser = useMutation({
+  ...eden.users.post.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries(eden.users.get.queryFilter())
+  }
+})
+```
+
+### Wrong Data in Cache for Path Params
+
+If different path params return the same data, verify query keys differ:
+
+```tsx
+console.log(eden.users({ id: '1' }).get.queryKey())
+// [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+
+console.log(eden.users({ id: '2' }).get.queryKey())
+// [['users', 'get'], { input: { id: '2' }, type: 'query' }]
+```
+
+If keys are identical, update to the latest version of `eden-tanstack-react-query`.
+
+---
+
+## Type Errors
+
+### "Property does not exist on type"
+
+The proxy mirrors your Elysia routes. If a property doesn't exist:
+
+1. Verify the route exists on your Elysia app
+2. Ensure you export the type: `export type App = typeof app` (not just `export { app }`)
+3. Restart TS server: `Cmd/Ctrl + Shift + P` > "TypeScript: Restart TS Server"
+
+### Generic Inference Shows `unknown`
+
+Don't reassign the Elysia app variable — it loses type inference:
+
+```ts
+// Bad — loses types
+let app = new Elysia()
+app = app.get('/users', () => [...])
+
+// Good — chain methods preserves types
+const app = new Elysia()
+  .get('/users', () => [...])
+```
+
+Also ensure you use `import type`:
+
+```ts
+import type { App } from '../server'
+```
+
+### Path Parameters Must Be Strings
+
+HTTP URL params are always strings:
+
+```ts
+// Error: number not assignable to string
+eden.users({ id: 123 }).get.queryOptions()
+
+// Correct
+eden.users({ id: String(userId) }).get.queryOptions()
+```
+
+### Query Parameters Not Typed
+
+Add a query schema to your Elysia route for types to flow through:
+
+```ts
+app.get('/users', ({ query }) => {
+  // ...
+}, {
+  query: t.Object({
+    search: t.Optional(t.String()),
+    limit: t.Optional(t.Number())
+  })
+})
+```
+
+---
+
+## Monorepo Issues
+
+### Types Not Syncing Across Packages
+
+Export the app type from your server package:
+
+```ts title="packages/server/src/index.ts"
+export type { App } from './app'
+```
+
+```ts title="packages/client/src/eden.ts"
+import type { App } from '@myorg/server'
+```
+
+Use TypeScript project references if needed:
+
+```json title="packages/client/tsconfig.json"
+{
+  "references": [{ "path": "../server" }]
+}
+```
+
+---
+
+## Getting Help
+
+If your issue isn't covered here:
+
+1. **Search [GitHub Issues](https://github.com/xkelxmc/eden-tanstack-query/issues)** — your problem might already be reported
+2. **Open an issue** with package versions, minimal reproduction, and error messages
+3. Use [React Query DevTools](https://tanstack.com/query/latest/docs/framework/react/devtools) for debugging cache issues

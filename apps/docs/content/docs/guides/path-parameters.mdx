@@ -1,0 +1,290 @@
+---
+title: Path Parameters
+description: Working with dynamic routes and path parameters in Eden TanStack Query
+---
+
+# Path Parameters
+
+Eden TanStack Query provides a natural, type-safe way to work with dynamic route segments. Path parameters like `/users/:id` are handled through callable functions on the proxy object, maintaining full type inference from your Elysia routes.
+
+## Basic Path Parameters
+
+When your Elysia route includes path parameters (prefixed with `:`), the Eden proxy becomes callable at that segment:
+
+```ts title="server.ts"
+import { Elysia, t } from 'elysia'
+
+const app = new Elysia()
+  .get('/users/:id', ({ params }) => ({
+    id: params.id,
+    name: `User ${params.id}`,
+    email: `user${params.id}@example.com`
+  }), {
+    params: t.Object({
+      id: t.String()
+    })
+  })
+  .listen(3000)
+
+export type App = typeof app
+```
+
+```tsx title="UserProfile.tsx"
+import { useQuery } from '@tanstack/react-query'
+import { useEden } from './lib/eden'
+
+function UserProfile({ userId }: { userId: string }) {
+  const eden = useEden()
+
+  // Call the path segment as a function with params object
+  const { data: user, isPending } = useQuery(
+    eden.users({ id: userId }).get.queryOptions()
+  )
+
+  if (isPending) return <div>Loading...</div>
+
+  return (
+    <div>
+      <h1>{user?.name}</h1>
+      <p>{user?.email}</p>
+    </div>
+  )
+}
+```
+
+The parameter name (`id`) in the object must match the route parameter name (`:id`). TypeScript will enforce this at compile time.
+
+## Multiple Path Parameters
+
+Routes with multiple parameters at the same level work the same way:
+
+```ts title="server.ts"
+const app = new Elysia()
+  .get('/files/:category/:filename', ({ params }) => ({
+    category: params.category,
+    filename: params.filename,
+    url: `/cdn/${params.category}/${params.filename}`
+  }), {
+    params: t.Object({
+      category: t.String(),
+      filename: t.String()
+    })
+  })
+```
+
+```tsx title="FileViewer.tsx"
+function FileViewer({ category, filename }: { category: string; filename: string }) {
+  const eden = useEden()
+
+  // Multiple params are passed in a single object
+  const { data: file } = useQuery(
+    eden.files({ category, filename }).get.queryOptions()
+  )
+
+  return <div>{file?.url}</div>
+}
+```
+
+## Nested Path Parameters
+
+For deeply nested routes with parameters at different levels, chain the function calls:
+
+```ts title="server.ts"
+const app = new Elysia()
+  .get('/posts/:postId/comments/:commentId', ({ params }) => ({
+    postId: params.postId,
+    commentId: params.commentId,
+    content: 'Comment content here'
+  }), {
+    params: t.Object({
+      postId: t.String(),
+      commentId: t.String()
+    })
+  })
+```
+
+```tsx title="Comment.tsx"
+function Comment({ postId, commentId }: { postId: string; commentId: string }) {
+  const eden = useEden()
+
+  // Chain function calls for nested params
+  const { data: comment } = useQuery(
+    eden.posts({ postId }).comments({ commentId }).get.queryOptions()
+  )
+
+  return <div>{comment?.content}</div>
+}
+```
+
+## Path Parameters in Query Keys
+
+Path parameters are automatically merged into the query key for proper cache differentiation. This ensures that queries for different resources are cached separately.
+
+```tsx
+const eden = useEden()
+
+// These produce different query keys:
+eden.users({ id: '1' }).get.queryKey()
+// => [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+
+eden.users({ id: '2' }).get.queryKey()
+// => [['users', 'get'], { input: { id: '2' }, type: 'query' }]
+```
+
+This means TanStack Query will correctly cache and refetch data for each unique combination of path parameters.
+
+## Combining Path Parameters with Query Parameters
+
+Path parameters can be combined with query parameters. The path params are passed to the callable function, while query params go to the options method:
+
+```ts title="server.ts"
+const app = new Elysia()
+  .get('/users/:id/posts', ({ params, query }) => ({
+    userId: params.id,
+    posts: [],
+    page: query.page ?? 1,
+    limit: query.limit ?? 10
+  }), {
+    params: t.Object({
+      id: t.String()
+    }),
+    query: t.Object({
+      page: t.Optional(t.Number()),
+      limit: t.Optional(t.Number())
+    })
+  })
+```
+
+```tsx title="UserPosts.tsx"
+function UserPosts({ userId }: { userId: string }) {
+  const eden = useEden()
+  const [page, setPage] = useState(1)
+
+  const { data } = useQuery(
+    eden.users({ id: userId }).posts.get.queryOptions({
+      page,
+      limit: 20
+    })
+  )
+
+  return (
+    <div>
+      {data?.posts.map(post => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  )
+}
+```
+
+## Path Parameters with Mutations
+
+Path parameters work the same way with mutations:
+
+```ts title="server.ts"
+const app = new Elysia()
+  .delete('/users/:id', ({ params }) => ({
+    deleted: true,
+    id: params.id
+  }), {
+    params: t.Object({
+      id: t.String()
+    })
+  })
+  .patch('/users/:id', ({ params, body }) => ({
+    id: params.id,
+    name: body.name
+  }), {
+    params: t.Object({
+      id: t.String()
+    }),
+    body: t.Object({
+      name: t.String()
+    })
+  })
+```
+
+```tsx title="UserActions.tsx"
+function UserActions({ userId }: { userId: string }) {
+  const eden = useEden()
+  const queryClient = useQueryClient()
+
+  const deleteUser = useMutation({
+    ...eden.users({ id: userId }).delete.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+    }
+  })
+
+  const updateUser = useMutation({
+    ...eden.users({ id: userId }).patch.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: eden.users({ id: userId }).get.queryKey()
+      })
+    }
+  })
+
+  return (
+    <div>
+      <button onClick={() => updateUser.mutate({ name: 'New Name' })}>
+        Update
+      </button>
+      <button onClick={() => deleteUser.mutate()}>
+        Delete
+      </button>
+    </div>
+  )
+}
+```
+
+## Type Safety
+
+TypeScript ensures all path parameters are correctly typed. If you miss a parameter or use the wrong type, you get a compile-time error:
+
+```tsx
+const eden = useEden()
+
+// Error: Property 'id' is missing
+eden.users({}).get.queryOptions()
+
+// Error: Type 'number' is not assignable to type 'string'
+eden.users({ id: 123 }).get.queryOptions() // if :id expects string
+
+// Correct
+eden.users({ id: '123' }).get.queryOptions()
+```
+
+The parameter types are inferred directly from your Elysia route definitions via the `params` schema.
+
+## Cache Invalidation with Path Parameters
+
+When invalidating cache for routes with path parameters, you can be as specific or as broad as needed:
+
+```tsx
+const queryClient = useQueryClient()
+const eden = useEden()
+
+// Invalidate a specific user
+queryClient.invalidateQueries({
+  queryKey: eden.users({ id: '1' }).get.queryKey()
+})
+
+// Invalidate all users queries (using queryFilter without params)
+queryClient.invalidateQueries(eden.users.get.queryFilter())
+
+// Invalidate specific user's posts
+queryClient.invalidateQueries({
+  queryKey: eden.users({ id: '1' }).posts.get.queryKey()
+})
+```
+
+## Best Practices
+
+1. **Keep parameter names consistent** - Use the same parameter names across related routes for clarity.
+
+2. **Validate parameters on the server** - Always define `params` schemas in Elysia for type safety and validation.
+
+3. **Use descriptive parameter names** - Prefer `userId` over `id` in nested routes for clarity.
+
+4. **Consider URL structure** - Design your routes with caching in mind. Related resources should share path prefixes for easy cache invalidation.

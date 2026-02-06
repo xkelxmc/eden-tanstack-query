@@ -1,0 +1,111 @@
+---
+title: Overview
+description: Complete API documentation for Eden TanStack Query
+---
+
+# API Reference
+
+This section provides comprehensive documentation for all exports from `eden-tanstack-react-query`.
+
+## Core API
+
+### Factory Function
+
+| Export | Description |
+|--------|-------------|
+| [`createEdenTanStackQuery`](/docs/api-reference/create-eden-tanstack-query) | Main factory that creates typed providers and hooks |
+
+### Hooks
+
+| Export | Description |
+|--------|-------------|
+| [`useEden`](/docs/api-reference/use-eden) | Hook returning the options proxy with decorated routes |
+| `useEdenClient` | Hook returning the raw Eden Treaty client |
+
+### Options Factories
+
+| Export | Description |
+|--------|-------------|
+| [`queryOptions`](/docs/api-reference/use-eden#queryoptions) | Method on query routes for creating query options |
+| [`mutationOptions`](/docs/api-reference/use-eden#mutationoptions) | Method on mutation routes for creating mutation options |
+| [`infiniteQueryOptions`](/docs/api-reference/use-eden#infinitequeryoptions) | Method on query routes for creating infinite query options |
+
+### Query Keys
+
+| Export | Description |
+|--------|-------------|
+| [`getQueryKey`](/docs/api-reference/use-eden#querykey) | Generate query keys from path and input |
+| [`getMutationKey`](/docs/api-reference/use-eden#mutationkey) | Generate mutation keys from path |
+
+### Types
+
+| Export | Description |
+|--------|-------------|
+| [`EdenQueryKey`](/docs/api-reference/types) | Query key structure type |
+| [`EdenMutationKey`](/docs/api-reference/types) | Mutation key structure type |
+| [`EdenFetchError`](/docs/api-reference/types) | Error type for Eden requests |
+| [`RouteDefinition`](/docs/api-reference/types) | Base route type structure |
+
+## Quick Reference
+
+### Query Routes (GET, HEAD, OPTIONS)
+
+```ts
+const eden = useEden()
+
+// Available methods on query routes
+eden.users.get.queryOptions(input?, opts?)     // For useQuery
+eden.users.get.queryKey(input?)                // For cache operations
+eden.users.get.queryFilter(input?, filters?)   // For invalidation
+
+// For paginated data (when input has cursor)
+eden.posts.get.infiniteQueryOptions(input, opts)  // For useInfiniteQuery
+eden.posts.get.infiniteQueryKey(input?)           // For cache operations
+eden.posts.get.infiniteQueryFilter(input?, filters?)
+```
+
+### Mutation Routes (POST, PUT, PATCH, DELETE)
+
+```ts
+// Available methods on mutation routes
+eden.users.post.mutationOptions(opts?)  // For useMutation
+eden.users.post.mutationKey()           // For cache operations
+```
+
+### Path Parameters
+
+```ts
+// For routes with path params like /users/:id
+eden.users({ id: '123' }).get.queryOptions()
+
+// Nested params: /posts/:postId/comments/:commentId
+eden.posts({ postId: '1' }).comments({ commentId: '2' }).get.queryOptions()
+```
+
+## Package Exports
+
+All public APIs are exported from the main package entry point:
+
+```ts
+import {
+  // Main factory
+  createEdenTanStackQuery,
+
+  // Low-level factories (for advanced use)
+  edenQueryOptions,
+  edenMutationOptions,
+  edenInfiniteQueryOptions,
+
+  // Query key utilities
+  getQueryKey,
+  getMutationKey,
+
+  // Types
+  type EdenQueryKey,
+  type EdenMutationKey,
+  type EdenFetchError,
+  type RouteDefinition,
+  type EdenOptionsProxy,
+  // ... and more
+} from 'eden-tanstack-react-query'
+```

@@ -1,0 +1,198 @@
+---
+title: Comparisons
+description: How eden-tanstack-query compares to @elysiajs/eden-query and tRPC
+---
+
+# Comparisons
+
+## Quick Comparison
+
+| Feature | eden-tanstack-query | @elysiajs/eden-query | tRPC |
+|---------|---------------------|----------------------|------|
+| Backend | Elysia | Elysia | Any (adapters) |
+| API Style | Options-based | Wrapper hooks | Wrapper hooks |
+| Query Keys | Explicit utilities | Implicit | Implicit (via utils) |
+| TQ Integration | Native hooks | Custom wrappers | Custom wrappers |
+| Bundle Size | ~2.5 KB | Larger | Larger |
+| Learning Curve | Standard TanStack Query | Custom API | Custom API |
+
+---
+
+## vs @elysiajs/eden-query
+
+### API Comparison
+
+**Basic Query**
+
+```tsx title="eden-tanstack-query"
+const eden = useEden()
+const { data } = useQuery(eden.users.get.queryOptions())
+```
+
+```tsx title="@elysiajs/eden-query"
+const { data } = eden.users.get.useQuery()
+```
+
+**Mutations**
+
+```tsx title="eden-tanstack-query"
+const createUser = useMutation({
+  ...eden.users.post.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+  }
+})
+```
+
+```tsx title="@elysiajs/eden-query"
+const createUser = eden.users.post.useMutation({
+  onSuccess: () => {
+    // Query invalidation is less explicit
+  }
+})
+```
+
+### Key Differences
+
+**Options-based vs wrapper hooks** — eden-tanstack-query generates options objects that work with any TanStack Query hook (`useQuery`, `useSuspenseQuery`, `prefetchQuery`, `fetchQuery`), while eden-query provides custom wrapper hooks with a different API surface.
+
+**Explicit query keys** — eden-tanstack-query exposes `.queryKey()`, `.queryFilter()`, and `.infiniteQueryFilter()` for full control over cache invalidation. eden-query handles keys implicitly, making complex cache operations harder.
+
+**Standard patterns** — If you know TanStack Query, you already know eden-tanstack-query. No custom API to learn.
+
+### When to Choose
+
+| Choose eden-tanstack-query | Choose @elysiajs/eden-query |
+|---|---|
+| Standard TanStack Query patterns | "Batteries included" approach |
+| Explicit cache control needed | Don't need fine-grained cache control |
+| Complex invalidation patterns | Official Elysia ecosystem support |
+| Already familiar with TanStack Query | Simpler API surface preferred |
+
+### Migration from eden-query
+
+**1. Update imports**
+
+```tsx
+// Before
+import { edenTreaty } from '@elysiajs/eden-query'
+
+// After
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import { treaty } from '@elysiajs/eden'
+```
+
+**2. Setup provider**
+
+```tsx
+const { EdenProvider, useEden } = createEdenTanStackQuery<App>()
+const edenClient = treaty<App>('http://localhost:3000')
+
+<QueryClientProvider client={queryClient}>
+  <EdenProvider client={edenClient} queryClient={queryClient}>
+    <App />
+  </EdenProvider>
+</QueryClientProvider>
+```
+
+**3. Update queries**
+
+```tsx
+// Before: eden.users.get.useQuery()
+// After:
+const eden = useEden()
+const { data } = useQuery(eden.users.get.queryOptions())
+```
+
+**4. Update mutations**
+
+```tsx
+// Before: eden.users.post.useMutation()
+// After:
+const mutation = useMutation(eden.users.post.mutationOptions())
+```
+
+**5. Update cache operations**
+
+```tsx
+// Before: queryClient.invalidateQueries(['eden', 'users'])
+// After:
+queryClient.invalidateQueries(eden.users.get.queryFilter())
+```
+
+---
+
+## vs tRPC
+
+### Code Comparison
+
+**Server**
+
+```ts title="Elysia"
+const app = new Elysia()
+  .get('/users', () => db.users.findMany())
+  .get('/users/:id', ({ params }) => db.users.findUnique({
+    where: { id: params.id }
+  }))
+  .post('/users', ({ body }) => db.users.create({ data: body }), {
+    body: t.Object({ name: t.String(), email: t.String({ format: 'email' }) })
+  })
+
+export type App = typeof app
+```
+
+```ts title="tRPC"
+const appRouter = t.router({
+  users: t.router({
+    list: t.procedure.query(() => db.users.findMany()),
+    get: t.procedure
+      .input(z.object({ id: z.string() }))
+      .query(({ input }) => db.users.findUnique({ where: { id: input.id } })),
+    create: t.procedure
+      .input(z.object({ name: z.string(), email: z.string().email() }))
+      .mutation(({ input }) => db.users.create({ data: input }))
+  })
+})
+
+export type AppRouter = typeof appRouter
+```
+
+**Client**
+
+```tsx title="eden-tanstack-query"
+const eden = useEden()
+const { data } = useQuery(eden.users.get.queryOptions())
+
+const createUser = useMutation({
+  ...eden.users.post.mutationOptions(),
+  onSuccess: () => queryClient.invalidateQueries(eden.users.get.queryFilter())
+})
+```
+
+```tsx title="tRPC"
+const { data } = trpc.users.list.useQuery()
+
+const utils = trpc.useUtils()
+const createUser = trpc.users.create.useMutation({
+  onSuccess: () => utils.users.list.invalidate()
+})
+```
+
+### Key Differences
+
+| Aspect | eden-tanstack-query | tRPC |
+|--------|---------------------|------|
+| Backend | Elysia (Bun) | Any (Node.js, Bun, etc.) |
+| API style | REST (HTTP methods, URL paths) | RPC (procedures in routers) |
+| Cache management | Explicit keys + filters | Utils pattern |
+| Ecosystem | Elysia plugins | Large tRPC ecosystem |
+| Tooling | Standard REST tools (curl, Postman) | Requires tRPC-aware clients |
+
+### When to Choose
+
+| Choose eden-tanstack-query | Choose tRPC |
+|---|---|
+| Using Elysia + Bun | Need backend framework flexibility |
+| Prefer REST conventions | Need request batching |
+| Want standard TQ patterns | Existing tRPC codebase |
+| Standard HTTP tooling needed | Need the larger ecosystem |

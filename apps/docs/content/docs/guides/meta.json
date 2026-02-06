@@ -1,0 +1,13 @@
+{
+	"title": "Guides",
+	"pages": [
+		"index",
+		"queries",
+		"mutations",
+		"infinite-queries",
+		"path-parameters",
+		"query-keys",
+		"ssr",
+		"testing"
+	]
+}

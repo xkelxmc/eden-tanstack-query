@@ -1,0 +1,343 @@
+---
+title: useEden
+description: Proxy hook with all route methods for queries, mutations, and cache operations
+---
+
+# useEden
+
+The `useEden` hook returns an options proxy that mirrors your Elysia API structure. Each route is decorated with TanStack Query methods.
+
+```ts
+function useEden(): EdenOptionsProxy<TApp>
+```
+
+Returns an `EdenOptionsProxy<TApp>` — a proxy object that mirrors your API routes, handles path parameters via function calls, and decorates each endpoint with query/mutation methods.
+
+## Route Methods
+
+### Query Routes (GET, HEAD, OPTIONS)
+
+| Method | Description |
+|--------|-------------|
+| [`queryOptions`](#queryoptions) | Creates options for `useQuery` / `useSuspenseQuery` |
+| [`queryKey`](#querykey) | Generates a query key for cache operations |
+| [`queryFilter`](#queryfilter) | Creates a filter for `invalidateQueries`, `cancelQueries`, etc. |
+| [`infiniteQueryOptions`](#infinitequeryoptions) | Creates options for `useInfiniteQuery` |
+| [`infiniteQueryKey`](#infinitequerykey) | Generates an infinite query key |
+| [`infiniteQueryFilter`](#infinitequeryfilter) | Creates a filter for infinite queries |
+
+### Mutation Routes (POST, PUT, PATCH, DELETE)
+
+| Method | Description |
+|--------|-------------|
+| [`mutationOptions`](#mutationoptions) | Creates options for `useMutation` |
+| [`mutationKey`](#mutationkey) | Generates a mutation key |
+
+---
+
+## queryOptions
+
+Creates type-safe options for `useQuery`, `useSuspenseQuery`, `prefetchQuery`, and other TanStack Query functions.
+
+```ts
+eden.route.get.queryOptions(input?, opts?): QueryOptions
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `input` | `TInput \| SkipToken` | Query parameters or `skipToken` to disable |
+| `opts` | `EdenQueryOptionsIn` | TanStack Query options (excluding reserved) |
+
+### Returns
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `queryKey` | `DataTag<EdenQueryKey>` | Unique key based on path and input |
+| `queryFn` | `QueryFunction` | Fetch function via Eden client |
+| `eden` | `{ path: string }` | Route metadata |
+
+### Reserved Options
+
+Automatically set and cannot be overridden: `queryKey`, `queryFn`, `queryHash`, `queryHashFn`.
+
+### Eden-specific Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `eden.abortOnUnmount` | `boolean` | Abort request when component unmounts |
+
+### Example
+
+```tsx
+const eden = useEden()
+
+// Basic
+const { data } = useQuery(eden.users.get.queryOptions())
+
+// With query params and TQ options
+const { data } = useQuery(
+  eden.users.get.queryOptions(
+    { role: 'admin' },
+    { staleTime: 5 * 60 * 1000 }
+  )
+)
+
+// Path params
+const { data } = useQuery(
+  eden.users({ id: '123' }).get.queryOptions()
+)
+
+// Conditional with skipToken
+const { data } = useQuery(
+  eden.users({ id: userId ?? '' }).get.queryOptions(
+    userId ? undefined : skipToken
+  )
+)
+```
+
+---
+
+## mutationOptions
+
+Creates type-safe options for `useMutation`.
+
+```ts
+eden.route.post.mutationOptions(opts?): MutationOptions
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `opts` | `EdenMutationOptionsIn` | TanStack Query mutation options (excluding reserved) |
+
+### Returns
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `mutationKey` | `EdenMutationKey` | Unique key based on route path |
+| `mutationFn` | `MutationFunction` | Mutation function via Eden client |
+| `eden` | `{ path: string }` | Route metadata |
+
+### Reserved Options
+
+Automatically set: `mutationKey`, `mutationFn`.
+
+### Example
+
+```tsx
+const eden = useEden()
+const queryClient = useQueryClient()
+
+const createUser = useMutation({
+  ...eden.users.post.mutationOptions(),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+  }
+})
+
+createUser.mutate({ name: 'Alice', email: 'alice@example.com' })
+```
+
+---
+
+## infiniteQueryOptions
+
+Creates type-safe options for `useInfiniteQuery` with cursor-based pagination.
+
+```ts
+eden.route.get.infiniteQueryOptions(input, opts): InfiniteQueryOptions
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `input` | `TInput \| SkipToken` | Query params (excluding cursor) or `skipToken` |
+| `opts.getNextPageParam` | `(lastPage) => TCursor \| undefined` | **Required.** Returns next page cursor |
+| `opts.initialCursor` | `TCursor` | **Required.** Initial cursor value |
+| `opts.getPreviousPageParam` | `(firstPage) => TCursor \| undefined` | For bi-directional pagination |
+| `opts.maxPages` | `number` | Max pages to keep in memory |
+
+### Example
+
+```tsx
+const eden = useEden()
+
+const { data, fetchNextPage, hasNextPage } = useInfiniteQuery(
+  eden.posts.get.infiniteQueryOptions(
+    { limit: 10 },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      initialCursor: null,
+    }
+  )
+)
+```
+
+---
+
+## queryKey
+
+Generates a typed query key for cache operations.
+
+```ts
+eden.route.get.queryKey(input?): DataTag<EdenQueryKey>
+```
+
+Key structure:
+
+```ts
+eden.users.get.queryKey()
+// => [['users', 'get'], { type: 'query' }]
+
+eden.users.get.queryKey({ role: 'admin' })
+// => [['users', 'get'], { input: { role: 'admin' }, type: 'query' }]
+
+eden.users({ id: '1' }).get.queryKey()
+// => [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+```
+
+---
+
+## mutationKey
+
+Generates a mutation key from route path.
+
+```ts
+eden.route.post.mutationKey(): EdenMutationKey
+```
+
+```ts
+eden.users.post.mutationKey()
+// => [['users', 'post']]
+```
+
+---
+
+## infiniteQueryKey
+
+Generates an infinite query key (separate from regular query cache).
+
+```ts
+eden.route.get.infiniteQueryKey(input?): DataTag<EdenQueryKey>
+```
+
+```ts
+eden.posts.get.infiniteQueryKey()
+// => [['posts', 'get'], { type: 'infinite' }]
+
+eden.posts.get.infiniteQueryKey({ category: 'tech' })
+// => [['posts', 'get'], { input: { category: 'tech' }, type: 'infinite' }]
+```
+
+---
+
+## queryFilter
+
+Creates a query filter for bulk cache operations like `invalidateQueries`, `cancelQueries`, `removeQueries`.
+
+```ts
+eden.route.get.queryFilter(input?, filters?): QueryFilters
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `input` | `TInput` | Optional input to narrow the filter |
+| `filters` | `QueryFilterOptions` | TanStack Query filter options (`exact`, `type`, `stale`, `fetchStatus`, `predicate`) |
+
+```tsx
+// Invalidate all user queries
+queryClient.invalidateQueries(eden.users.get.queryFilter())
+
+// Invalidate with specific input
+queryClient.invalidateQueries(
+  eden.users.get.queryFilter({ role: 'admin' }, { exact: false })
+)
+```
+
+---
+
+## infiniteQueryFilter
+
+Same as `queryFilter` but scoped to infinite queries.
+
+```ts
+eden.route.get.infiniteQueryFilter(input?, filters?): QueryFilters
+```
+
+```tsx
+queryClient.invalidateQueries(eden.posts.get.infiniteQueryFilter())
+```
+
+---
+
+## Low-level APIs
+
+For use outside React context (loaders, server components, utilities):
+
+```ts
+import {
+  edenQueryOptions,
+  edenMutationOptions,
+  edenInfiniteQueryOptions,
+} from 'eden-tanstack-react-query'
+
+// edenQueryOptions
+const opts = edenQueryOptions({
+  path: ['users', 'get'],
+  input: { role: 'admin' },
+  fetch: async (input, signal) => { /* ... */ },
+  opts: { staleTime: 5000 }
+})
+
+// edenMutationOptions
+const opts = edenMutationOptions({
+  path: ['users', 'post'],
+  mutate: async (input) => { /* ... */ },
+})
+
+// edenInfiniteQueryOptions
+const opts = edenInfiniteQueryOptions({
+  path: ['posts', 'get'],
+  input: { limit: 10 },
+  initialPageParam: null as string | null,
+  fetch: async (inputWithCursor, signal) => { /* ... */ },
+  opts: { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined }
+})
+```
+
+---
+
+## Types
+
+### DecorateQueryProcedure
+
+Methods on GET/HEAD/OPTIONS routes:
+
+| Method | Type | Description |
+|--------|------|-------------|
+| `queryOptions` | `(input?, opts?) => EdenQueryOptions` | Options for useQuery |
+| `queryKey` | `(input?) => DataTag<EdenQueryKey>` | Query key for cache ops |
+| `queryFilter` | `(input?, filters?) => QueryFilters` | Filter for invalidation |
+
+### DecorateInfiniteQueryProcedure
+
+Methods on query routes with cursor input:
+
+| Method | Type | Description |
+|--------|------|-------------|
+| `infiniteQueryOptions` | `(input, opts) => EdenInfiniteQueryOptions` | Options for useInfiniteQuery |
+| `infiniteQueryKey` | `(input?) => DataTag<EdenQueryKey>` | Infinite query key |
+| `infiniteQueryFilter` | `(input?, filters?) => QueryFilters` | Filter for infinite queries |
+
+### DecorateMutationProcedure
+
+Methods on POST/PUT/PATCH/DELETE routes:
+
+| Method | Type | Description |
+|--------|------|-------------|
+| `mutationOptions` | `(opts?) => EdenMutationOptions` | Options for useMutation |
+| `mutationKey` | `() => EdenMutationKey` | Mutation key |
