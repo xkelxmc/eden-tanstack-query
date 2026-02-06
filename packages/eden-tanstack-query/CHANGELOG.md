@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-02-06
+
+### Fixed
+- Path parameters applied at wrong position in nested routes by [@imoize](https://github.com/imoize) ([#4](https://github.com/xkelxmc/eden-tanstack-query/pull/4))
+  - `eden.v1.users.address({ userId }).get` now correctly produces `/v1/users/address/:userId` instead of `/v1/:userId/users/address`
+  - Introduced position-based path param tracking (`PositionedPathParam`) instead of sequential application
+
 ## [0.1.7] - 2026-02-04
 
 ### Fixed
