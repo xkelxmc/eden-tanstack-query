@@ -1,4 +1,5 @@
 import type { treaty } from "@elysiajs/eden"
+import { skipToken } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 import { createEdenOptionsProxy } from "../../src/proxy/createOptionsProxy"
 import { createTestQueryClient } from "../../test-utils"
@@ -295,6 +296,70 @@ describe("createEdenOptionsProxy", () => {
 			expect(options.staleTime).toBe(5000)
 			expect(options.refetchOnWindowFocus).toBe(false)
 		})
+
+		test("queryOptions supports top-level headers and forwards them separately", async () => {
+			let capturedRequest: unknown
+
+			const clientWithCapture = {
+				api: {
+					users: {
+						get: async (opts?: unknown) => {
+							capturedRequest = opts
+							return { data: [], error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: clientWithCapture,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				status: "from-top-level",
+				headers: { "X-Tenant": "acme" },
+			})
+
+			await queryClient.fetchQuery(options)
+
+			const request = capturedRequest as Record<string, unknown>
+			expect(request.query).toEqual({ status: "from-top-level" })
+			expect(request.headers).toEqual({ "X-Tenant": "acme" })
+		})
+
+		test("queryOptions supports request shape input with query + headers", async () => {
+			let capturedRequest: unknown
+
+			const clientWithCapture = {
+				api: {
+					users: {
+						get: async (opts?: unknown) => {
+							capturedRequest = opts
+							return { data: [], error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: clientWithCapture,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				query: { status: "from-request-shape" },
+				headers: { "X-Tenant": "acme" },
+			})
+
+			await queryClient.fetchQuery(options)
+
+			const request = capturedRequest as Record<string, unknown>
+			expect(request.query).toEqual({ status: "from-request-shape" })
+			expect(request.headers).toEqual({ "X-Tenant": "acme" })
+		})
 	})
 
 	describe("mutation options", () => {
@@ -537,6 +602,15 @@ describe("createEdenOptionsProxy", () => {
 			expect(result).toEqual({ userId: "456", address: "123 Main St" })
 		})
 
+		test("queryOptions preserves skipToken when path params are present", () => {
+			const eden = createEden()
+			const options = eden.api.users({ id: "123" }).get.queryOptions(skipToken)
+
+			expect(typeof options.queryFn).toBe("symbol")
+			expect(Object.is(options.queryFn, skipToken)).toBe(true)
+			expect(options.queryKey).toEqual([["api", "users", "get"], { type: "query" }])
+		})
+
 		test("multiple path params at different positions work correctly", async () => {
 			// Path: /api/v1/orgs/:orgId/teams/:teamId/members
 			const capturedOrgId: string[] = []
@@ -712,6 +786,38 @@ describe("createEdenOptionsProxy", () => {
 				input: { orgId: "o1", teamId: "t2", role: "admin" },
 				type: "query",
 			})
+		})
+
+		test("infiniteQueryOptions preserves skipToken when path params are present", () => {
+			const mockClient = {
+				api: {
+					comments: (_params: { postId: string }) => ({
+						get: async () => ({
+							data: { items: [], nextCursor: null },
+							error: null,
+						}),
+					}),
+				},
+			}
+
+			const eden = createEdenOptionsProxy<any>({
+				client: mockClient as any,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Testing custom route structure
+			const options = (eden as any).api
+				.comments({ postId: "42" })
+				.get.infiniteQueryOptions(skipToken, {
+					getNextPageParam: () => undefined,
+				})
+
+			expect(typeof options.queryFn).toBe("symbol")
+			expect(Object.is(options.queryFn, skipToken)).toBe(true)
+			expect(options.queryKey).toEqual([
+				["api", "comments", "get"],
+				{ type: "infinite" },
+			])
 		})
 	})
 

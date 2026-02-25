@@ -69,6 +69,50 @@ export interface EdenQueryOptionsResult {
 }
 
 /**
+ * Per-request headers accepted by Eden query calls.
+ */
+type EdenRequestHeaders = Record<string, string | undefined>
+
+/**
+ * Request-style query input with optional headers.
+ * Supports: { query: {...}, headers: {...} }
+ */
+type EdenQueryRequestInput<TInput> = Simplify<
+	({} extends TInput ? { query?: TInput } : { query: TInput }) & {
+		headers?: EdenRequestHeaders
+	}
+>
+
+/**
+ * Query input accepted by query methods.
+ * Supports:
+ * - direct query object: { role: "admin" }
+ * - direct query + headers: { role: "admin", headers: {...} }
+ * - request shape: { query: { role: "admin" }, headers: {...} }
+ */
+type EdenQueryProcedureInput<TInput> =
+	| TInput
+	| Simplify<TInput & { headers?: EdenRequestHeaders }>
+	| EdenQueryRequestInput<TInput>
+
+/**
+ * Infinite query input without cursor.
+ */
+type EdenInfiniteQueryBaseInput<TInput> = Omit<TInput, "cursor">
+
+/**
+ * Input accepted by infinite query methods.
+ */
+type EdenInfiniteQueryProcedureInput<TInput> =
+	| EdenInfiniteQueryBaseInput<TInput>
+	| Simplify<
+			EdenInfiniteQueryBaseInput<TInput> & {
+				headers?: EdenRequestHeaders
+			}
+	  >
+	| EdenQueryRequestInput<EdenInfiniteQueryBaseInput<TInput>>
+
+/**
  * Input options for undefined initial data queries.
  * Used when no initialData is provided.
  */
@@ -155,7 +199,7 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 	 * The returned data will never be undefined.
 	 */
 	<TQueryFnData extends TDef["output"], TData = TQueryFnData>(
-		input: EmptyToVoid<TDef["input"]> | SkipToken,
+		input: EmptyToVoid<EdenQueryProcedureInput<TDef["input"]>> | SkipToken,
 		opts: DefinedEdenQueryOptionsIn<
 			TQueryFnData,
 			TData,
@@ -173,7 +217,7 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 	 * The returned data can be undefined until loaded.
 	 */
 	<TQueryFnData extends TDef["output"], TData = TQueryFnData>(
-		input: EmptyToVoid<TDef["input"]>,
+		input: EmptyToVoid<EdenQueryProcedureInput<TDef["input"]>>,
 		opts?: UnusedSkipTokenEdenQueryOptionsIn<
 			TQueryFnData,
 			TData,
@@ -190,7 +234,7 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 	 * Use skipToken to conditionally disable the query.
 	 */
 	<TQueryFnData extends TDef["output"], TData = TQueryFnData>(
-		input?: EmptyToVoid<TDef["input"]> | SkipToken,
+		input?: EmptyToVoid<EdenQueryProcedureInput<TDef["input"]>> | SkipToken,
 		opts?: UndefinedEdenQueryOptionsIn<
 			TQueryFnData,
 			TData,
@@ -422,7 +466,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 		TData = TQueryFnData,
 		TPageParam = ExtractCursorType<TDef["input"]> | null,
 	>(
-		input: EmptyToVoid<Omit<TDef["input"], "cursor">> | SkipToken,
+		input:
+			| EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>
+			| SkipToken,
 		opts: DefinedEdenInfiniteQueryOptionsIn<
 			TQueryFnData,
 			TData,
@@ -444,7 +490,7 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 		TData = TQueryFnData,
 		TPageParam = ExtractCursorType<TDef["input"]> | null,
 	>(
-		input: EmptyToVoid<Omit<TDef["input"], "cursor">>,
+		input: EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
 		opts: UnusedSkipTokenEdenInfiniteQueryOptionsIn<
 			TQueryFnData,
 			TData,
@@ -466,7 +512,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 		TData = TQueryFnData,
 		TPageParam = ExtractCursorType<TDef["input"]> | null,
 	>(
-		input?: EmptyToVoid<Omit<TDef["input"], "cursor">> | SkipToken,
+		input?:
+			| EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>
+			| SkipToken,
 		opts?: UndefinedEdenInfiniteQueryOptionsIn<
 			TQueryFnData,
 			TData,
@@ -525,7 +573,7 @@ export interface DecorateQueryProcedure<TDef extends RouteDefinition>
 	 * @see https://tanstack.com/query/latest/docs/framework/react/guides/query-keys
 	 */
 	queryKey: (
-		input?: DeepPartial<TDef["input"]>,
+		input?: DeepPartial<EdenQueryProcedureInput<TDef["input"]>>,
 	) => DataTag<
 		EdenQueryKey,
 		TDef["output"],
@@ -542,7 +590,7 @@ export interface DecorateQueryProcedure<TDef extends RouteDefinition>
 	 * @see https://tanstack.com/query/latest/docs/framework/react/guides/filters
 	 */
 	queryFilter: (
-		input?: DeepPartial<TDef["input"]>,
+		input?: DeepPartial<EdenQueryProcedureInput<TDef["input"]>>,
 		filters?: QueryFilters<
 			DataTag<
 				EdenQueryKey,
@@ -579,7 +627,7 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	 * Generate an infinite query key for cache operations.
 	 */
 	infiniteQueryKey: (
-		input?: DeepPartial<Omit<TDef["input"], "cursor">>,
+		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
 	) => DataTag<
 		EdenQueryKey,
 		TDef["output"],
@@ -590,7 +638,7 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	 * Create an infinite query filter.
 	 */
 	infiniteQueryFilter: (
-		input?: DeepPartial<Omit<TDef["input"], "cursor">>,
+		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
 		filters?: QueryFilters<
 			DataTag<
 				EdenQueryKey,
