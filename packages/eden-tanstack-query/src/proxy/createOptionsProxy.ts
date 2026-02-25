@@ -141,8 +141,11 @@ function parseQueryRequestInput(input: unknown): ParsedQueryRequestInput {
 	const hasHeaders = Object.prototype.hasOwnProperty.call(input, "headers")
 	const headersValue = hasHeaders ? input.headers : undefined
 	const hasRecordHeaders = isRecord(headersValue)
+	const hasOnlyWrappedKeys = Object.keys(input).every(
+		(key) => key === "query" || key === "headers",
+	)
 
-	if (hasQuery) {
+	if (hasQuery && hasOnlyWrappedKeys && (!hasHeaders || hasRecordHeaders)) {
 		return {
 			query: input.query,
 			headers: hasRecordHeaders ? headersValue : undefined,

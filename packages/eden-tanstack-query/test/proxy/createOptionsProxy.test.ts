@@ -360,6 +360,37 @@ describe("createEdenOptionsProxy", () => {
 			expect(request.query).toEqual({ status: "from-request-shape" })
 			expect(request.headers).toEqual({ "X-Tenant": "acme" })
 		})
+
+		test("queryOptions preserves extra top-level fields when input contains query key", async () => {
+			let capturedRequest: unknown
+
+			const clientWithCapture = {
+				api: {
+					users: {
+						get: async (opts?: unknown) => {
+							capturedRequest = opts
+							return { data: [], error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: clientWithCapture,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				query: "foo",
+				page: 1,
+			})
+
+			await queryClient.fetchQuery(options)
+
+			const request = capturedRequest as Record<string, unknown>
+			expect(request.query).toEqual({ query: "foo", page: 1 })
+		})
 	})
 
 	describe("mutation options", () => {
