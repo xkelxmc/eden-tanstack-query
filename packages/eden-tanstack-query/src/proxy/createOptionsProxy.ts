@@ -5,8 +5,8 @@
  * Transforms Eden Treaty client paths into queryOptions/mutationOptions factories.
  */
 import type { Treaty } from "@elysiajs/eden"
-import { skipToken } from "@tanstack/react-query"
 import type { QueryClient, QueryFilters } from "@tanstack/react-query"
+import { skipToken } from "@tanstack/react-query"
 import type { AnyElysia } from "elysia"
 
 import { getMutationKey, getQueryKey } from "../keys/queryKey"
@@ -121,10 +121,10 @@ function mergePathParamsIntoInputForKey(
 }
 
 /**
- * Check if a value is a non-null object.
+ * Check if a value is a non-null, non-array object.
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null
+	return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -137,15 +137,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseQueryRequestInput(input: unknown): ParsedQueryRequestInput {
 	if (!isRecord(input)) return { query: input }
 
-	const hasQuery = Object.prototype.hasOwnProperty.call(input, "query")
-	const hasHeaders = Object.prototype.hasOwnProperty.call(input, "headers")
+	const hasQuery = Object.hasOwn(input, "query")
+	const hasHeaders = Object.hasOwn(input, "headers")
 	const headersValue = hasHeaders ? input.headers : undefined
 	const hasRecordHeaders = isRecord(headersValue)
 	const hasOnlyWrappedKeys = Object.keys(input).every(
 		(key) => key === "query" || key === "headers",
 	)
 
-	if (hasQuery && hasOnlyWrappedKeys && (!hasHeaders || hasRecordHeaders)) {
+	// A lone { query: value } is a valid query object for routes with a
+	// query parameter named "query"; require the headers key to opt in.
+	if (hasQuery && hasHeaders && hasOnlyWrappedKeys) {
 		return {
 			query: input.query,
 			headers: hasRecordHeaders ? headersValue : undefined,
@@ -321,12 +323,12 @@ function createQueryProcedure(opts: ProcedureOptions) {
 				getPreviousPageParam?: (firstPage: unknown) => unknown
 				initialCursor?: unknown
 			},
-			) => {
-				const { initialCursor = null, ...restOpts } = infiniteOpts
-				const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
+		) => {
+			const { initialCursor = null, ...restOpts } = infiniteOpts
+			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 
-				return edenInfiniteQueryOptions({
-					path: paths,
+			return edenInfiniteQueryOptions({
+				path: paths,
 				input: inputForKey,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
@@ -337,7 +339,11 @@ function createQueryProcedure(opts: ProcedureOptions) {
 						direction?: unknown
 					}
 					const { query: parsedQuery, headers } = parseQueryRequestInput(input)
-					const fullInput = addCursorToQueryInput(parsedQuery, cursor, direction)
+					const fullInput = addCursorToQueryInput(
+						parsedQuery,
+						cursor,
+						direction,
+					)
 					// Build path without the method
 					const pathWithoutMethod = paths.slice(0, -1)
 					const method = getMethod(paths)

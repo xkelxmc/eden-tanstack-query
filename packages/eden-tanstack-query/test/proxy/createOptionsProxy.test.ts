@@ -361,6 +361,69 @@ describe("createEdenOptionsProxy", () => {
 			expect(request.headers).toEqual({ "X-Tenant": "acme" })
 		})
 
+		test("queryOptions keeps a lone query key as query input", async () => {
+			let capturedRequest: unknown
+
+			const clientWithCapture = {
+				api: {
+					users: {
+						get: async (opts?: unknown) => {
+							capturedRequest = opts
+							return { data: [], error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: clientWithCapture,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				query: "hello",
+			})
+
+			await queryClient.fetchQuery(options)
+
+			const request = capturedRequest as Record<string, unknown>
+			expect(request.query).toEqual({ query: "hello" })
+			expect("headers" in request).toBe(false)
+		})
+
+		test("queryOptions supports request shape input with undefined headers", async () => {
+			let capturedRequest: unknown
+
+			const clientWithCapture = {
+				api: {
+					users: {
+						get: async (opts?: unknown) => {
+							capturedRequest = opts
+							return { data: [], error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: clientWithCapture,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				query: { role: "admin-with-undefined-headers" },
+				headers: undefined,
+			})
+
+			await queryClient.fetchQuery(options)
+
+			const request = capturedRequest as Record<string, unknown>
+			expect(request.query).toEqual({ role: "admin-with-undefined-headers" })
+			expect("headers" in request).toBe(false)
+		})
+
 		test("queryOptions preserves extra top-level fields when input contains query key", async () => {
 			let capturedRequest: unknown
 
@@ -639,7 +702,10 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(typeof options.queryFn).toBe("symbol")
 			expect(Object.is(options.queryFn, skipToken)).toBe(true)
-			expect(options.queryKey).toEqual([["api", "users", "get"], { type: "query" }])
+			expect(options.queryKey).toEqual([
+				["api", "users", "get"],
+				{ type: "query" },
+			])
 		})
 
 		test("multiple path params at different positions work correctly", async () => {
@@ -866,6 +932,46 @@ describe("createEdenOptionsProxy", () => {
 			expect(options.queryKey[0]).toEqual(["api", "posts", "get"])
 			expect(options.eden.path).toBe("api.posts.get")
 			expect(typeof options.queryFn).toBe("function")
+		})
+
+		test("infiniteQueryOptions wraps array input when adding a cursor", async () => {
+			let capturedRequest: unknown
+
+			const clientWithCapture = {
+				api: {
+					posts: {
+						get: async (opts?: unknown) => {
+							capturedRequest = opts
+							return {
+								data: { items: [], nextCursor: null },
+								error: null,
+							}
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+
+			const eden = createEdenOptionsProxy<App>({
+				client: clientWithCapture,
+				queryClient,
+			})
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.posts.get.infiniteQueryOptions(
+				["a", "b"],
+				{
+					getNextPageParam: () => undefined,
+					initialCursor: "cursor-1",
+				},
+			)
+
+			await queryClient.fetchInfiniteQuery(options)
+
+			const request = capturedRequest as Record<string, unknown>
+			expect(request.query).toEqual({
+				cursor: "cursor-1",
+				query: ["a", "b"],
+			})
 		})
 
 		test("infiniteQueryFilter generates correct filter", () => {
