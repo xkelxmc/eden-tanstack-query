@@ -4,8 +4,13 @@ import type { EdenMutationKey, EdenQueryKey, QueryType } from "./types"
 /**
  * Helper to check if value is a plain object
  */
-function isObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value)
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+		return false
+	}
+
+	const prototype = Object.getPrototypeOf(value)
+	return prototype === Object.prototype || prototype === null
 }
 
 /**
@@ -18,8 +23,14 @@ const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"])
  * Removes dangerous keys like __proto__, constructor, prototype.
  */
 function sanitizeInput(value: unknown): unknown {
-	if (!isObject(value)) {
-		return Array.isArray(value) ? value.map(sanitizeInput) : value
+	if (Array.isArray(value)) {
+		return value.map(sanitizeInput)
+	}
+
+	// Preserve non-plain objects (e.g. Date, Map, Set, class instances) as-is.
+	// Only plain objects are reconstructed for dangerous-key stripping.
+	if (!isPlainObject(value)) {
+		return value
 	}
 
 	const result: Record<string, unknown> = {}
@@ -80,7 +91,7 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 	const input = sanitizeInput(opts.input)
 
 	// For infinite queries, strip cursor/direction from input
-	if (type === "infinite" && isObject(input)) {
+	if (type === "infinite" && isPlainObject(input)) {
 		const inputObj = input
 		if ("cursor" in inputObj || "direction" in inputObj) {
 			const { cursor: _, direction: __, ...rest } = inputObj

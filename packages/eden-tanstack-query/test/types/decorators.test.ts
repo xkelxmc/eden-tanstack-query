@@ -831,6 +831,36 @@ describe("EdenOptionsProxy queryOptions return types", () => {
 		expect(hasMutationKey).toBe(true)
 		expect(hasMutationFn).toBe(true)
 	})
+
+	test("queryOptions input allows top-level headers", () => {
+		type UsersGet = Proxy["users"]["get"]
+		type QueryInput = Parameters<UsersGet["queryOptions"]>[0]
+
+		type AcceptsHeaders = {
+			search?: string
+			headers?: Record<string, string | undefined>
+		} extends QueryInput
+			? true
+			: false
+
+		const acceptsHeaders: AcceptsHeaders = true
+		expect(acceptsHeaders).toBe(true)
+	})
+
+	test("queryOptions input allows request-shape query + headers", () => {
+		type UsersGet = Proxy["users"]["get"]
+		type QueryInput = Parameters<UsersGet["queryOptions"]>[0]
+
+		type AcceptsRequestShape = {
+			query?: { search?: string }
+			headers?: Record<string, string | undefined>
+		} extends QueryInput
+			? true
+			: false
+
+		const acceptsRequestShape: AcceptsRequestShape = true
+		expect(acceptsRequestShape).toBe(true)
+	})
 })
 
 // ============================================================================

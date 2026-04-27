@@ -130,6 +130,30 @@ describe("getQueryKey", () => {
 		expect(key).toEqual([["api", "users", "batch"], { input: ["1", "2", "3"] }])
 	})
 
+	test("preserves Date values in input without collapsing", () => {
+		const januaryDate = new Date("2026-01-01T00:00:00.000Z")
+		const februaryDate = new Date("2026-02-01T00:00:00.000Z")
+
+		const januaryKey = getQueryKey({
+			path: ["api", "reports", "get"],
+			input: { from: januaryDate },
+		})
+		const februaryKey = getQueryKey({
+			path: ["api", "reports", "get"],
+			input: { from: februaryDate },
+		})
+
+		expect(januaryKey).toEqual([
+			["api", "reports", "get"],
+			{ input: { from: januaryDate } },
+		])
+		expect(februaryKey).toEqual([
+			["api", "reports", "get"],
+			{ input: { from: februaryDate } },
+		])
+		expect(januaryKey).not.toEqual(februaryKey)
+	})
+
 	describe("prototype pollution protection", () => {
 		test("strips __proto__ from input", () => {
 			const key = getQueryKey({

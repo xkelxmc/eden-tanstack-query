@@ -187,11 +187,11 @@ Pass query parameters or request body:
 
 ```typescript
 // Query params: GET /users?role=admin
-eden.users.get.queryOptions({ query: { role: 'admin' } })
+eden.users.get.queryOptions({ role: 'admin' })
 
 // With headers
 eden.users.get.queryOptions({
-  query: { role: 'admin' },
+  role: 'admin',
   headers: { 'X-Custom': 'value' }
 })
 ```
