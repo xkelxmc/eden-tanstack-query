@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-04-27
+
+### Fixed
+- `skipToken` with path params now stays disabled instead of being turned into an executable query by [@RedEagle-dh](https://github.com/RedEagle-dh) ([#5](https://github.com/xkelxmc/eden-tanstack-query/pull/5))
+- Query-key sanitization now preserves non-plain objects (e.g. `Date`, `Map`, `Set`) to prevent cache key collisions by [@RedEagle-dh](https://github.com/RedEagle-dh) ([#5](https://github.com/xkelxmc/eden-tanstack-query/pull/5))
+- Per-request headers in `queryOptions` are now properly typed and forwarded — supports `{ ...query, headers }`, `{ query, headers }`, and direct `query` shapes by [@RedEagle-dh](https://github.com/RedEagle-dh) ([#5](https://github.com/xkelxmc/eden-tanstack-query/pull/5))
+- Options proxy query-wrapper detection
+- Query request input parsing edge cases
+
+### Changed
+- Updated dev dependencies to latest versions
+- Biome 2.3.12 → 2.4.13
+- TanStack Query 5.90.20 → 5.100.5
+- Elysia 1.4.22 → 1.4.28
+- Eden 1.4.6 → 1.4.9
+- React 19.2.3 → 19.2.5
+- happy-dom 20.3.7 → 20.9.0
+- vitest 4.0.18 → 4.1.5
+
 ## [0.1.9] - 2026-02-06
 
 ### Changed

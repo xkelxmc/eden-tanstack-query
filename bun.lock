@@ -142,7 +142,7 @@
     },
     "packages/eden-tanstack-query": {
       "name": "eden-tanstack-react-query",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "devDependencies": {
         "@elysiajs/eden": "^1.4.9",
         "@happy-dom/global-registrator": "^20.9.0",
