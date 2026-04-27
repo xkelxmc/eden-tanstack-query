@@ -2,7 +2,7 @@
 	"name": "eden-tanstack-query",
 	"private": true,
 	"type": "module",
-	"packageManager": "bun@1.3.6",
+	"packageManager": "bun@1.3.13",
 	"license": "Apache-2.0",
 	"author": "Ilya Zhidkov",
 	"repository": {
@@ -35,14 +35,14 @@
 		"format": "bunx biome format --write ."
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.12",
+		"@biomejs/biome": "2.4.13",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.2",
 		"@types/bun": "latest",
-		"@vitest/coverage-v8": "^4.0.18",
-		"@vitest/ui": "^4.0.18",
-		"happy-dom": "20.3.7",
+		"@vitest/coverage-v8": "^4.1.5",
+		"@vitest/ui": "^4.1.5",
+		"happy-dom": "20.9.0",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"vitest": "^4.1.5"
 	}
 }

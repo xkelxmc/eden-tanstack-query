@@ -218,15 +218,16 @@ export type GetRoute<
 	TApp extends AnyElysia,
 	TPath extends string,
 	TMethod extends string,
-> = ExtractRoutes<TApp> extends infer Routes
-	? TPath extends keyof Routes
-		? Routes[TPath] extends Record<string, unknown>
-			? TMethod extends keyof Routes[TPath]
-				? Routes[TPath][TMethod]
+> =
+	ExtractRoutes<TApp> extends infer Routes
+		? TPath extends keyof Routes
+			? Routes[TPath] extends Record<string, unknown>
+				? TMethod extends keyof Routes[TPath]
+					? Routes[TPath][TMethod]
+					: never
 				: never
 			: never
 		: never
-	: never
 
 // ============================================================================
 // Path Parameter Extraction
