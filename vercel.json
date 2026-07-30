@@ -1,6 +1,6 @@
 {
 	"buildCommand": "bunx fumadocs-mdx && bun run build",
 	"outputDirectory": ".output",
-	"installCommand": "bun install",
+	"installCommand": "bun install --frozen-lockfile",
 	"bunVersion": "1.x"
 }

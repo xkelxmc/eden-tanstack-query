@@ -29,7 +29,7 @@ Use vitest for running tests:
 
 - `bun run test` — run all tests once
 - `bun run test:watch` — run tests in watch mode
-- `bun run test:cov` — run tests with coverage
+- `bun run unit-test:run` — run tests with coverage
 - `bun run test:ui` — vitest UI
 
 ```ts#example.test.ts
