@@ -495,6 +495,14 @@ const PROCEDURE_MEMBERS = new Set([
 ])
 
 /**
+ * Properties the host environment probes on arbitrary values. They are never
+ * route segments, and answering them with a path proxy breaks the probe —
+ * a truthy `$$typeof` makes React read the node as an element, and a callable
+ * `toJSON` makes JSON.stringify return undefined.
+ */
+const HOST_PROBES = new Set(["toJSON", "$$typeof"])
+
+/**
  * Resolve a child property of a path node: HTTP-method names become
  * procedures (still usable as segments — see createProcedureProxy), everything
  * else extends the path.
@@ -550,39 +558,33 @@ function createProcedureProxy<TApp extends AnyElysia>(
 	paths: string[],
 	pathParams: PositionedPathParam[],
 ) {
-	return new Proxy(function edenProxy() {}, {
-		get: (_target, prop) => {
+	// The procedure object is the proxy target, so enumeration, `in`, property
+	// descriptors and string coercion keep behaving like the plain object this
+	// used to be. Only unknown properties are redirected into the path.
+	return new Proxy(procedure, {
+		get: (target, prop, receiver) => {
 			if (typeof prop === "symbol" || prop === "then") {
 				return undefined
 			}
 
-			if (Object.hasOwn(procedure, prop)) {
-				return procedure[prop]
+			if (Object.hasOwn(target, prop)) {
+				return Reflect.get(target, prop, receiver)
 			}
 
-			if (PROCEDURE_MEMBERS.has(prop)) {
-				return undefined
+			// Members of the other procedure kind stay absent; inherited
+			// Object.prototype members (toString, valueOf, …) and host probes
+			// must not turn into path segments.
+			if (
+				PROCEDURE_MEMBERS.has(prop) ||
+				HOST_PROBES.has(prop) ||
+				prop in Object.prototype
+			) {
+				return Reflect.get(target, prop, receiver)
 			}
 
-			// Not a procedure member: the method-named element is really a path
-			// segment — keep resolving children from it.
+			// A method-named element that is really a path segment: keep
+			// resolving children from it.
 			return resolveChild(opts, paths, pathParams, prop)
-		},
-
-		has: (_target, prop) =>
-			typeof prop === "string" && Object.hasOwn(procedure, prop),
-
-		apply: (_target, _thisArg, args) => {
-			// Called as a segment: record path params, same as the base proxy.
-			const params =
-				args && args.length > 0 && args[0] !== undefined
-					? (args[0] as Record<string, unknown>)
-					: {}
-			return createEdenOptionsProxy(
-				opts,
-				[...paths],
-				[...pathParams, { pathIndex: paths.length - 1, params }],
-			)
 		},
 	})
 }

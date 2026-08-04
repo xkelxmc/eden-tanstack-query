@@ -106,6 +106,64 @@ describe("proxy routing against a real treaty client", () => {
 		})
 	})
 
+	describe("procedure object semantics", () => {
+		// The procedure node is a proxy so method-named segments stay
+		// traversable; it must still behave like the plain object it replaced.
+		const app = new Elysia().get("/users", () => [])
+
+		function procedure() {
+			const client = treaty(app)
+			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
+			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
+			return (eden as any).users.get
+		}
+
+		test("is enumerable", () => {
+			const proc = procedure()
+			const members = [
+				"queryOptions",
+				"queryKey",
+				"queryFilter",
+				"infiniteQueryOptions",
+				"infiniteQueryKey",
+				"infiniteQueryFilter",
+			]
+
+			expect(Object.keys(proc).sort()).toEqual([...members].sort())
+			expect(Object.keys({ ...proc }).sort()).toEqual([...members].sort())
+			expect(Object.hasOwn(proc, "queryKey")).toBe(true)
+			expect(Object.getOwnPropertyDescriptor(proc, "queryKey")).toBeDefined()
+		})
+
+		test("does not violate proxy invariants when probed", () => {
+			const proc = procedure()
+
+			expect("prototype" in proc).toBe(false)
+			expect("queryKey" in proc).toBe(true)
+			for (const key of Object.getOwnPropertyNames(proc)) {
+				expect(key in proc).toBe(true)
+			}
+		})
+
+		test("coerces to a string and serializes like a plain object", () => {
+			const proc = procedure()
+
+			expect(typeof proc).toBe("object")
+			expect(`${proc}`).toBe("[object Object]")
+			expect(JSON.stringify(proc)).toBe("{}")
+		})
+
+		test("answers host probes without inventing path segments", () => {
+			const proc = procedure()
+
+			expect(proc.$$typeof).toBeUndefined()
+			expect(proc.then).toBeUndefined()
+			expect(proc[Symbol.iterator]).toBeUndefined()
+			expect(proc.mutationOptions).toBeUndefined()
+		})
+	})
+
 	describe("runtime guards", () => {
 		test("infiniteQueryOptions without opts does not crash at creation", () => {
 			const app = new Elysia().get("/posts", () => ({ items: [] }))
