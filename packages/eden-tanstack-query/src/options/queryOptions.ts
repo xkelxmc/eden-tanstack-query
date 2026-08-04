@@ -45,6 +45,12 @@ export interface EdenQueryOptionsArgs<TInput, TOutput> {
 	path: string[]
 	/** Input parameters or skipToken */
 	input: TInput | SkipToken
+	/**
+	 * Input used for the query key when it differs from `input` — e.g. path
+	 * params merged in, headers stripped, or identity kept under skipToken.
+	 * When omitted, the key is derived from `input`.
+	 */
+	inputForKey?: unknown
 	/** Function to fetch data */
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 }
@@ -183,6 +189,7 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(
 export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	path: string[]
 	input: TInput | SkipToken
+	inputForKey?: unknown
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 	opts?: AnyEdenQueryOptionsIn<TOutput, TOutput, TError>
 }): AnyEdenQueryOptionsOut<TOutput, TOutput, TError> {
@@ -190,9 +197,13 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 
 	const inputIsSkipToken = input === skipToken
 
+	// The proxy precomputes the key input (headers stripped, path params
+	// merged); direct factory callers fall back to `input` itself.
+	const keyInput = "inputForKey" in args ? args.inputForKey : input
+
 	const queryKey = getQueryKey({
 		path,
-		input: inputIsSkipToken ? undefined : input,
+		input: keyInput === skipToken ? undefined : keyInput,
 		type: "query",
 	})
 

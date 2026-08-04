@@ -54,6 +54,12 @@ export interface EdenInfiniteQueryOptionsArgs<TInput, TOutput, TPageParam> {
 	path: string[]
 	/** Input parameters (excluding cursor) or skipToken */
 	input: TInput | SkipToken
+	/**
+	 * Input used for the query key when it differs from `input` — e.g. path
+	 * params merged in, headers stripped, or identity kept under skipToken.
+	 * When omitted, the key is derived from `input`.
+	 */
+	inputForKey?: unknown
 	/** Function to fetch data with cursor */
 	fetch: (
 		input: TInput & { cursor: TPageParam },
@@ -286,6 +292,7 @@ export function edenInfiniteQueryOptions<
 >(args: {
 	path: string[]
 	input: TInput | SkipToken
+	inputForKey?: unknown
 	fetch: (
 		input: TInput & { cursor: TPageParam },
 		signal?: AbortSignal,
@@ -297,9 +304,13 @@ export function edenInfiniteQueryOptions<
 
 	const inputIsSkipToken = input === skipToken
 
+	// The proxy precomputes the key input (headers stripped, path params
+	// merged); direct factory callers fall back to `input` itself.
+	const keyInput = "inputForKey" in args ? args.inputForKey : input
+
 	const queryKey = getQueryKey({
 		path,
-		input: inputIsSkipToken ? undefined : input,
+		input: keyInput === skipToken ? undefined : keyInput,
 		type: "infinite",
 	}) as DataTag<EdenQueryKey, TOutput, TError>
 

@@ -14,13 +14,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Dangerous keys that could cause prototype pollution
+ * Only `__proto__` is a real pollution vector: JSON-parsed input can carry it
+ * as an own key, and TanStack's hashKey rebuilds objects via assignment.
+ * `constructor`/`prototype` are harmless as own keys and must stay in the key,
+ * otherwise distinct inputs collide on one cache entry.
  */
-const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"])
+const DANGEROUS_KEYS = new Set(["__proto__"])
 
 /**
  * Sanitizes input to prevent prototype pollution attacks.
- * Removes dangerous keys like __proto__, constructor, prototype.
  */
 function sanitizeInput(value: unknown): unknown {
 	if (Array.isArray(value)) {
@@ -88,21 +90,14 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 	}
 
 	// Sanitize input to prevent prototype pollution
-	const input = sanitizeInput(opts.input)
+	let input = sanitizeInput(opts.input)
 
-	// For infinite queries, strip cursor/direction from input
-	if (type === "infinite" && isPlainObject(input)) {
-		const inputObj = input
-		if ("cursor" in inputObj || "direction" in inputObj) {
-			const { cursor: _, direction: __, ...rest } = inputObj
-			return [
-				path,
-				{
-					input: rest,
-					type: "infinite",
-				},
-			]
-		}
+	// The infinite cursor is injected per page inside queryFn; keep it out of
+	// the key so pagination does not fragment the cache. User-owned fields
+	// (e.g. a sort `direction`) stay in the key.
+	if (type === "infinite" && isPlainObject(input) && "cursor" in input) {
+		const { cursor: _cursor, ...rest } = input
+		input = rest
 	}
 
 	// Build metadata object

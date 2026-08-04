@@ -51,7 +51,7 @@ describe("getQueryKey", () => {
 		])
 	})
 
-	test("strips cursor and direction from infinite query input", () => {
+	test("keeps user-owned direction in infinite query input", () => {
 		const key = getQueryKey({
 			path: ["api", "posts", "get"],
 			input: { limit: 10, cursor: "abc", direction: "forward" },
@@ -59,8 +59,22 @@ describe("getQueryKey", () => {
 		})
 		expect(key).toEqual([
 			["api", "posts", "get"],
-			{ input: { limit: 10 }, type: "infinite" },
+			{ input: { limit: 10, direction: "forward" }, type: "infinite" },
 		])
+	})
+
+	test("distinct directions produce distinct infinite keys", () => {
+		const asc = getQueryKey({
+			path: ["api", "posts", "get"],
+			input: { limit: 10, direction: "asc" },
+			type: "infinite",
+		})
+		const desc = getQueryKey({
+			path: ["api", "posts", "get"],
+			input: { limit: 10, direction: "desc" },
+			type: "infinite",
+		})
+		expect(asc).not.toEqual(desc)
 	})
 
 	test("does not include type when type is 'any'", () => {
@@ -155,35 +169,48 @@ describe("getQueryKey", () => {
 	})
 
 	describe("prototype pollution protection", () => {
-		test("strips __proto__ from input", () => {
+		// An object literal's `__proto__:` sets the prototype instead of an own
+		// key — JSON.parse is the shape untrusted input actually arrives in.
+		test("strips an own __proto__ key from input", () => {
 			const key = getQueryKey({
 				path: ["api", "users", "get"],
-				input: { id: "1", __proto__: { isAdmin: true } },
+				input: JSON.parse('{"id":"1","__proto__":{"isAdmin":true}}'),
 			})
 			expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
 		})
 
-		test("strips constructor from input", () => {
-			const key = getQueryKey({
-				path: ["api", "users", "get"],
-				input: { id: "1", constructor: { prototype: {} } },
+		test("keeps constructor as a regular input key", () => {
+			const a = getQueryKey({
+				path: ["api", "search", "get"],
+				input: { constructor: "a" },
 			})
-			expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
+			const b = getQueryKey({
+				path: ["api", "search", "get"],
+				input: { constructor: "b" },
+			})
+			expect(a).toEqual([
+				["api", "search", "get"],
+				{ input: { constructor: "a" } },
+			])
+			expect(a).not.toEqual(b)
 		})
 
-		test("strips prototype from input", () => {
+		test("keeps prototype as a regular input key", () => {
 			const key = getQueryKey({
 				path: ["api", "users", "get"],
-				input: { id: "1", prototype: { evil: true } },
+				input: { id: "1", prototype: "value" },
 			})
-			expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
+			expect(key).toEqual([
+				["api", "users", "get"],
+				{ input: { id: "1", prototype: "value" } },
+			])
 		})
 
-		test("strips dangerous keys from nested objects", () => {
+		test("strips own __proto__ keys from nested objects", () => {
 			const key = getQueryKey({
 				path: ["api", "users", "get"],
 				input: {
-					user: { name: "test", __proto__: { isAdmin: true } },
+					user: JSON.parse('{"name":"test","__proto__":{"isAdmin":true}}'),
 				},
 			})
 			expect(key).toEqual([
@@ -192,18 +219,21 @@ describe("getQueryKey", () => {
 			])
 		})
 
-		test("strips dangerous keys from arrays of objects", () => {
+		test("strips own __proto__ keys from arrays of objects", () => {
 			const key = getQueryKey({
 				path: ["api", "users", "batch"],
 				input: [
-					{ id: "1", __proto__: { isAdmin: true } },
-					{ id: "2", constructor: {} },
+					JSON.parse('{"id":"1","__proto__":{"isAdmin":true}}'),
+					{ id: "2", constructor: "kept" },
 				],
 			})
-			expect(key).toEqual([
-				["api", "users", "batch"],
-				{ input: [{ id: "1" }, { id: "2" }] },
-			])
+			// Typed as unknown[] so the inherited `constructor` of the first
+			// literal does not clash with the string key of the second.
+			const expected: unknown[] = [
+				{ id: "1" },
+				{ id: "2", constructor: "kept" },
+			]
+			expect(key).toEqual([["api", "users", "batch"], { input: expected }])
 		})
 
 		test("preserves valid input with similar-looking keys", () => {

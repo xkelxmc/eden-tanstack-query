@@ -222,6 +222,96 @@ describe("createEdenOptionsProxy", () => {
 			expect(key[0]).toEqual(["api", "posts", "get"])
 			expect(key[1]).toEqual({ input: { limit: 10 }, type: "infinite" })
 		})
+
+		test("excludes top-level headers from the query key", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				status: "active",
+				headers: { Authorization: "Bearer secret" },
+			})
+
+			expect(options.queryKey).toEqual([
+				["api", "users", "get"],
+				{ input: { status: "active" }, type: "query" },
+			])
+			// Rotating the token must not change the key.
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const rotated = (eden as any).api.users.get.queryOptions({
+				status: "active",
+				headers: { Authorization: "Bearer other" },
+			})
+			expect(rotated.queryKey).toEqual(options.queryKey)
+		})
+
+		test("excludes request-shape headers from the query key", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const options = (eden as any).api.users.get.queryOptions({
+				query: { status: "active" },
+				headers: { Authorization: "Bearer secret" },
+			})
+
+			expect(options.queryKey).toEqual([
+				["api", "users", "get"],
+				{ input: { status: "active" }, type: "query" },
+			])
+		})
+
+		test("queryKey helper matches the key of a query created with headers", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const withHeaders = (eden as any).api.users.get.queryOptions({
+				status: "active",
+				headers: { Authorization: "Bearer secret" },
+			})
+			const plainKey = eden.api.users.get.queryKey({ status: "active" })
+
+			expect(plainKey).toEqual(withHeaders.queryKey)
+		})
+
+		test("normalizes numeric path params in the key", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: same URL, same key
+			const numeric = (eden as any).api.users({ id: 123 }).get.queryKey()
+			const stringy = eden.api.users({ id: "123" }).get.queryKey()
+
+			expect(numeric).toEqual(stringy)
+		})
+
+		test("keeps direction in the infinite key so sort orders stay distinct", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const asc = (eden as any).api.posts.get.infiniteQueryKey({
+				limit: 10,
+				direction: "asc",
+			})
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const desc = (eden as any).api.posts.get.infiniteQueryKey({
+				limit: 10,
+				direction: "desc",
+			})
+
+			expect(asc).not.toEqual(desc)
+			expect(asc[1]).toEqual({
+				input: { limit: 10, direction: "asc" },
+				type: "infinite",
+			})
+		})
+
+		test("skipToken key differs from the parameterless route key", () => {
+			const eden = createEden()
+
+			const skipped = eden.api.users({ id: "1" }).get.queryOptions(skipToken)
+			const list = eden.api.users.get.queryOptions()
+
+			expect(skipped.queryKey).not.toEqual(list.queryKey)
+		})
 	})
 
 	describe("mutation key generation", () => {
@@ -702,10 +792,15 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(typeof options.queryFn).toBe("symbol")
 			expect(Object.is(options.queryFn, skipToken)).toBe(true)
+			// The key keeps its identity: same as the enabled query for id 123,
+			// never colliding with the parameterless route key.
 			expect(options.queryKey).toEqual([
 				["api", "users", "get"],
-				{ type: "query" },
+				{ input: { id: "123" }, type: "query" },
 			])
+			expect(options.queryKey).toEqual(
+				eden.api.users({ id: "123" }).get.queryOptions().queryKey,
+			)
 		})
 
 		test("multiple path params at different positions work correctly", async () => {
@@ -911,9 +1006,10 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(typeof options.queryFn).toBe("symbol")
 			expect(Object.is(options.queryFn, skipToken)).toBe(true)
+			// Path params stay in the key even when fetching is skipped.
 			expect(options.queryKey).toEqual([
 				["api", "comments", "get"],
-				{ type: "infinite" },
+				{ input: { postId: "42" }, type: "infinite" },
 			])
 		})
 	})
