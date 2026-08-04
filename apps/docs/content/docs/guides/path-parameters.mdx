@@ -246,7 +246,7 @@ function UserActions({ userId }: { userId: string }) {
 
 ## Type Safety
 
-TypeScript ensures all path parameters are correctly typed. If you miss a parameter or use the wrong type, you get a compile-time error:
+TypeScript ensures all path parameters are present. If you miss a parameter, you get a compile-time error:
 
 ```tsx
 const eden = useEden()
@@ -254,14 +254,12 @@ const eden = useEden()
 // Error: Property 'id' is missing
 eden.users({}).get.queryOptions()
 
-// Error: Type 'number' is not assignable to type 'string'
-eden.users({ id: 123 }).get.queryOptions() // if :id expects string
-
-// Correct
+// Both compile — params accept string | number
+eden.users({ id: 123 }).get.queryOptions()
 eden.users({ id: '123' }).get.queryOptions()
 ```
 
-The parameter types are inferred directly from your Elysia route definitions via the `params` schema.
+Parameter names are inferred from the route path. Every parameter accepts `string | number`; values are serialized into the URL, and the library normalizes them when building the query key, so numeric and string forms share one cache entry.
 
 ## Method-Name Collisions
 

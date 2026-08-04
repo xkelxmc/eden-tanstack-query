@@ -21,7 +21,7 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 ## Quick Start
 
 ```bash
-bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden
+bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
 ```
 
 ```typescript

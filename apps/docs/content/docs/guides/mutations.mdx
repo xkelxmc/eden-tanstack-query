@@ -85,34 +85,36 @@ const createPost = useMutation({
 
 ## Optimistic Updates
 
-Update the UI immediately while the mutation runs in the background:
+Update the UI immediately while the mutation runs in the background.
+
+Pass the lifecycle callbacks inside `mutationOptions()`. Spreading the options and adding `onMutate` at the `useMutation` call site does not compile: the spread pins the mutation's context type before `onMutate` can infer it, so the `context` argument of `onError` becomes `never`.
 
 ```tsx
-const toggleTodo = useMutation({
-  ...eden.todos({ id: todo.id }).patch.mutationOptions(),
+const toggleTodo = useMutation(
+  eden.todos({ id: todo.id }).patch.mutationOptions({
+    onMutate: async (newTodo) => {
+      await queryClient.cancelQueries({ queryKey: eden.todos.get.queryKey() })
 
-  onMutate: async (newTodo) => {
-    await queryClient.cancelQueries({ queryKey: eden.todos.get.queryKey() })
+      const previousTodos = queryClient.getQueryData(eden.todos.get.queryKey())
 
-    const previousTodos = queryClient.getQueryData(eden.todos.get.queryKey())
+      queryClient.setQueryData(
+        eden.todos.get.queryKey(),
+        (old: Todo[] | undefined) =>
+          old?.map(t => t.id === todo.id ? { ...t, completed: !t.completed } : t)
+      )
 
-    queryClient.setQueryData(
-      eden.todos.get.queryKey(),
-      (old: Todo[] | undefined) =>
-        old?.map(t => t.id === todo.id ? { ...t, completed: !t.completed } : t)
-    )
+      return { previousTodos }
+    },
 
-    return { previousTodos }
-  },
+    onError: (_err, _newTodo, context) => {
+      queryClient.setQueryData(eden.todos.get.queryKey(), context?.previousTodos)
+    },
 
-  onError: (_err, _newTodo, context) => {
-    queryClient.setQueryData(eden.todos.get.queryKey(), context?.previousTodos)
-  },
-
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: eden.todos.get.queryKey() })
-  },
-})
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eden.todos.get.queryKey() })
+    },
+  })
+)
 ```
 
 ## Mutation Key
