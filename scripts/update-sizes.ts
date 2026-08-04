@@ -147,9 +147,11 @@ async function main() {
 	}
 
 	if (updatedCount === 0) {
-		console.log("\n✅ Bundle sizes are up to date. No changes needed.\n")
+		console.log("\n✅ README metadata is up to date. No changes needed.\n")
 	} else {
-		console.log(`\n✅ Updated ${updatedCount} file(s) with: ${sizeString}\n`)
+		console.log(
+			`\n✅ Updated ${updatedCount} file(s) with: v${version}, ${sizeString}\n`,
+		)
 	}
 }
 
