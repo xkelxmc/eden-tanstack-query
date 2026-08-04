@@ -257,6 +257,28 @@ function navigateToEdenPath(
 	return edenPath
 }
 
+/**
+ * Resolve the Eden method to call, naming the route when it is missing.
+ */
+function resolveMethodFn(
+	edenEndpoint: unknown,
+	method: string,
+	paths: string[],
+): (opts?: unknown) => Promise<{ data: unknown; error: unknown }> {
+	const methodFn = (edenEndpoint as Record<string, unknown> | null)?.[method]
+
+	if (typeof methodFn !== "function") {
+		throw new Error(
+			`Invalid path: '${method}' does not exist on '${paths.slice(0, -1).join(".")}'`,
+		)
+	}
+
+	return methodFn as (opts?: unknown) => Promise<{
+		data: unknown
+		error: unknown
+	}>
+}
+
 // ============================================================================
 // Query Procedure
 // ============================================================================
@@ -297,9 +319,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					)
 
 					// Call the method
-					const methodFn = (edenEndpoint as Record<string, unknown>)[
-						method
-					] as (opts: unknown) => Promise<{ data: unknown; error: unknown }>
+					const methodFn = resolveMethodFn(edenEndpoint, method, paths)
 
 					const requestInput: Record<string, unknown> = {
 						fetch: { signal },
@@ -379,9 +399,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					)
 
 					// Call the method with cursor included in query
-					const methodFn = (edenEndpoint as Record<string, unknown>)[
-						method
-					] as (opts: unknown) => Promise<{ data: unknown; error: unknown }>
+					const methodFn = resolveMethodFn(edenEndpoint, method, paths)
 
 					const requestInput: Record<string, unknown> = {
 						fetch: { signal },
@@ -455,9 +473,7 @@ function createMutationProcedure(opts: ProcedureOptions) {
 					)
 
 					// Call the method with body
-					const methodFn = (edenEndpoint as Record<string, unknown>)[
-						method
-					] as (body: unknown) => Promise<{ data: unknown; error: unknown }>
+					const methodFn = resolveMethodFn(edenEndpoint, method, paths)
 
 					const result = await methodFn(input)
 
