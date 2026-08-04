@@ -5,6 +5,7 @@
 import type {
 	DataTag,
 	DefinedInitialDataInfiniteOptions,
+	InfiniteData,
 	QueryFunction,
 	SkipToken,
 	UndefinedInitialDataInfiniteOptions,
@@ -130,24 +131,24 @@ interface UndefinedEdenInfiniteQueryOptionsOut<TOutput, TError, TPageParam>
 	extends UndefinedInitialDataInfiniteOptions<
 			TOutput,
 			TError,
-			TOutput,
+			InfiniteData<TOutput, TPageParam>,
 			EdenQueryKey,
 			TPageParam
 		>,
 		EdenInfiniteQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TOutput, TError>
+	queryKey: DataTag<EdenQueryKey, InfiniteData<TOutput, TPageParam>, TError>
 }
 
 interface DefinedEdenInfiniteQueryOptionsOut<TData, TError, TPageParam>
 	extends DefinedInitialDataInfiniteOptions<
 			TData,
 			TError,
-			TData,
+			InfiniteData<TData, TPageParam>,
 			EdenQueryKey,
 			TPageParam
 		>,
 		EdenInfiniteQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TData, TError>
+	queryKey: DataTag<EdenQueryKey, InfiniteData<TData, TPageParam>, TError>
 }
 
 interface UnusedSkipTokenEdenInfiniteQueryOptionsOut<
@@ -157,12 +158,12 @@ interface UnusedSkipTokenEdenInfiniteQueryOptionsOut<
 > extends UnusedSkipTokenInfiniteOptions<
 			TOutput,
 			TError,
-			TOutput,
+			InfiniteData<TOutput, TPageParam>,
 			EdenQueryKey,
 			TPageParam
 		>,
 		EdenInfiniteQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TOutput, TError>
+	queryKey: DataTag<EdenQueryKey, InfiniteData<TOutput, TPageParam>, TError>
 }
 
 // ============================================================================
@@ -310,7 +311,7 @@ export function edenInfiniteQueryOptions<
 		input: inputIsSkipToken ? args.inputForKey : input,
 		pathParams: args.pathParams,
 		type: "infinite",
-	}) as DataTag<EdenQueryKey, TOutput, TError>
+	}) as DataTag<EdenQueryKey, InfiniteData<TOutput, TPageParam>, TError>
 
 	const queryFn: QueryFunction<TOutput, EdenQueryKey, TPageParam> = async (
 		context,

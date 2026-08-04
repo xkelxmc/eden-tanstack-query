@@ -95,19 +95,19 @@ interface UndefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
 			EdenQueryKey
 		>,
 		EdenQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TData, TError>
+	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
 }
 
 interface DefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
 	extends DefinedInitialDataOptions<TQueryFnData, TError, TData, EdenQueryKey>,
 		EdenQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TData, TError>
+	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
 }
 
 interface UnusedSkipTokenEdenQueryOptionsOut<TQueryFnData, TData, TError>
 	extends UnusedSkipTokenOptions<TQueryFnData, TError, TData, EdenQueryKey>,
 		EdenQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TData, TError>
+	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
 }
 
 // ============================================================================
