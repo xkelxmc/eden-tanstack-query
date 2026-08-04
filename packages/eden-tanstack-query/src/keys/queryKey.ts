@@ -43,8 +43,6 @@ export interface GetQueryKeyOptions {
 	path: string[]
 	/** Optional input parameters */
 	input?: unknown
-	/** Additional cache identity kept separate from request input */
-	scope?: unknown
 	/** Query type: 'query', 'infinite', or 'any' */
 	type?: QueryType
 }
@@ -73,26 +71,19 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 	const { path, type } = opts
 
 	// Handle skipToken - return key without input
-	const inputIsSkipToken = opts.input === skipToken
-	if (inputIsSkipToken && opts.scope === undefined) {
+	if (opts.input === skipToken) {
 		return [path]
 	}
 
 	// No input and type is 'any' → just path
-	if (
-		opts.input === undefined &&
-		opts.scope === undefined &&
-		(!type || type === "any")
-	) {
+	if (opts.input === undefined && (!type || type === "any")) {
 		return [path]
 	}
 
 	// Sanitize input to prevent prototype pollution
-	let input = inputIsSkipToken ? undefined : sanitizeInput(opts.input)
+	let input = sanitizeInput(opts.input)
 
-	// The infinite cursor is injected per page inside queryFn; keep it out of
-	// the key so pagination does not fragment the cache. User-owned fields
-	// (e.g. a sort `direction`) stay in the key.
+	// The cursor is injected per page, while direction may be user input.
 	if (type === "infinite" && isPlainObject(input) && "cursor" in input) {
 		const { cursor: _cursor, ...rest } = input
 		input = rest
@@ -103,9 +94,6 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 
 	if (input !== undefined) {
 		meta.input = input
-	}
-	if (opts.scope !== undefined) {
-		meta.scope = sanitizeInput(opts.scope)
 	}
 
 	if (type && type !== "any") {

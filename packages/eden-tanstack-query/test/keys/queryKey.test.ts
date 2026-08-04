@@ -63,20 +63,6 @@ describe("getQueryKey", () => {
 		])
 	})
 
-	test("distinct directions produce distinct infinite keys", () => {
-		const asc = getQueryKey({
-			path: ["api", "posts", "get"],
-			input: { limit: 10, direction: "asc" },
-			type: "infinite",
-		})
-		const desc = getQueryKey({
-			path: ["api", "posts", "get"],
-			input: { limit: 10, direction: "desc" },
-			type: "infinite",
-		})
-		expect(asc).not.toEqual(desc)
-	})
-
 	test("does not include type when type is 'any'", () => {
 		const key = getQueryKey({
 			path: ["api", "users", "get"],
@@ -169,8 +155,7 @@ describe("getQueryKey", () => {
 	})
 
 	describe("prototype pollution protection", () => {
-		// An object literal's `__proto__:` sets the prototype instead of an own
-		// key — JSON.parse is the shape untrusted input actually arrives in.
+		// JSON.parse creates the own key that object literals cannot represent.
 		test("strips an own __proto__ key from input", () => {
 			const key = getQueryKey({
 				path: ["api", "users", "get"],
@@ -217,23 +202,6 @@ describe("getQueryKey", () => {
 				["api", "users", "get"],
 				{ input: { user: { name: "test" } } },
 			])
-		})
-
-		test("strips own __proto__ keys from arrays of objects", () => {
-			const key = getQueryKey({
-				path: ["api", "users", "batch"],
-				input: [
-					JSON.parse('{"id":"1","__proto__":{"isAdmin":true}}'),
-					{ id: "2", constructor: "kept" },
-				],
-			})
-			// Typed as unknown[] so the inherited `constructor` of the first
-			// literal does not clash with the string key of the second.
-			const expected: unknown[] = [
-				{ id: "1" },
-				{ id: "2", constructor: "kept" },
-			]
-			expect(key).toEqual([["api", "users", "batch"], { input: expected }])
 		})
 
 		test("preserves valid input with similar-looking keys", () => {

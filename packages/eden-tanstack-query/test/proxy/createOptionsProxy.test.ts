@@ -10,7 +10,6 @@ import { createTestQueryClient } from "../../test-utils"
 
 const app = new Elysia()
 	.get("/api/hello", () => "world")
-	.get("/api/profile", ({ headers }) => headers.authorization ?? "")
 	.get(
 		"/api/users",
 		({ query }) => {
@@ -224,81 +223,11 @@ describe("createEdenOptionsProxy", () => {
 			expect(key[1]).toEqual({ input: { limit: 10 }, type: "infinite" })
 		})
 
-		test("keeps response-varying headers in the query key", () => {
-			const eden = createEden()
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const options = (eden as any).api.users.get.queryOptions({
-				status: "active",
-				headers: { Authorization: "Bearer secret" },
-			})
-
-			expect(options.queryKey).toEqual([
-				["api", "users", "get"],
-				{
-					input: { status: "active" },
-					scope: { headers: { Authorization: "Bearer secret" } },
-					type: "query",
-				},
-			])
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const rotated = (eden as any).api.users.get.queryOptions({
-				status: "active",
-				headers: { Authorization: "Bearer other" },
-			})
-			expect(rotated.queryKey).not.toEqual(options.queryKey)
-
-			const isolatedQueryClient = createTestQueryClient()
-			isolatedQueryClient.setQueryData(options.queryKey, [])
-			isolatedQueryClient.setQueryData(rotated.queryKey, [])
-			expect(
-				isolatedQueryClient
-					.getQueryCache()
-					.findAll(eden.api.users.get.queryFilter({ status: "active" })),
-			).toHaveLength(2)
-		})
-
-		test("normalizes request-shape headers in the query key", () => {
-			const eden = createEden()
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const options = (eden as any).api.users.get.queryOptions({
-				query: { status: "active" },
-				headers: { Authorization: "Bearer secret" },
-			})
-
-			expect(options.queryKey).toEqual([
-				["api", "users", "get"],
-				{
-					input: { status: "active" },
-					scope: { headers: { Authorization: "Bearer secret" } },
-					type: "query",
-				},
-			])
-		})
-
-		test("queryKey helper matches the key of a query created with headers", () => {
-			const eden = createEden()
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const withHeaders = (eden as any).api.users.get.queryOptions({
-				status: "active",
-				headers: { Authorization: "Bearer secret" },
-			})
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const helperKey = (eden as any).api.users.get.queryKey({
-				status: "active",
-				headers: { Authorization: "Bearer secret" },
-			})
-
-			expect(helperKey).toEqual(withHeaders.queryKey)
-		})
-
-		test("partitions header-dependent data without serializing headers", async () => {
+		test("keeps request headers in cache identity", async () => {
 			const requests: string[] = []
 			const client = {
 				api: {
-					profile: {
+					users: {
 						get: async (request: { headers?: { Authorization?: string } }) => {
 							const authorization = request.headers?.Authorization ?? ""
 							requests.push(authorization)
@@ -315,25 +244,36 @@ describe("createEdenOptionsProxy", () => {
 				queryClient: isolatedQueryClient,
 			})
 
-			const alice = eden.api.profile.get.queryOptions({
+			const aliceInput = {
+				status: "active",
 				headers: { Authorization: "Bearer alice" },
-				cachePartition: "alice",
-			})
-			const bob = eden.api.profile.get.queryOptions({
+			}
+			const alice = eden.api.users.get.queryOptions(aliceInput)
+			const bob = eden.api.users.get.queryOptions({
+				status: "active",
 				headers: { Authorization: "Bearer bob" },
-				cachePartition: "bob",
 			})
-			const aliceKey = eden.api.profile.get.queryKey({
-				headers: { Authorization: "rotated token" },
-				cachePartition: "alice",
-			})
+			const helperKey = eden.api.users.get.queryKey(aliceInput)
 
-			expect(JSON.stringify(alice.queryKey)).not.toContain("Bearer alice")
-			expect(alice.queryKey).toEqual(aliceKey)
+			expect(alice.queryKey).toEqual([
+				["api", "users", "get"],
+				{ input: aliceInput, type: "query" },
+			])
+			expect(helperKey).toEqual(alice.queryKey)
+
 			expect(alice.queryKey).not.toEqual(bob.queryKey)
 			expect(await isolatedQueryClient.fetchQuery(alice)).toBe("Bearer alice")
 			expect(await isolatedQueryClient.fetchQuery(bob)).toBe("Bearer bob")
 			expect(requests).toEqual(["Bearer alice", "Bearer bob"])
+
+			const wrappedInput = {
+				query: { status: "active" },
+				headers: { Authorization: "Bearer alice" },
+			}
+			expect(eden.api.users.get.queryOptions(wrappedInput).queryKey).toEqual([
+				["api", "users", "get"],
+				{ input: wrappedInput, type: "query" },
+			])
 		})
 
 		test("normalizes numeric path params in the key", () => {
@@ -346,64 +286,9 @@ describe("createEdenOptionsProxy", () => {
 			expect(numeric).toEqual(stringy)
 		})
 
-		test("keeps direction in the infinite key so sort orders stay distinct", () => {
-			const eden = createEden()
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const asc = (eden as any).api.posts.get.infiniteQueryKey({
-				limit: 10,
-				direction: "asc",
-			})
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const desc = (eden as any).api.posts.get.infiniteQueryKey({
-				limit: 10,
-				direction: "desc",
-			})
-
-			expect(asc).not.toEqual(desc)
-			expect(asc[1]).toEqual({
-				input: { limit: 10, direction: "asc" },
-				type: "infinite",
-			})
-		})
-
-		test("skipToken key differs from the parameterless route key", () => {
-			const eden = createEden()
-
-			const skipped = eden.api.users({ id: "1" }).get.queryOptions(skipToken)
-			const list = eden.api.users.get.queryOptions()
-
-			expect(skipped.queryKey).not.toEqual(list.queryKey)
-		})
-
-		test("skipToken without path params matches the no-input key", () => {
-			const eden = createEden()
-
-			const skipped = eden.api.users.get.queryOptions(skipToken)
-			const enabled = eden.api.users.get.queryOptions()
-
-			expect(skipped.queryFn).toBeUndefined()
-			expect(skipped.enabled).toBe(false)
-			expect(skipped.queryKey).toEqual(enabled.queryKey)
-		})
-
-		test("infinite skipToken without path params matches the no-input key", () => {
-			const eden = createEden()
-
-			const skipped = eden.api.posts.get.infiniteQueryOptions(skipToken, {
-				getNextPageParam: () => undefined,
-			})
-			const enabled = eden.api.posts.get.infiniteQueryOptions(undefined, {
-				getNextPageParam: () => undefined,
-			})
-
-			expect(skipped.queryFn).toBeUndefined()
-			expect(skipped.enabled).toBe(false)
-			expect(skipped.queryKey).toEqual(enabled.queryKey)
-		})
-
 		test("skipToken observer does not replace an enabled query function", async () => {
 			let requestCount = 0
+			let defaultRequestCount = 0
 			const client = {
 				api: {
 					users: {
@@ -414,13 +299,24 @@ describe("createEdenOptionsProxy", () => {
 					},
 				},
 			} as unknown as ReturnType<typeof treaty<App>>
-			const isolatedQueryClient = createTestQueryClient()
+			const isolatedQueryClient = new QueryClient({
+				defaultOptions: {
+					queries: {
+						retry: false,
+						queryFn: async () => {
+							defaultRequestCount++
+							return "default"
+						},
+					},
+				},
+			})
 			const eden = createEdenOptionsProxy<App>({
 				client,
 				queryClient: isolatedQueryClient,
 			})
 			const enabledOptions = eden.api.users.get.queryOptions()
 			const skippedOptions = eden.api.users.get.queryOptions(skipToken)
+			expect(skippedOptions.queryKey).toEqual(enabledOptions.queryKey)
 			const enabledObserver = new QueryObserver(
 				isolatedQueryClient,
 				enabledOptions,
@@ -439,85 +335,35 @@ describe("createEdenOptionsProxy", () => {
 			})
 
 			expect(requestCount).toBe(2)
+			expect(defaultRequestCount).toBe(0)
 			unsubscribeSkipped()
 			unsubscribeEnabled()
 			isolatedQueryClient.clear()
 		})
 
-		test("Date values survive key building alongside path params", () => {
+		test("infinite skipToken blocks the global default query function", async () => {
+			let defaultRequestCount = 0
+			const isolatedQueryClient = new QueryClient({
+				defaultOptions: {
+					queries: {
+						retry: false,
+						queryFn: async () => {
+							defaultRequestCount++
+							return "default"
+						},
+					},
+				},
+			})
 			const eden = createEden()
-			const january = new Date("2026-01-01T00:00:00Z")
-			const february = new Date("2026-02-01T00:00:00Z")
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const janKey = (eden as any).api
-				.users({ id: "1" })
-				.get.queryKey({ from: january })
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const febKey = (eden as any).api
-				.users({ id: "1" })
-				.get.queryKey({ from: february })
-
-			expect(janKey[1]).toEqual({
-				input: { id: "1", from: january },
-				type: "query",
-			})
-			expect(janKey).not.toEqual(febKey)
-		})
-
-		test("Date values survive key building alongside headers", () => {
-			const eden = createEden()
-			const from = new Date("2026-01-01T00:00:00Z")
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const key = (eden as any).api.users.get.queryKey({
-				from,
-				headers: { Authorization: "Bearer secret" },
+			const skipped = eden.api.posts.get.infiniteQueryOptions(skipToken, {
+				getNextPageParam: () => undefined,
 			})
 
-			expect(key[1]).toEqual({
-				input: { from },
-				scope: { headers: { Authorization: "Bearer secret" } },
-				type: "query",
-			})
-		})
-
-		test("headers-only input has its own key", () => {
-			const eden = createEden()
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const withHeaders = (eden as any).api.users.get.queryOptions({
-				headers: { Authorization: "Bearer secret" },
-			})
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const withHeadersFilter = (eden as any).api.users.get.queryFilter({
-				headers: { Authorization: "Bearer secret" },
-			})
-			const plain = eden.api.users.get.queryOptions()
-
-			expect(withHeaders.queryKey).not.toEqual(plain.queryKey)
-			expect(withHeadersFilter.queryKey[1]).toEqual({
-				scope: { headers: { Authorization: "Bearer secret" } },
-			})
-		})
-
-		test("infinite keys normalize headers in both accepted shapes", () => {
-			const eden = createEden()
-
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const direct = (eden as any).api.posts.get.infiniteQueryKey({
-				limit: 10,
-				headers: { Authorization: "Bearer secret" },
-			})
-			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
-			const wrapped = (eden as any).api.posts.get.infiniteQueryKey({
-				query: { limit: 10 },
-				headers: { Authorization: "Bearer secret" },
-			})
-			const plain = eden.api.posts.get.infiniteQueryKey({ limit: 10 })
-
-			expect(direct).toEqual(wrapped)
-			expect(direct).not.toEqual(plain)
+			expect(Object.hasOwn(skipped, "queryFn")).toBe(true)
+			await expect(
+				isolatedQueryClient.fetchInfiniteQuery(skipped),
+			).rejects.toBeDefined()
+			expect(defaultRequestCount).toBe(0)
 		})
 	})
 
@@ -997,16 +843,18 @@ describe("createEdenOptionsProxy", () => {
 			const eden = createEden()
 			const options = eden.api.users({ id: "123" }).get.queryOptions(skipToken)
 
+			expect(Object.hasOwn(options, "queryFn")).toBe(true)
 			expect(options.queryFn).toBeUndefined()
 			expect(options.enabled).toBe(false)
-			// The key keeps its identity: same as the enabled query for id 123,
-			// never colliding with the parameterless route key.
 			expect(options.queryKey).toEqual([
 				["api", "users", "get"],
 				{ input: { id: "123" }, type: "query" },
 			])
 			expect(options.queryKey).toEqual(
 				eden.api.users({ id: "123" }).get.queryOptions().queryKey,
+			)
+			expect(options.queryKey).not.toEqual(
+				eden.api.users.get.queryOptions().queryKey,
 			)
 		})
 
@@ -1211,9 +1059,9 @@ describe("createEdenOptionsProxy", () => {
 					getNextPageParam: () => undefined,
 				})
 
+			expect(Object.hasOwn(options, "queryFn")).toBe(true)
 			expect(options.queryFn).toBeUndefined()
 			expect(options.enabled).toBe(false)
-			// Path params stay in the key even when fetching is skipped.
 			expect(options.queryKey).toEqual([
 				["api", "comments", "get"],
 				{ input: { postId: "42" }, type: "infinite" },

@@ -32,8 +32,6 @@ export type QueryType = "query" | "infinite" | "any"
 export type EdenQueryKeyMeta<TInput = unknown> = {
 	/** Input parameters for the query */
 	input?: TInput
-	/** Additional cache identity, such as a non-secret request partition */
-	scope?: unknown
 	/** Query type discriminator (excludes 'any' as it's only for filtering) */
 	type?: Exclude<QueryType, "any">
 }

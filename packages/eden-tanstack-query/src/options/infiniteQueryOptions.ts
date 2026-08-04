@@ -54,14 +54,8 @@ export interface EdenInfiniteQueryOptionsArgs<TInput, TOutput, TPageParam> {
 	path: string[]
 	/** Input parameters (excluding cursor) or skipToken */
 	input: TInput | SkipToken
-	/**
-	 * Input used for the query key when it differs from `input`, such as when
-	 * normalized path params are merged into request input.
-	 * When omitted, the key is derived from `input`.
-	 */
+	/** Cache identity for skipped queries with path params. */
 	inputForKey?: unknown
-	/** Additional cache identity kept separate from request input. */
-	scopeForKey?: unknown
 	/** Function to fetch data with cursor */
 	fetch: (
 		input: TInput & { cursor: TPageParam },
@@ -295,7 +289,6 @@ export function edenInfiniteQueryOptions<
 	path: string[]
 	input: TInput | SkipToken
 	inputForKey?: unknown
-	scopeForKey?: unknown
 	fetch: (
 		input: TInput & { cursor: TPageParam },
 		signal?: AbortSignal,
@@ -303,23 +296,13 @@ export function edenInfiniteQueryOptions<
 	initialPageParam: TPageParam
 	opts: AnyEdenInfiniteQueryOptionsIn<TOutput, TOutput, TError, TPageParam>
 }): AnyEdenInfiniteQueryOptionsOut<TOutput, TError, TPageParam> {
-	const {
-		path,
-		input,
-		scopeForKey,
-		fetch: fetchFn,
-		initialPageParam,
-		opts,
-	} = args
+	const { path, input, fetch: fetchFn, initialPageParam, opts } = args
 
 	const inputIsSkipToken = input === skipToken
 
-	const keyInput = "inputForKey" in args ? args.inputForKey : input
-
 	const queryKey = getQueryKey({
 		path,
-		input: keyInput === skipToken ? undefined : keyInput,
-		scope: scopeForKey,
+		input: inputIsSkipToken ? args.inputForKey : input,
 		type: "infinite",
 	}) as DataTag<EdenQueryKey, TOutput, TError>
 
@@ -340,21 +323,14 @@ export function edenInfiniteQueryOptions<
 		return await fetchFn(fullInput, signal)
 	}
 
-	const result = inputIsSkipToken
-		? {
-				...opts,
-				queryKey,
-				enabled: false,
-				initialPageParam,
-				eden: { path: path.join(".") },
-			}
-		: {
-				...opts,
-				queryKey,
-				queryFn,
-				initialPageParam,
-				eden: { path: path.join(".") },
-			}
+	const result = {
+		...opts,
+		queryKey,
+		queryFn: inputIsSkipToken ? undefined : queryFn,
+		...(inputIsSkipToken ? { enabled: false } : {}),
+		initialPageParam,
+		eden: { path: path.join(".") },
+	}
 
 	return result as AnyEdenInfiniteQueryOptionsOut<TOutput, TError, TPageParam>
 }

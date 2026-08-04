@@ -114,6 +114,7 @@ describe("edenQueryOptions", () => {
 			fetch: async () => ({ id: "1", name: "Test" }),
 		})
 
+		expect(Object.hasOwn(options, "queryFn")).toBe(true)
 		expect(options.queryFn).toBeUndefined()
 		expect(options.enabled).toBe(false)
 		// When skipToken, queryKey should not include input

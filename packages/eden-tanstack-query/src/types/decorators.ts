@@ -74,18 +74,13 @@ export interface EdenQueryOptionsResult {
 type EdenRequestHeaders = Record<string, string | undefined>
 
 /**
- * Request-style query input with optional headers and safe cache partitioning.
+ * Request-style query input with optional headers.
+ * Supports: { query: {...}, headers: {...} }
  */
 type EdenQueryRequestInput<TInput> = Simplify<
-	({} extends TInput ? { query?: TInput } : { query: TInput }) &
-		(
-			| { headers?: EdenRequestHeaders; cachePartition?: never }
-			| {
-					headers: EdenRequestHeaders
-					/** Non-secret identity used instead of headers in the serialized query key. */
-					cachePartition: string | number
-			  }
-		)
+	({} extends TInput ? { query?: TInput } : { query: TInput }) & {
+		headers?: EdenRequestHeaders
+	}
 >
 
 /**
@@ -93,7 +88,7 @@ type EdenQueryRequestInput<TInput> = Simplify<
  * Supports:
  * - direct query object: { role: "admin" }
  * - direct query + headers: { role: "admin", headers: {...} }
- * - request shape: { query: { role: "admin" }, headers: {...}, cachePartition: "user-1" }
+ * - request shape: { query: { role: "admin" }, headers: {...} }
  */
 type EdenQueryProcedureInput<TInput> =
 	| TInput
