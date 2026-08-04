@@ -28,7 +28,7 @@
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"unit-test:run": "vitest run --coverage",
-		"typecheck": "bunx tsc --noEmit && bun run --filter=eden-tanstack-react-query build:types && bun run --filter=@eden-tanstack-query/docs typecheck && bun run --filter=@eden-tanstack-query/example-basic typecheck && bun run --filter=@examples/medium typecheck && bun run --filter=@examples/large typecheck",
+		"typecheck": "bun run --filter=eden-tanstack-react-query build:types && bunx tsc --noEmit && bun run --filter=@eden-tanstack-query/docs typecheck && bun run --filter=@eden-tanstack-query/example-basic typecheck && bun run --filter=@examples/medium typecheck && bun run --filter=@examples/large typecheck",
 		"check": "bunx biome check . && bun run typecheck",
 		"check:fix": "bunx biome check --write . && bun run typecheck",
 		"build:all": "bun run --filter=eden-tanstack-react-query build && bun run --filter=@eden-tanstack-query/docs build && bun run --filter=@eden-tanstack-query/example-basic build && bun run --filter=@examples/medium build && bun run --filter=@examples/large build"
