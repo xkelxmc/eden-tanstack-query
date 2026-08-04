@@ -266,6 +266,8 @@ export function edenInfiniteQueryOptions<
  *       query: { limit: input.limit, cursor: input.cursor },
  *       fetch: { signal }
  *     })
+ *     // Eden does not throw on HTTP errors - rethrow so the query errors out
+ *     if (result.error) throw result.error
  *     return result.data
  *   },
  *   opts: {

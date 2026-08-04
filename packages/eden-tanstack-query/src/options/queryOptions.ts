@@ -171,6 +171,8 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(
  *   input: { id: '1' },
  *   fetch: async (input, signal) => {
  *     const response = await edenClient.api.users.get({ query: input, fetch: { signal } })
+ *     // Eden does not throw on HTTP errors - rethrow so the query errors out
+ *     if (response.error) throw response.error
  *     return response.data
  *   },
  * })

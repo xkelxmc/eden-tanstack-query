@@ -206,12 +206,19 @@ function navigateToEdenPath(
 	pathSegments: string[],
 	pathParams: PositionedPathParam[],
 ): unknown {
-	let edenPath = client
-
 	// Build a Map for O(1) param lookup by index
 	const positionedParamsIndex = new Map(
 		pathParams.map((p) => [p.pathIndex, p.params]),
 	)
+
+	let edenPath = client
+
+	// Params recorded at index -1 were applied on the root proxy itself
+	// (a route like /:tenant/...) — apply them to the client before descending.
+	const rootParams = positionedParamsIndex.get(-1)
+	if (rootParams && typeof edenPath === "function") {
+		edenPath = (edenPath as (params: unknown) => unknown)(rootParams)
+	}
 
 	for (let i = 0; i < pathSegments.length; i++) {
 		const segment = pathSegments[i]
@@ -238,13 +245,12 @@ function navigateToEdenPath(
 
 		edenPath = nextPath
 
-		// Apply path param if one was recorded at this index
-		// Skip if current segment is a query/mutation method
-		if (!isQueryMethod(segment) && !isMutationMethod(segment)) {
-			const params = positionedParamsIndex.get(i)
-			if (params && typeof edenPath === "function") {
-				edenPath = (edenPath as (params: unknown) => unknown)(params)
-			}
+		// Apply path param if one was recorded at this index. Every element of
+		// pathSegments is a genuine URL segment — the terminal HTTP method is
+		// never part of it — so method-named segments take params like any other.
+		const params = positionedParamsIndex.get(i)
+		if (params && typeof edenPath === "function") {
+			edenPath = (edenPath as (params: unknown) => unknown)(params)
 		}
 	}
 
@@ -473,6 +479,115 @@ function createMutationProcedure(opts: ProcedureOptions) {
 // ============================================================================
 
 /**
+ * Names reserved for procedure members. On the wrong kind of procedure they
+ * resolve to undefined instead of becoming path segments, so introspection
+ * like `eden.users.get.mutationOptions === undefined` keeps working.
+ */
+const PROCEDURE_MEMBERS = new Set([
+	"queryOptions",
+	"queryKey",
+	"queryFilter",
+	"infiniteQueryOptions",
+	"infiniteQueryKey",
+	"infiniteQueryFilter",
+	"mutationOptions",
+	"mutationKey",
+])
+
+/**
+ * Resolve a child property of a path node: HTTP-method names become
+ * procedures (still usable as segments — see createProcedureProxy), everything
+ * else extends the path.
+ */
+function resolveChild<TApp extends AnyElysia>(
+	opts: CreateEdenOptionsProxyOptions<TApp>,
+	paths: string[],
+	pathParams: PositionedPathParam[],
+	prop: string,
+): unknown {
+	const { client } = opts
+
+	if (isQueryMethod(prop)) {
+		const nextPaths = [...paths, prop]
+		return createProcedureProxy(
+			createQueryProcedure({
+				client,
+				paths: nextPaths,
+				pathParams: [...pathParams],
+			}),
+			opts,
+			nextPaths,
+			[...pathParams],
+		)
+	}
+
+	if (isMutationMethod(prop)) {
+		const nextPaths = [...paths, prop]
+		return createProcedureProxy(
+			createMutationProcedure({
+				client,
+				paths: nextPaths,
+				pathParams: [...pathParams],
+			}),
+			opts,
+			nextPaths,
+			[...pathParams],
+		)
+	}
+
+	return createEdenOptionsProxy(opts, [...paths, prop], [...pathParams])
+}
+
+/**
+ * Wrap a procedure so a method-named property stays usable as a path segment.
+ * `eden.account.delete.mutationOptions()` is DELETE /account, while
+ * `eden.account.delete.post.mutationOptions()` is POST /account/delete —
+ * the two must never cross-fire into each other's verb or URL.
+ */
+function createProcedureProxy<TApp extends AnyElysia>(
+	procedure: Record<string, unknown>,
+	opts: CreateEdenOptionsProxyOptions<TApp>,
+	paths: string[],
+	pathParams: PositionedPathParam[],
+) {
+	return new Proxy(function edenProxy() {}, {
+		get: (_target, prop) => {
+			if (typeof prop === "symbol" || prop === "then") {
+				return undefined
+			}
+
+			if (Object.hasOwn(procedure, prop)) {
+				return procedure[prop]
+			}
+
+			if (PROCEDURE_MEMBERS.has(prop)) {
+				return undefined
+			}
+
+			// Not a procedure member: the method-named element is really a path
+			// segment — keep resolving children from it.
+			return resolveChild(opts, paths, pathParams, prop)
+		},
+
+		has: (_target, prop) =>
+			typeof prop === "string" && Object.hasOwn(procedure, prop),
+
+		apply: (_target, _thisArg, args) => {
+			// Called as a segment: record path params, same as the base proxy.
+			const params =
+				args && args.length > 0 && args[0] !== undefined
+					? (args[0] as Record<string, unknown>)
+					: {}
+			return createEdenOptionsProxy(
+				opts,
+				[...paths],
+				[...pathParams, { pathIndex: paths.length - 1, params }],
+			)
+		},
+	})
+}
+
+/**
  * Creates a recursive proxy that decorates Eden routes with TanStack Query options.
  *
  * @example
@@ -500,8 +615,6 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 	paths: string[] = [],
 	pathParams: PositionedPathParam[] = [],
 ): EdenOptionsProxy<TApp> {
-	const { client } = opts
-
 	// Using function as proxy target to support both property access and function calls.
 	// This enables: eden.api.users({ id }).get.queryOptions()
 	const proxy = new Proxy(function edenProxy() {}, {
@@ -512,26 +625,9 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 				return undefined
 			}
 
-			// Check if it's a query method (GET, OPTIONS, HEAD)
-			if (isQueryMethod(prop)) {
-				return createQueryProcedure({
-					client,
-					paths: [...paths, prop],
-					pathParams: [...pathParams],
-				})
-			}
-
-			// Check if it's a mutation method (POST, PUT, PATCH, DELETE)
-			if (isMutationMethod(prop)) {
-				return createMutationProcedure({
-					client,
-					paths: [...paths, prop],
-					pathParams: [...pathParams],
-				})
-			}
-
-			// Otherwise, continue building path (immutable spread to prevent race conditions)
-			return createEdenOptionsProxy(opts, [...paths, prop], [...pathParams])
+			// HTTP-method names become procedures, everything else extends the
+			// path (immutable spread to prevent race conditions).
+			return resolveChild(opts, paths, pathParams, prop)
 		},
 
 		apply: (_target, _thisArg, args) => {
