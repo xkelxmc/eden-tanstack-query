@@ -87,7 +87,7 @@ jobs:
           TARBALL="$(ls "$GITHUB_WORKSPACE"/packages/eden-tanstack-query/eden-tanstack-react-query-*.tgz)"
           mkdir -p /tmp/artifact-smoke && cd /tmp/artifact-smoke
           npm init -y > /dev/null
-          npm install --no-audit --no-fund "$TARBALL" typescript@5 @tanstack/react-query elysia @elysiajs/eden react react-dom @types/react > /dev/null
+          npm install --no-audit --no-fund "$TARBALL" typescript@5 @tanstack/react-query@5.62.0 elysia @elysiajs/eden react react-dom @types/react > /dev/null
           cat > tsconfig.json <<'EOF'
           {
             "compilerOptions": {

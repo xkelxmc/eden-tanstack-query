@@ -9,6 +9,8 @@
  * (verified against typescript 7.0.2). The attw gate in CI enforces that the
  * rewrite stays correct.
  */
+
+import { fileURLToPath } from "node:url"
 import { Glob } from "bun"
 
 const distUrl = new URL("../dist/", import.meta.url)
@@ -16,7 +18,7 @@ const specifier = /(from\s*"|import\(\s*")(\.\.?\/[^"]+?)(?=")/g
 
 let rewrites = 0
 let touched = 0
-for await (const name of new Glob("**/*.d.ts").scan(distUrl.pathname)) {
+for await (const name of new Glob("**/*.d.ts").scan(fileURLToPath(distUrl))) {
 	const file = Bun.file(new URL(name, distUrl))
 	const text = await file.text()
 	const next = text.replace(
