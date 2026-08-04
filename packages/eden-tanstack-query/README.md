@@ -201,13 +201,13 @@ eden.users.get.queryOptions({
 
 ## 🔄 Comparison
 
-| Feature | eden-tanstack-react-query | eden-query |
-|---------|---------------------------|------------|
-| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` |
-| TanStack Query Native | ✅ Standard hooks | ❌ Custom wrappers |
-| Query Options | ✅ Full access | ❌ Limited |
-| Learning Curve | Standard TanStack Query | Custom API |
-| Bundle Size | ~10 KB | Larger |
+| Feature | eden-tanstack-react-query | @ap0nia/eden-react-query |
+|---------|---------------------------|--------------------------|
+| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` + options helpers |
+| TanStack Query Native | ✅ Standard hooks only | ⚠️ Custom hooks first, helpers available |
+| Query Keys | Explicit `queryKey()` / `queryFilter()` | tRPC-style utils |
+| Learning Curve | Standard TanStack Query | tRPC-style API |
+| Bundle Size | **Size:** 13.51 KB (gzipped: 3.19 KB) | Larger |
 
 ## 📄 License
 
