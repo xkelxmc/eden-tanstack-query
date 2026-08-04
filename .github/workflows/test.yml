@@ -38,3 +38,75 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: false
+
+  artifact:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build package
+        run: bun run build
+
+      - name: Pack artifact
+        run: npm pack
+        working-directory: packages/eden-tanstack-query
+
+      - name: Lint package manifest
+        run: bunx publint eden-tanstack-react-query-*.tgz
+        working-directory: packages/eden-tanstack-query
+
+      # The package is intentionally ESM-only; require() works on Node >= 22 via
+      # require(esm), so attw's node16-from-CJS "CJSResolvesToESM" warning is expected.
+      - name: Check type resolution of the artifact
+        run: bunx @arethetypeswrong/cli eden-tanstack-react-query-*.tgz --ignore-rules cjs-resolves-to-esm
+        working-directory: packages/eden-tanstack-query
+
+      # skipLibCheck stays true: upstream elysia/eden declarations are not clean under
+      # TS 5 + nodenext, and attw above already hard-fails on resolution errors inside
+      # our declarations. If resolution silently degrades the API to `any`, the
+      # mis-assignment in the probe becomes legal and the unused @ts-expect-error
+      # fails the compile - which is exactly the regression this step guards.
+      - name: Smoke-test artifact in a NodeNext consumer
+        run: |
+          TARBALL="$(ls "$GITHUB_WORKSPACE"/packages/eden-tanstack-query/eden-tanstack-react-query-*.tgz)"
+          mkdir -p /tmp/artifact-smoke && cd /tmp/artifact-smoke
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$TARBALL" typescript@5 @tanstack/react-query elysia @elysiajs/eden react react-dom @types/react > /dev/null
+          cat > tsconfig.json <<'EOF'
+          {
+            "compilerOptions": {
+              "module": "nodenext",
+              "moduleResolution": "nodenext",
+              "strict": true,
+              "skipLibCheck": true,
+              "noEmit": true
+            },
+            "include": ["probe.ts"]
+          }
+          EOF
+          cat > probe.ts <<'EOF'
+          import { getQueryKey } from "eden-tanstack-react-query"
+
+          const key = getQueryKey({ path: ["users", "get"], type: "query" })
+          // @ts-expect-error the key must stay typed as EdenQueryKey, never `any`
+          const _mistyped: number = key
+          export {}
+          EOF
+          npx tsc -p tsconfig.json
+          node -e "const m = require('eden-tanstack-react-query'); if (!m.getQueryKey) throw new Error('require() surface missing')"
