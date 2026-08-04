@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2026-08-04
+
+### Changed
+- Toolchain moved to TypeScript 7.0.2, Vite 8, Bun 1.3.14 and Node 24; the emitted bundle and declarations are byte-for-byte identical to 0.1.10
+- TanStack Query 5.100.5 → 5.101.4
+- Elysia 1.4.28 → 1.4.29
+- React 19.2.5 → 19.2.8
+- Biome 2.4.13 → 2.5.6
+- vitest 4.1.5 → 4.1.10
+- happy-dom 20.9.0 → 20.11.1
+- `@testing-library/jest-dom` 6.9.1 → 7.0.0
+
+No source changes: the public API, its types and the peer dependency ranges are untouched.
+
 ## [0.1.10] - 2026-04-27
 
 ### Fixed
