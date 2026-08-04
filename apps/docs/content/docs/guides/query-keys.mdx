@@ -95,7 +95,9 @@ eden.posts.get.infiniteQueryKey({ limit: 10 }, { initialCursor: 'start' })
 ```
 
 The initial cursor is part of an exact infinite-query key. The helper defaults
-it to `null`, matching `infiniteQueryOptions()`.
+it to `null` for optional cursor routes, matching `infiniteQueryOptions()`.
+Required cursor routes must pass the same explicit non-null `initialCursor` to
+both helpers.
 
 ### infiniteQueryFilter()
 
@@ -115,8 +117,10 @@ Infinite-query filters match all initial-cursor variants by default. Pass
 hash, cursor values are compared as complete values rather than partial object
 or array prefixes, while route input keeps TanStack Query's normal partial
 matching. A custom `queryKeyHashFn` defines cursor identity just as it does for
-cache entries. `exact: true` uses the default `null` cursor when `initialCursor`
-is omitted.
+cache entries. On optional cursor routes, `exact: true` uses the default `null`
+cursor when `initialCursor` is omitted. Required cursor routes allow an omitted
+cursor only for broad filters with `exact` absent or `false`; exact and
+cursor-specific filters require an explicit non-null cursor.
 
 ### mutationKey()
 

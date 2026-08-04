@@ -52,6 +52,35 @@ const app = new Elysia()
 		},
 		{ params: t.Object({ id: t.String() }) },
 	)
+	.get(
+		"/required-cursor",
+		({ query, request }) => {
+			captured.url = request.url
+			captured.query = query
+			return { items: [query.cursor], next: query.cursor }
+		},
+		{ query: t.Object({ cursor: t.String() }) },
+	)
+	.get(
+		"/required-nullable-cursor",
+		({ query, request }) => {
+			captured.url = request.url
+			captured.query = query
+			return { items: [query.cursor], next: query.cursor }
+		},
+		{
+			query: t.Object({ cursor: t.Union([t.String(), t.Null()]) }),
+		},
+	)
+	.get(
+		"/optional-cursor",
+		({ query, request }) => {
+			captured.url = request.url
+			captured.query = query
+			return { items: [query.cursor ?? "first"], next: query.cursor ?? null }
+		},
+		{ query: t.Object({ cursor: t.Optional(t.String()) }) },
+	)
 	.post(
 		"/users",
 		({ body, request }) => {
@@ -132,6 +161,52 @@ describe("real treaty client through the options proxy", () => {
 
 		expect(data).toEqual({ id: "42", name: "User 42" })
 		expect(new URL(captured.url ?? "").pathname).toBe("/users/42")
+	})
+
+	test("required cursors use an explicit non-null value on the wire", async () => {
+		const queryClient = createTestQueryClient()
+		const options = eden["required-cursor"].get.infiniteQueryOptions(
+			{},
+			{
+				initialCursor: "start",
+				getNextPageParam: (last) => last.next,
+			},
+		)
+
+		const data = await queryClient.fetchInfiniteQuery(options)
+
+		expect(options.initialPageParam).toBe("start")
+		expect(data.pages[0]).toEqual({ items: ["start"], next: "start" })
+		expect(captured.query).toEqual({ cursor: "start" })
+	})
+
+	test("required nullable cursors still need a non-null wire value", async () => {
+		const queryClient = createTestQueryClient()
+		const options = eden["required-nullable-cursor"].get.infiniteQueryOptions(
+			{},
+			{
+				initialCursor: "start",
+				getNextPageParam: (last) => last.next,
+			},
+		)
+
+		await queryClient.fetchInfiniteQuery(options)
+
+		expect(captured.query).toEqual({ cursor: "start" })
+	})
+
+	test("optional cursors can use the omitted null default", async () => {
+		const queryClient = createTestQueryClient()
+		const options = eden["optional-cursor"].get.infiniteQueryOptions(
+			{},
+			{ getNextPageParam: (last) => last.next ?? undefined },
+		)
+
+		const data = await queryClient.fetchInfiniteQuery(options)
+
+		expect(options.initialPageParam).toBe(null)
+		expect(data.pages[0]).toEqual({ items: ["first"], next: null })
+		expect(captured.query).toEqual({})
 	})
 
 	test("POST sends the body as-is", async () => {

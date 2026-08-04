@@ -140,9 +140,9 @@ Returns the Eden options proxy with methods for each route.
 
 | Method | Description |
 |--------|-------------|
-| `.queryOptions(input?, opts?)` | Options for `useQuery` |
+| `.queryOptions(input, opts?)` | Options for `useQuery`; input is optional only when the route query is omittable |
 | `.queryKey(input?)` | Query key for cache operations |
-| `.infiniteQueryOptions(input, opts)` | Options for `useInfiniteQuery` |
+| `.infiniteQueryOptions(input, opts)` | Options for `useInfiniteQuery`; available for supported non-union cursor routes |
 
 #### Mutation Methods (POST, PUT, PATCH, DELETE)
 
@@ -165,7 +165,10 @@ eden.posts({ postId: '1' }).comments({ commentId: '2' }).get.queryOptions()
 
 ### Infinite Queries
 
-For paginated data:
+For paginated data. Optional cursor fields default to `null`; required cursor
+fields need an explicit non-null `initialCursor`. Union query schemas do not
+expose infinite-query methods because input and cursor variants cannot be
+correlated safely.
 
 ```typescript
 import { useInfiniteQuery } from '@tanstack/react-query'

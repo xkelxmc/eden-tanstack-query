@@ -354,10 +354,14 @@ type Cursor = ExtractCursorType<{ cursor?: string; limit: number }>
 
 ### HasCursorInput
 
-Check if input has optional cursor.
+Check whether a non-union input has a usable required or optional top-level
+`cursor` key. `any`, `never`, union inputs, and required null-only cursors return
+`false`.
 
 ```ts
 type HasCursor = HasCursorInput<{ cursor?: string }>  // true
+type HasRequiredCursor = HasCursorInput<{ cursor: string }> // true
+type NullOnlyCursor = HasCursorInput<{ cursor: null }> // false
 type NoCursor = HasCursorInput<{ limit: number }>     // false
 ```
 
