@@ -55,11 +55,13 @@ export interface EdenInfiniteQueryOptionsArgs<TInput, TOutput, TPageParam> {
 	/** Input parameters (excluding cursor) or skipToken */
 	input: TInput | SkipToken
 	/**
-	 * Input used for the query key when it differs from `input` — e.g. path
-	 * params merged in, headers stripped, or identity kept under skipToken.
+	 * Input used for the query key when it differs from `input`, such as when
+	 * normalized path params are merged into request input.
 	 * When omitted, the key is derived from `input`.
 	 */
 	inputForKey?: unknown
+	/** Additional cache identity kept separate from request input. */
+	scopeForKey?: unknown
 	/** Function to fetch data with cursor */
 	fetch: (
 		input: TInput & { cursor: TPageParam },
@@ -293,6 +295,7 @@ export function edenInfiniteQueryOptions<
 	path: string[]
 	input: TInput | SkipToken
 	inputForKey?: unknown
+	scopeForKey?: unknown
 	fetch: (
 		input: TInput & { cursor: TPageParam },
 		signal?: AbortSignal,
@@ -300,17 +303,23 @@ export function edenInfiniteQueryOptions<
 	initialPageParam: TPageParam
 	opts: AnyEdenInfiniteQueryOptionsIn<TOutput, TOutput, TError, TPageParam>
 }): AnyEdenInfiniteQueryOptionsOut<TOutput, TError, TPageParam> {
-	const { path, input, fetch: fetchFn, initialPageParam, opts } = args
+	const {
+		path,
+		input,
+		scopeForKey,
+		fetch: fetchFn,
+		initialPageParam,
+		opts,
+	} = args
 
 	const inputIsSkipToken = input === skipToken
 
-	// The proxy precomputes the key input (headers stripped, path params
-	// merged); direct factory callers fall back to `input` itself.
 	const keyInput = "inputForKey" in args ? args.inputForKey : input
 
 	const queryKey = getQueryKey({
 		path,
 		input: keyInput === skipToken ? undefined : keyInput,
+		scope: scopeForKey,
 		type: "infinite",
 	}) as DataTag<EdenQueryKey, TOutput, TError>
 
@@ -331,16 +340,21 @@ export function edenInfiniteQueryOptions<
 		return await fetchFn(fullInput, signal)
 	}
 
-	// Build result object
-	const result = {
-		...opts,
-		queryKey,
-		queryFn: inputIsSkipToken ? skipToken : queryFn,
-		initialPageParam,
-		eden: {
-			path: path.join("."),
-		},
-	}
+	const result = inputIsSkipToken
+		? {
+				...opts,
+				queryKey,
+				enabled: false,
+				initialPageParam,
+				eden: { path: path.join(".") },
+			}
+		: {
+				...opts,
+				queryKey,
+				queryFn,
+				initialPageParam,
+				eden: { path: path.join(".") },
+			}
 
 	return result as AnyEdenInfiniteQueryOptionsOut<TOutput, TError, TPageParam>
 }

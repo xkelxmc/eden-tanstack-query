@@ -14,14 +14,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Only `__proto__` is a real pollution vector: JSON-parsed input can carry it
- * as an own key, and TanStack's hashKey rebuilds objects via assignment.
- * `constructor`/`prototype` are harmless as own keys and must stay in the key,
- * otherwise distinct inputs collide on one cache entry.
- */
-const DANGEROUS_KEYS = new Set(["__proto__"])
-
-/**
  * Sanitizes input to prevent prototype pollution attacks.
  */
 function sanitizeInput(value: unknown): unknown {
@@ -37,9 +29,8 @@ function sanitizeInput(value: unknown): unknown {
 
 	const result: Record<string, unknown> = {}
 	for (const key of Object.keys(value)) {
-		if (!DANGEROUS_KEYS.has(key)) {
-			result[key] = sanitizeInput(value[key])
-		}
+		if (key === "__proto__") continue
+		result[key] = sanitizeInput(value[key])
 	}
 	return result
 }
@@ -52,6 +43,8 @@ export interface GetQueryKeyOptions {
 	path: string[]
 	/** Optional input parameters */
 	input?: unknown
+	/** Additional cache identity kept separate from request input */
+	scope?: unknown
 	/** Query type: 'query', 'infinite', or 'any' */
 	type?: QueryType
 }
@@ -80,17 +73,22 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 	const { path, type } = opts
 
 	// Handle skipToken - return key without input
-	if (opts.input === skipToken) {
+	const inputIsSkipToken = opts.input === skipToken
+	if (inputIsSkipToken && opts.scope === undefined) {
 		return [path]
 	}
 
 	// No input and type is 'any' → just path
-	if (opts.input === undefined && (!type || type === "any")) {
+	if (
+		opts.input === undefined &&
+		opts.scope === undefined &&
+		(!type || type === "any")
+	) {
 		return [path]
 	}
 
 	// Sanitize input to prevent prototype pollution
-	let input = sanitizeInput(opts.input)
+	let input = inputIsSkipToken ? undefined : sanitizeInput(opts.input)
 
 	// The infinite cursor is injected per page inside queryFn; keep it out of
 	// the key so pagination does not fragment the cache. User-owned fields
@@ -105,6 +103,9 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 
 	if (input !== undefined) {
 		meta.input = input
+	}
+	if (opts.scope !== undefined) {
+		meta.scope = sanitizeInput(opts.scope)
 	}
 
 	if (type && type !== "any") {

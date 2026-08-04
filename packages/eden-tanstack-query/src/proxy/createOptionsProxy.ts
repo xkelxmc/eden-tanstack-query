@@ -60,6 +60,12 @@ export interface PositionedPathParam {
 interface ParsedQueryRequestInput {
 	query: unknown
 	headers?: Record<string, unknown>
+	cachePartition?: string
+}
+
+interface QueryKeyIdentity {
+	input: unknown
+	scope?: unknown
 }
 
 // ============================================================================
@@ -117,27 +123,40 @@ function mergePathParams(
 }
 
 /**
- * Build the cache-key input: the parsed query part of the input (headers are
- * transport, not cache identity) merged with path params. skipToken only
- * disables fetching — the key keeps its identity so a skipped query can never
- * collide with a different route's entry.
+ * Build cache identity from normalized request input and path params.
  */
-function buildKeyInput(
+function buildKeyIdentity(
 	input: unknown,
 	pathParams: PositionedPathParam[],
-): unknown {
-	const query =
-		input === skipToken ? undefined : parseQueryRequestInput(input).query
+): QueryKeyIdentity {
+	if (input === skipToken) {
+		return {
+			input: pathParams.length > 0 ? mergePathParams(pathParams) : undefined,
+		}
+	}
 
-	if (pathParams.length === 0) return query
+	const { query, headers, cachePartition } = parseQueryRequestInput(input)
+	let keyInput: unknown = query
 
-	const mergedPathParams = mergePathParams(pathParams)
+	if (pathParams.length > 0) {
+		const mergedPathParams = mergePathParams(pathParams)
 
-	if (query === undefined || query === null) return mergedPathParams
+		if (query === undefined || query === null) {
+			keyInput = mergedPathParams
+		} else {
+			keyInput =
+				typeof query === "object"
+					? { ...mergedPathParams, ...(query as object) }
+					: { ...mergedPathParams, input: query }
+		}
+	}
 
-	return typeof query === "object"
-		? { ...mergedPathParams, ...(query as object) }
-		: { ...mergedPathParams, input: query }
+	if (headers === undefined) return { input: keyInput }
+
+	return {
+		input: keyInput,
+		scope: cachePartition === undefined ? { headers } : { cachePartition },
+	}
 }
 
 /**
@@ -152,25 +171,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Supports:
  * - direct query input: { role: "admin" }
  * - direct query + headers: { role: "admin", headers: {...} }
- * - request shape: { query: { role: "admin" }, headers: {...} }
+ * - request shape: { query: { role: "admin" }, headers: {...}, cachePartition: "user-1" }
  */
 function parseQueryRequestInput(input: unknown): ParsedQueryRequestInput {
 	if (!isRecord(input)) return { query: input }
 
 	const hasQuery = Object.hasOwn(input, "query")
 	const hasHeaders = Object.hasOwn(input, "headers")
+	const cachePartition =
+		typeof input.cachePartition === "string" ||
+		typeof input.cachePartition === "number"
+			? String(input.cachePartition)
+			: undefined
 	const headersValue = hasHeaders ? input.headers : undefined
 	const hasRecordHeaders = isRecord(headersValue)
 	const hasOnlyWrappedKeys = Object.keys(input).every(
-		(key) => key === "query" || key === "headers",
+		(key) => key === "query" || key === "headers" || key === "cachePartition",
 	)
 
 	// A lone { query: value } is a valid query object for routes with a
 	// query parameter named "query"; require the headers key to opt in.
-	if (hasQuery && hasHeaders && hasOnlyWrappedKeys) {
+	if (hasHeaders && hasOnlyWrappedKeys) {
 		return {
-			query: input.query,
+			query: hasQuery ? input.query : undefined,
 			headers: hasRecordHeaders ? headersValue : undefined,
+			cachePartition,
 		}
 	}
 
@@ -280,12 +305,13 @@ function createQueryProcedure(opts: ProcedureOptions) {
 
 	return {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
+			const key = buildKeyIdentity(input, pathParams)
 			return edenQueryOptions({
 				path: paths,
 				input,
-				inputForKey: buildKeyInput(input, pathParams),
+				inputForKey: key.input,
+				scopeForKey: key.scope,
 				fetch: async (_input, signal) => {
-					// Use original input for fetch, not the key input
 					const actualInput = input
 					const { query, headers } = parseQueryRequestInput(actualInput)
 					// Build path without the method
@@ -321,18 +347,18 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		queryKey: (input?: unknown): EdenQueryKey => {
-			const keyInput = buildKeyInput(input, pathParams)
-			return getQueryKey({ path: paths, input: keyInput, type: "query" })
+			const key = buildKeyIdentity(input, pathParams)
+			return getQueryKey({ path: paths, ...key, type: "query" })
 		},
 
 		queryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const keyInput = buildKeyInput(input, pathParams)
+			const key = buildKeyIdentity(input, pathParams)
 			return {
 				...filters,
-				queryKey: getQueryKey({ path: paths, input: keyInput, type: "any" }),
+				queryKey: getQueryKey({ path: paths, ...key, type: "any" }),
 			}
 		},
 
@@ -345,11 +371,13 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			},
 		) => {
 			const { initialCursor = null, ...restOpts } = infiniteOpts
+			const key = buildKeyIdentity(input, pathParams)
 
 			return edenInfiniteQueryOptions({
 				path: paths,
 				input,
-				inputForKey: buildKeyInput(input, pathParams),
+				inputForKey: key.input,
+				scopeForKey: key.scope,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
 					// inputWithCursor has pathParams merged + cursor
@@ -399,20 +427,20 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		infiniteQueryKey: (input?: unknown): EdenQueryKey => {
-			const keyInput = buildKeyInput(input, pathParams)
-			return getQueryKey({ path: paths, input: keyInput, type: "infinite" })
+			const key = buildKeyIdentity(input, pathParams)
+			return getQueryKey({ path: paths, ...key, type: "infinite" })
 		},
 
 		infiniteQueryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const keyInput = buildKeyInput(input, pathParams)
+			const key = buildKeyIdentity(input, pathParams)
 			return {
 				...filters,
 				queryKey: getQueryKey({
 					path: paths,
-					input: keyInput,
+					...key,
 					type: "infinite",
 				}),
 			}

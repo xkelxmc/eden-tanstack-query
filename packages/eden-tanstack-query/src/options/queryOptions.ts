@@ -46,11 +46,13 @@ export interface EdenQueryOptionsArgs<TInput, TOutput> {
 	/** Input parameters or skipToken */
 	input: TInput | SkipToken
 	/**
-	 * Input used for the query key when it differs from `input` — e.g. path
-	 * params merged in, headers stripped, or identity kept under skipToken.
+	 * Input used for the query key when it differs from `input`, such as when
+	 * normalized path params are merged into request input.
 	 * When omitted, the key is derived from `input`.
 	 */
 	inputForKey?: unknown
+	/** Additional cache identity kept separate from request input. */
+	scopeForKey?: unknown
 	/** Function to fetch data */
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 }
@@ -190,20 +192,20 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	path: string[]
 	input: TInput | SkipToken
 	inputForKey?: unknown
+	scopeForKey?: unknown
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 	opts?: AnyEdenQueryOptionsIn<TOutput, TOutput, TError>
 }): AnyEdenQueryOptionsOut<TOutput, TOutput, TError> {
-	const { path, input, fetch: fetchFn, opts } = args
+	const { path, input, scopeForKey, fetch: fetchFn, opts } = args
 
 	const inputIsSkipToken = input === skipToken
 
-	// The proxy precomputes the key input (headers stripped, path params
-	// merged); direct factory callers fall back to `input` itself.
 	const keyInput = "inputForKey" in args ? args.inputForKey : input
 
 	const queryKey = getQueryKey({
 		path,
 		input: keyInput === skipToken ? undefined : keyInput,
+		scope: scopeForKey,
 		type: "query",
 	})
 
@@ -222,13 +224,13 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	// Extract our custom eden options before passing to queryOptions
 	const { eden: _edenOpts, ...tanstackOpts } = opts ?? {}
 
+	const options = inputIsSkipToken
+		? { ...tanstackOpts, queryKey, enabled: false }
+		: { ...tanstackOpts, queryKey, queryFn }
+
 	// Build result - types are enforced by function overloads
 	return Object.assign(
-		queryOptions({
-			...tanstackOpts,
-			queryKey,
-			queryFn: inputIsSkipToken ? skipToken : queryFn,
-		} as Parameters<typeof queryOptions>[0]),
+		queryOptions(options as Parameters<typeof queryOptions>[0]),
 		{
 			eden: {
 				path: path.join("."),
