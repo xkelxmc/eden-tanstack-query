@@ -118,17 +118,23 @@ function Comment({ postId, commentId }: { postId: string; commentId: string }) {
 
 ## Path Parameters in Query Keys
 
-Path parameters are automatically merged into the query key for proper cache differentiation. This ensures that queries for different resources are cached separately.
+Path parameters are stored separately from request input in the query key. Their path position and application order are retained so query fields, duplicate names, and infinite-query cursors cannot overwrite path identity.
 
 ```tsx
 const eden = useEden()
 
 // These produce different query keys:
 eden.users({ id: '1' }).get.queryKey()
-// => [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+// => [['users', 'get'], {
+//   pathParams: [{ pathIndex: 0, entries: [['id', '1']] }],
+//   type: 'query'
+// }]
 
 eden.users({ id: '2' }).get.queryKey()
-// => [['users', 'get'], { input: { id: '2' }, type: 'query' }]
+// => [['users', 'get'], {
+//   pathParams: [{ pathIndex: 0, entries: [['id', '2']] }],
+//   type: 'query'
+// }]
 ```
 
 This means TanStack Query will correctly cache and refetch data for each unique combination of path parameters.
@@ -256,6 +262,12 @@ eden.users({ id: '123' }).get.queryOptions()
 ```
 
 The parameter types are inferred directly from your Elysia route definitions via the `params` schema.
+
+## Method-Name Collisions
+
+A static URL segment named after an HTTP method remains navigable when it is also a procedure, such as `eden.account.delete.post` for `POST /account/delete`. The procedure itself stays a plain object, so path parameters immediately after that method-named segment are unsupported. Procedure and route-schema members, host probes, and inherited `Object` members are also reserved at that position. Use a different route shape or the Treaty client directly for those collisions.
+
+Outside a method-procedure collision, host-probe names such as `toJSON` and `$$typeof` are regular path segments. `then` is reserved everywhere so the proxy cannot be mistaken for a promise.
 
 ## Cache Invalidation with Path Parameters
 

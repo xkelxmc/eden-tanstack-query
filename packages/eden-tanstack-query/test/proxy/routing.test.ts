@@ -38,7 +38,10 @@ describe("proxy routing against a real treaty client", () => {
 
 			expect(options.queryKey).toEqual([
 				["x", "get"],
-				{ input: { tenant: "t1" }, type: "query" },
+				{
+					pathParams: [{ pathIndex: -1, entries: [["tenant", "t1"]] }],
+					type: "query",
+				},
 			])
 
 			const result = await queryClient.fetchQuery(options)
@@ -59,12 +62,128 @@ describe("proxy routing against a real treaty client", () => {
 
 			expect(options.queryKey).toEqual([
 				["x", "get"],
-				{ input: { tenant: "t1", locale: "en" }, type: "query" },
+				{
+					pathParams: [
+						{ pathIndex: -1, entries: [["tenant", "t1"]] },
+						{ pathIndex: -1, entries: [["locale", "en"]] },
+					],
+					type: "query",
+				},
 			])
 
 			const result = await queryClient.fetchQuery(options)
 			expect(result).toEqual({ tenant: "t1", locale: "en" })
 			expect(hits).toEqual(["/t1/en/x"])
+		})
+
+		test("duplicate param names retain each sequential value", async () => {
+			const duplicateHits: string[] = []
+			const duplicateApp = new Elysia()
+				.onRequest(({ request }) => {
+					duplicateHits.push(new URL(request.url).pathname)
+				})
+				.get("/:id/:id/x", ({ request }) => new URL(request.url).pathname)
+			const client = treaty(duplicateApp)
+			// biome-ignore lint/suspicious/noExplicitAny: duplicate root params are not representable in the public type
+			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			// biome-ignore lint/suspicious/noExplicitAny: duplicate root params are not representable in the public type
+			const options = (eden as any)({ id: "a" })({
+				id: "b",
+			}).x.get.queryOptions()
+
+			expect(options.queryKey[1]).toEqual({
+				pathParams: [
+					{ pathIndex: -1, entries: [["id", "a"]] },
+					{ pathIndex: -1, entries: [["id", "b"]] },
+				],
+				type: "query",
+			})
+
+			await queryClient.fetchQuery(options)
+			expect(duplicateHits).toEqual(["/a/b/x"])
+		})
+	})
+
+	describe("path parameter cache identity", () => {
+		const hits: string[] = []
+		const app = new Elysia()
+			.onRequest(({ request }) => {
+				const url = new URL(request.url)
+				hits.push(`${url.pathname}${url.search}`)
+			})
+			.get("/items/:id/x", ({ params }) => params.id, {
+				query: t.Object({ id: t.String() }),
+			})
+			.get("/feeds/:cursor/posts", ({ params }) => params.cursor, {
+				query: t.Object({
+					cursor: t.Optional(t.String()),
+					limit: t.Optional(t.Number()),
+				}),
+			})
+			.get(
+				"/proto/:__proto__/x",
+				({ request }) => new URL(request.url).pathname,
+			)
+
+		test("query input cannot overwrite path identity", async () => {
+			hits.length = 0
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+			const first = eden
+				.items({ id: "a" })
+				.x.get.queryOptions({ id: "query" }, { staleTime: Infinity })
+			const second = eden
+				.items({ id: "b" })
+				.x.get.queryOptions({ id: "query" }, { staleTime: Infinity })
+
+			expect(first.queryKey).not.toEqual(second.queryKey)
+			expect(first.queryKey[1]).toEqual({
+				input: { id: "query" },
+				pathParams: [{ pathIndex: 0, entries: [["id", "a"]] }],
+				type: "query",
+			})
+
+			await queryClient.fetchQuery(first)
+			await queryClient.fetchQuery(second)
+			expect(hits).toEqual(["/items/a/x?id=query", "/items/b/x?id=query"])
+		})
+
+		test("cursor-named path params remain in infinite query keys", async () => {
+			hits.length = 0
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+			const infiniteOpts = {
+				initialCursor: "page",
+				getNextPageParam: () => undefined,
+			}
+			const first = eden
+				.feeds({ cursor: "a" })
+				.posts.get.infiniteQueryOptions({ limit: 1 }, infiniteOpts)
+			const second = eden
+				.feeds({ cursor: "b" })
+				.posts.get.infiniteQueryOptions({ limit: 1 }, infiniteOpts)
+
+			expect(first.queryKey).not.toEqual(second.queryKey)
+			await queryClient.fetchInfiniteQuery({ ...first, staleTime: Infinity })
+			await queryClient.fetchInfiniteQuery({ ...second, staleTime: Infinity })
+			expect(hits).toEqual([
+				"/feeds/a/posts?limit=1&cursor=page",
+				"/feeds/b/posts?limit=1&cursor=page",
+			])
+		})
+
+		test("an own __proto__ path param retains cache identity", () => {
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+			const first = eden
+				.proto(JSON.parse('{"__proto__":"a"}'))
+				.x.get.queryOptions()
+			const second = eden
+				.proto(JSON.parse('{"__proto__":"b"}'))
+				.x.get.queryOptions()
+
+			expect(first.queryKey).not.toEqual(second.queryKey)
+			expect(first.queryKey[1]).toEqual({
+				pathParams: [{ pathIndex: 0, entries: [["__proto__", "a"]] }],
+				type: "query",
+			})
 		})
 	})
 
@@ -75,18 +194,19 @@ describe("proxy routing against a real treaty client", () => {
 				hits.push(`${request.method} ${new URL(request.url).pathname}`)
 			})
 			.post("/account/delete", () => ({ via: "post /account/delete" }))
+			.post("/account/delete/:id", ({ params }) => ({ id: params.id }))
 			.delete("/account", () => ({ via: "delete /account" }))
 			.get("/settings/options", () => ({ via: "get /settings/options" }))
 
 		test("a segment named after a mutation method is reachable", async () => {
 			hits.length = 0
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			const eden = createEdenOptionsProxy<typeof app>({ client })
 
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const options = (eden as any).account.delete.post.mutationOptions()
-			const result = await options.mutationFn({})
+			const options = eden.account.delete.post.mutationOptions()
+			const mutationFn = options.mutationFn
+			if (!mutationFn) throw new Error("Expected mutationFn")
+			const result = await mutationFn()
 
 			expect(result).toEqual({ via: "post /account/delete" })
 			expect(hits).toEqual(["POST /account/delete"])
@@ -95,12 +215,12 @@ describe("proxy routing against a real treaty client", () => {
 		test("the sibling DELETE route never cross-fires", async () => {
 			hits.length = 0
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			const eden = createEdenOptionsProxy<typeof app>({ client })
 
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const options = (eden as any).account.delete.mutationOptions()
-			const result = await options.mutationFn(undefined)
+			const options = eden.account.delete.mutationOptions()
+			const mutationFn = options.mutationFn
+			if (!mutationFn) throw new Error("Expected mutationFn")
+			const result = await mutationFn(undefined)
 
 			expect(result).toEqual({ via: "delete /account" })
 			expect(hits).toEqual(["DELETE /account"])
@@ -109,11 +229,9 @@ describe("proxy routing against a real treaty client", () => {
 		test("a segment named after a query method is reachable", async () => {
 			hits.length = 0
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			const eden = createEdenOptionsProxy<typeof app>({ client })
 
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const options = (eden as any).settings.options.get.queryOptions()
+			const options = eden.settings.options.get.queryOptions()
 			const result = await queryClient.fetchQuery(options)
 
 			expect(result).toEqual({ via: "get /settings/options" })
@@ -122,15 +240,41 @@ describe("proxy routing against a real treaty client", () => {
 
 		test("procedure members still resolve on method properties", () => {
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			const eden = createEdenOptionsProxy<typeof app>({ client })
 
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime routing
-			const procedure = (eden as any).settings.options.get
+			const procedure = eden.settings.options.get
 			expect(typeof procedure.queryOptions).toBe("function")
 			expect(typeof procedure.queryKey).toBe("function")
 			expect("queryOptions" in procedure).toBe(true)
-			expect(procedure.then).toBeUndefined()
+			expect(Reflect.get(procedure, "then")).toBeUndefined()
+		})
+
+		test("a method-named procedure stays non-callable", () => {
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+
+			expect(typeof eden.account.delete).toBe("object")
+		})
+	})
+
+	describe("host-probe route names", () => {
+		const hits: string[] = []
+		const app = new Elysia()
+			.onRequest(({ request }) => {
+				hits.push(new URL(request.url).pathname)
+			})
+			.get("/toJSON", () => "root")
+			.get("/users/toJSON", () => "nested")
+			.get("/$$typeof", () => "react-probe")
+
+		test("remain navigable on regular path nodes", async () => {
+			hits.length = 0
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+
+			await queryClient.fetchQuery(eden.toJSON.get.queryOptions())
+			await queryClient.fetchQuery(eden.users.toJSON.get.queryOptions())
+			await queryClient.fetchQuery(eden.$$typeof.get.queryOptions())
+
+			expect(hits).toEqual(["/toJSON", "/users/toJSON", "/$$typeof"])
 		})
 	})
 
@@ -141,10 +285,8 @@ describe("proxy routing against a real treaty client", () => {
 
 		function procedure() {
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
-			return (eden as any).users.get
+			const eden = createEdenOptionsProxy<typeof app>({ client })
+			return eden.users.get
 		}
 
 		test("is enumerable", () => {
@@ -166,9 +308,23 @@ describe("proxy routing against a real treaty client", () => {
 
 		test("does not violate proxy invariants when probed", () => {
 			const proc = procedure()
+			const symbol = Symbol("owned")
+			Object.defineProperty(proc, symbol, {
+				value: "symbol-value",
+				configurable: false,
+				writable: false,
+			})
+			// biome-ignore lint/suspicious/noThenProperty: verifies the proxy invariant for an own then property
+			Object.defineProperty(proc, "then", {
+				value: "then-value",
+				configurable: false,
+				writable: false,
+			})
 
 			expect("prototype" in proc).toBe(false)
 			expect("queryKey" in proc).toBe(true)
+			expect(Reflect.get(proc, symbol)).toBe("symbol-value")
+			expect(Reflect.get(proc, "then")).toBe("then-value")
 			for (const key of Object.getOwnPropertyNames(proc)) {
 				expect(key in proc).toBe(true)
 			}
@@ -185,22 +341,11 @@ describe("proxy routing against a real treaty client", () => {
 		test("answers host probes without inventing path segments", () => {
 			const proc = procedure()
 
-			expect(proc.$$typeof).toBeUndefined()
-			expect(proc.toJSON).toBeUndefined()
-			expect(proc.then).toBeUndefined()
-			expect(proc[Symbol.iterator]).toBeUndefined()
-			expect(proc.mutationOptions).toBeUndefined()
-		})
-
-		test("answers host probes on path nodes", () => {
-			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
-			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
-			const path = (eden as any).users
-
-			expect(path.$$typeof).toBeUndefined()
-			expect(path.toJSON).toBeUndefined()
+			expect(Reflect.get(proc, "$$typeof")).toBeUndefined()
+			expect(Reflect.get(proc, "toJSON")).toBeUndefined()
+			expect(Reflect.get(proc, "then")).toBeUndefined()
+			expect(Reflect.get(proc, Symbol.iterator)).toBeUndefined()
+			expect(Reflect.get(proc, "mutationOptions")).toBeUndefined()
 		})
 	})
 })

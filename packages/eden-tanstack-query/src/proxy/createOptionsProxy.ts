@@ -10,7 +10,11 @@ import { skipToken } from "@tanstack/react-query"
 import type { AnyElysia } from "elysia"
 
 import { getMutationKey, getQueryKey } from "../keys/queryKey"
-import type { EdenMutationKey, EdenQueryKey } from "../keys/types"
+import type {
+	EdenMutationKey,
+	EdenQueryKey,
+	EdenQueryKeyPathParam,
+} from "../keys/types"
 import { edenInfiniteQueryOptions } from "../options/infiniteQueryOptions"
 import { edenMutationOptions } from "../options/mutationOptions"
 import { edenQueryOptions } from "../options/queryOptions"
@@ -92,41 +96,20 @@ function getMethod(paths: string[]): string {
 }
 
 /**
- * Extract and normalize path params for cache keys.
+ * Preserve path-parameter position, application order, and safe property names.
  */
-function mergePathParams(
+function getPathParamsForKey(
 	pathParams: PositionedPathParam[],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = Object.assign(
-		{},
-		...pathParams.map((path) => path.params),
-	)
-	for (const key of Object.keys(merged)) {
-		const value = merged[key]
-		if (typeof value === "number") {
-			merged[key] = String(value)
-		}
-	}
-	return merged
-}
-
-/**
- * Merge path params into input for cache-key generation.
- */
-function mergePathParamsIntoInputForKey(
-	input: unknown,
-	pathParams: PositionedPathParam[],
-): unknown {
-	if (pathParams.length === 0) return input
-
-	const mergedPathParams = mergePathParams(pathParams)
-	if (input === undefined || input === null || input === skipToken) {
-		return mergedPathParams
-	}
-
-	return typeof input === "object"
-		? { ...mergedPathParams, ...(input as object) }
-		: { ...mergedPathParams, input }
+): EdenQueryKeyPathParam[] {
+	return pathParams.map(({ pathIndex, params }) => ({
+		pathIndex,
+		entries: Object.entries(params)
+			.map(([name, value]): [string, unknown] => [
+				name,
+				typeof value === "number" ? String(value) : value,
+			])
+			.sort(([left], [right]) => left.localeCompare(right)),
+	}))
 }
 
 /**
@@ -269,16 +252,14 @@ interface ProcedureOptions {
  */
 function createQueryProcedure(opts: ProcedureOptions) {
 	const { client, paths, pathParams } = opts
+	const pathParamsForKey = getPathParamsForKey(pathParams)
 
 	return {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			const inputIsSkipToken = input === skipToken
 			return edenQueryOptions({
 				path: paths,
-				input: inputIsSkipToken ? input : inputForKey,
-				inputForKey:
-					inputIsSkipToken && pathParams.length > 0 ? inputForKey : undefined,
+				input,
+				pathParams: pathParamsForKey,
 				fetch: async (_inputForKey, signal) => {
 					const actualInput = input
 					const { query, headers } = parseQueryRequestInput(actualInput)
@@ -318,18 +299,26 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			if (input === skipToken) {
 				throw new TypeError("skipToken is only supported by queryOptions")
 			}
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			return getQueryKey({ path: paths, input: inputForKey, type: "query" })
+			return getQueryKey({
+				path: paths,
+				input,
+				pathParams: pathParamsForKey,
+				type: "query",
+			})
 		},
 
 		queryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return {
 				...filters,
-				queryKey: getQueryKey({ path: paths, input: inputForKey, type: "any" }),
+				queryKey: getQueryKey({
+					path: paths,
+					input,
+					pathParams: pathParamsForKey,
+					type: "any",
+				}),
 			}
 		},
 
@@ -342,18 +331,14 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			},
 		) => {
 			const { initialCursor = null, ...restOpts } = infiniteOpts
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			const inputIsSkipToken = input === skipToken
 
 			return edenInfiniteQueryOptions({
 				path: paths,
-				input: inputIsSkipToken ? input : inputForKey,
-				inputForKey:
-					inputIsSkipToken && pathParams.length > 0 ? inputForKey : undefined,
+				input,
+				pathParams: pathParamsForKey,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
-					// inputWithCursor has pathParams merged + cursor
-					// Extract cursor and merge into parsed query input
+					// Extract the page cursor from the query input.
 					const { cursor, direction } = (inputWithCursor ?? {}) as {
 						cursor?: unknown
 						direction?: unknown
@@ -404,20 +389,24 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					"skipToken is only supported by infiniteQueryOptions",
 				)
 			}
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			return getQueryKey({ path: paths, input: inputForKey, type: "infinite" })
+			return getQueryKey({
+				path: paths,
+				input,
+				pathParams: pathParamsForKey,
+				type: "infinite",
+			})
 		},
 
 		infiniteQueryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return {
 				...filters,
 				queryKey: getQueryKey({
 					path: paths,
-					input: inputForKey,
+					input,
+					pathParams: pathParamsForKey,
 					type: "infinite",
 				}),
 			}
@@ -489,13 +478,18 @@ const PROCEDURE_MEMBERS = new Set([
 	"infiniteQueryFilter",
 	"mutationOptions",
 	"mutationKey",
+	"~types",
+	"body",
+	"headers",
+	"query",
+	"params",
+	"cookie",
+	"response",
 ])
 
 /**
- * Properties the host environment probes on arbitrary values. They are never
- * route segments, and answering them with a path proxy breaks the probe —
- * a truthy `$$typeof` makes React read the node as an element, and a callable
- * `toJSON` makes JSON.stringify return undefined.
+ * Properties the host environment probes on arbitrary values. On procedure
+ * objects they stay absent instead of becoming child routes.
  */
 const HOST_PROBES = new Set(["toJSON", "$$typeof"])
 
@@ -511,10 +505,6 @@ function resolveChild<TApp extends AnyElysia>(
 	prop: string,
 ): unknown {
 	const { client } = opts
-
-	if (HOST_PROBES.has(prop)) {
-		return undefined
-	}
 
 	if (isQueryMethod(prop)) {
 		const nextPaths = [...paths, prop]
@@ -564,12 +554,12 @@ function createProcedureProxy<TApp extends AnyElysia>(
 	// used to be. Only unknown properties are redirected into the path.
 	return new Proxy(procedure, {
 		get: (target, prop, receiver) => {
-			if (typeof prop === "symbol" || prop === "then") {
-				return undefined
-			}
-
 			if (Object.hasOwn(target, prop)) {
 				return Reflect.get(target, prop, receiver)
+			}
+
+			if (typeof prop === "symbol" || prop === "then") {
+				return undefined
 			}
 
 			// Members of the other procedure kind stay absent; inherited

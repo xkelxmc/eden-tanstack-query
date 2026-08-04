@@ -23,6 +23,12 @@
  */
 export type QueryType = "query" | "infinite" | "any"
 
+/** Ordered path-parameter application recorded in a query key. */
+export interface EdenQueryKeyPathParam {
+	pathIndex: number
+	entries: [name: string, value: unknown][]
+}
+
 /**
  * Metadata for query keys.
  * Contains optional input and query type information.
@@ -32,6 +38,8 @@ export type QueryType = "query" | "infinite" | "any"
 export type EdenQueryKeyMeta<TInput = unknown> = {
 	/** Input parameters for the query */
 	input?: TInput
+	/** Ordered path-parameter applications kept separate from request input */
+	pathParams?: EdenQueryKeyPathParam[]
 	/** Query type discriminator (excludes 'any' as it's only for filtering) */
 	type?: Exclude<QueryType, "any">
 }

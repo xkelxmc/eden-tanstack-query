@@ -13,7 +13,7 @@ import type {
 import { queryOptions, skipToken } from "@tanstack/react-query"
 
 import { getQueryKey } from "../keys/queryKey"
-import type { EdenQueryKey } from "../keys/types"
+import type { EdenQueryKey, EdenQueryKeyPathParam } from "../keys/types"
 
 // ============================================================================
 // Input Types
@@ -47,6 +47,8 @@ export interface EdenQueryOptionsArgs<TInput, TOutput> {
 	input: TInput | SkipToken
 	/** Cache identity for skipped queries with path params. */
 	inputForKey?: unknown
+	/** Ordered path-parameter applications for cache identity. */
+	pathParams?: EdenQueryKeyPathParam[]
 	/** Function to fetch data */
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 }
@@ -188,6 +190,7 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	path: string[]
 	input: TInput | SkipToken
 	inputForKey?: unknown
+	pathParams?: EdenQueryKeyPathParam[]
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 	opts?: AnyEdenQueryOptionsIn<TOutput, TOutput, TError>
 }): AnyEdenQueryOptionsOut<TOutput, TOutput, TError> {
@@ -198,6 +201,7 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	const queryKey = getQueryKey({
 		path,
 		input: inputIsSkipToken ? args.inputForKey : input,
+		pathParams: args.pathParams,
 		type: "query",
 	})
 

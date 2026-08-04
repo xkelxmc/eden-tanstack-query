@@ -46,6 +46,16 @@ describe("EdenQueryKeyMeta", () => {
 		expect(metaWithInput.input).toEqual({ id: "123" })
 	})
 
+	test("can have ordered path parameter metadata", () => {
+		const meta: EdenQueryKeyMeta = {
+			pathParams: [{ pathIndex: 0, entries: [["id", "123"]] }],
+		}
+		expect(meta.pathParams?.[0]).toEqual({
+			pathIndex: 0,
+			entries: [["id", "123"]],
+		})
+	})
+
 	test("can have optional type", () => {
 		const meta: EdenQueryKeyMeta = {}
 		expect(meta.type).toBeUndefined()

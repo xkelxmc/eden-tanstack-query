@@ -20,6 +20,7 @@ export type {
 	EdenMutationKey,
 	EdenQueryKey,
 	EdenQueryKeyMeta,
+	EdenQueryKeyPathParam,
 	QueryType,
 } from "./keys/types"
 export type {
