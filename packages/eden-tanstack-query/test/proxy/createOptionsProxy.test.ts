@@ -312,6 +312,97 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(skipped.queryKey).not.toEqual(list.queryKey)
 		})
+
+		// Edge cases locked in by PR #5: skipToken must stay a real skipToken
+		// (a disabled query must never execute) in every input combination.
+		test("skipToken without path params matches the no-input key", () => {
+			const eden = createEden()
+
+			const skipped = eden.api.users.get.queryOptions(skipToken)
+			const enabled = eden.api.users.get.queryOptions()
+
+			expect(Object.is(skipped.queryFn, skipToken)).toBe(true)
+			expect(skipped.queryKey).toEqual(enabled.queryKey)
+		})
+
+		test("infinite skipToken without path params matches the no-input key", () => {
+			const eden = createEden()
+
+			const skipped = eden.api.posts.get.infiniteQueryOptions(skipToken, {
+				getNextPageParam: () => undefined,
+			})
+			const enabled = eden.api.posts.get.infiniteQueryOptions(undefined, {
+				getNextPageParam: () => undefined,
+			})
+
+			expect(Object.is(skipped.queryFn, skipToken)).toBe(true)
+			expect(skipped.queryKey).toEqual(enabled.queryKey)
+		})
+
+		test("Date values survive key building alongside path params", () => {
+			const eden = createEden()
+			const january = new Date("2026-01-01T00:00:00Z")
+			const february = new Date("2026-02-01T00:00:00Z")
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const janKey = (eden as any).api
+				.users({ id: "1" })
+				.get.queryKey({ from: january })
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const febKey = (eden as any).api
+				.users({ id: "1" })
+				.get.queryKey({ from: february })
+
+			expect(janKey[1]).toEqual({
+				input: { id: "1", from: january },
+				type: "query",
+			})
+			expect(janKey).not.toEqual(febKey)
+		})
+
+		test("Date values survive key building when headers are stripped", () => {
+			const eden = createEden()
+			const from = new Date("2026-01-01T00:00:00Z")
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const key = (eden as any).api.users.get.queryKey({
+				from,
+				headers: { Authorization: "Bearer secret" },
+			})
+
+			expect(key[1]).toEqual({ input: { from }, type: "query" })
+		})
+
+		test("headers-only input produces the same key as no input", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const withHeaders = (eden as any).api.users.get.queryOptions({
+				headers: { Authorization: "Bearer secret" },
+			})
+			const plain = eden.api.users.get.queryOptions()
+
+			expect(withHeaders.queryKey).toEqual(plain.queryKey)
+		})
+
+		test("infinite keys exclude headers in both accepted shapes", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const direct = (eden as any).api.posts.get.infiniteQueryKey({
+				limit: 10,
+				headers: { Authorization: "Bearer secret" },
+			})
+			// biome-ignore lint/suspicious/noExplicitAny: Runtime behavior validation
+			const wrapped = (eden as any).api.posts.get.infiniteQueryKey({
+				query: { limit: 10 },
+				headers: { Authorization: "Bearer secret" },
+			})
+			const plain = eden.api.posts.get.infiniteQueryKey({ limit: 10 })
+
+			expect(direct).toEqual(plain)
+			expect(wrapped).toEqual(plain)
+		})
 	})
 
 	describe("mutation key generation", () => {
