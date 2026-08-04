@@ -10,7 +10,7 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "html", "lcov"],
-			include: ["packages/eden-tanstack-query/src/**/*.ts"],
+			include: ["packages/eden-tanstack-query/src/**/*.{ts,tsx}"],
 			exclude: [
 				"**/node_modules/**",
 				"**/dist/**",
