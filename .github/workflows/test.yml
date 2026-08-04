@@ -25,6 +25,21 @@ jobs:
       - name: Build all workspaces
         run: bun run build:all
 
+      - name: Validate package artifact
+        run: |
+          package_tarball="$(npm pack --silent --pack-destination "$RUNNER_TEMP")"
+          artifact_path="$RUNNER_TEMP/$package_tarball"
+          bunx publint --strict "$artifact_path"
+
+          consumer_dir="$RUNNER_TEMP/tanstack-minimum-consumer"
+          mkdir -p "$consumer_dir"
+          cp test/compatibility/tanstack-minimum.ts "$consumer_dir/probe.ts"
+          cd "$consumer_dir"
+          bun init -y > /dev/null
+          bun add --exact "$artifact_path" @tanstack/react-query@5.62.0 @elysiajs/eden@1.4.9 elysia@1.4.29 react@18.3.1 @types/react@18.3.28 typescript@5.9.3 > /dev/null
+          bunx tsc --noEmit --strict --skipLibCheck --module preserve --moduleResolution bundler --target ES2022 probe.ts
+        working-directory: packages/eden-tanstack-query
+
       - name: Run tests with coverage
         run: bun run unit-test:run
 
