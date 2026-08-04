@@ -54,6 +54,8 @@ export interface EdenInfiniteQueryOptionsArgs<TInput, TOutput, TPageParam> {
 	path: string[]
 	/** Input parameters (excluding cursor) or skipToken */
 	input: TInput | SkipToken
+	/** Cache identity for skipped queries with path params. */
+	inputForKey?: unknown
 	/** Function to fetch data with cursor */
 	fetch: (
 		input: TInput & { cursor: TPageParam },
@@ -286,6 +288,7 @@ export function edenInfiniteQueryOptions<
 >(args: {
 	path: string[]
 	input: TInput | SkipToken
+	inputForKey?: unknown
 	fetch: (
 		input: TInput & { cursor: TPageParam },
 		signal?: AbortSignal,
@@ -299,7 +302,7 @@ export function edenInfiniteQueryOptions<
 
 	const queryKey = getQueryKey({
 		path,
-		input: inputIsSkipToken ? undefined : input,
+		input: inputIsSkipToken ? args.inputForKey : input,
 		type: "infinite",
 	}) as DataTag<EdenQueryKey, TOutput, TError>
 
@@ -320,15 +323,13 @@ export function edenInfiniteQueryOptions<
 		return await fetchFn(fullInput, signal)
 	}
 
-	// Build result object
 	const result = {
 		...opts,
 		queryKey,
-		queryFn: inputIsSkipToken ? skipToken : queryFn,
+		queryFn: inputIsSkipToken ? undefined : queryFn,
+		...(inputIsSkipToken ? { enabled: false } : {}),
 		initialPageParam,
-		eden: {
-			path: path.join("."),
-		},
+		eden: { path: path.join(".") },
 	}
 
 	return result as AnyEdenInfiniteQueryOptionsOut<TOutput, TError, TPageParam>

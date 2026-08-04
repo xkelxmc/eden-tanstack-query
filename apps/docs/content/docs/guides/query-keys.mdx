@@ -33,6 +33,20 @@ eden.posts.get.infiniteQueryKey({ limit: 10 })
 // => [['posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
 ```
 
+## Cache Identity
+
+### Request headers
+
+Per-request headers are included in the `input` part of the query key. Different tenant, authorization, locale, or other response-varying headers therefore create separate cache entries.
+
+<Callout type="warning">
+Header values are visible in TanStack Query Devtools and can be serialized by dehydration or persistence. Treat raw secrets in per-request headers as an explicit cache-identity trade-off, and only use them when that exposure is understood and controlled.
+</Callout>
+
+### skipToken
+
+`skipToken` is supported by `queryOptions()` and `infiniteQueryOptions()` to create disabled queries. It is not valid input for key-only helpers: `queryKey(skipToken)` and `infiniteQueryKey(skipToken)` throw an error.
+
 ## Available Methods
 
 ### queryKey()

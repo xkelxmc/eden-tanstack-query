@@ -92,28 +92,37 @@ function getMethod(paths: string[]): string {
 }
 
 /**
- * Extract and merge all params from PositionedPathParam array for cache keys.
+ * Extract and normalize path params for cache keys.
  */
 function mergePathParams(
 	pathParams: PositionedPathParam[],
 ): Record<string, unknown> {
-	return Object.assign({}, ...pathParams.map((path) => path.params))
+	const merged: Record<string, unknown> = Object.assign(
+		{},
+		...pathParams.map((path) => path.params),
+	)
+	for (const key of Object.keys(merged)) {
+		const value = merged[key]
+		if (typeof value === "number") {
+			merged[key] = String(value)
+		}
+	}
+	return merged
 }
 
 /**
- * Merge path params into input for cache-key generation while preserving skipToken.
+ * Merge path params into input for cache-key generation.
  */
 function mergePathParamsIntoInputForKey(
 	input: unknown,
 	pathParams: PositionedPathParam[],
 ): unknown {
 	if (pathParams.length === 0) return input
-	if (input === skipToken) return skipToken
 
 	const mergedPathParams = mergePathParams(pathParams)
-
-	if (input === undefined) return mergedPathParams
-	if (input === null) return mergedPathParams
+	if (input === undefined || input === null || input === skipToken) {
+		return mergedPathParams
+	}
 
 	return typeof input === "object"
 		? { ...mergedPathParams, ...(input as object) }
@@ -261,11 +270,13 @@ function createQueryProcedure(opts: ProcedureOptions) {
 	return {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
 			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
+			const inputIsSkipToken = input === skipToken
 			return edenQueryOptions({
 				path: paths,
-				input: inputForKey,
+				input: inputIsSkipToken ? input : inputForKey,
+				inputForKey:
+					inputIsSkipToken && pathParams.length > 0 ? inputForKey : undefined,
 				fetch: async (_inputForKey, signal) => {
-					// Use original input for fetch, not merged
 					const actualInput = input
 					const { query, headers } = parseQueryRequestInput(actualInput)
 					// Build path without the method
@@ -301,18 +312,21 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		queryKey: (input?: unknown): EdenQueryKey => {
-			const mergedInput = mergePathParamsIntoInputForKey(input, pathParams)
-			return getQueryKey({ path: paths, input: mergedInput, type: "query" })
+			if (input === skipToken) {
+				throw new TypeError("skipToken is only supported by queryOptions")
+			}
+			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
+			return getQueryKey({ path: paths, input: inputForKey, type: "query" })
 		},
 
 		queryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const mergedInput = mergePathParamsIntoInputForKey(input, pathParams)
+			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return {
 				...filters,
-				queryKey: getQueryKey({ path: paths, input: mergedInput, type: "any" }),
+				queryKey: getQueryKey({ path: paths, input: inputForKey, type: "any" }),
 			}
 		},
 
@@ -326,10 +340,13 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		) => {
 			const { initialCursor = null, ...restOpts } = infiniteOpts
 			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
+			const inputIsSkipToken = input === skipToken
 
 			return edenInfiniteQueryOptions({
 				path: paths,
-				input: inputForKey,
+				input: inputIsSkipToken ? input : inputForKey,
+				inputForKey:
+					inputIsSkipToken && pathParams.length > 0 ? inputForKey : undefined,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
 					// inputWithCursor has pathParams merged + cursor
@@ -379,20 +396,25 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		infiniteQueryKey: (input?: unknown): EdenQueryKey => {
-			const mergedInput = mergePathParamsIntoInputForKey(input, pathParams)
-			return getQueryKey({ path: paths, input: mergedInput, type: "infinite" })
+			if (input === skipToken) {
+				throw new TypeError(
+					"skipToken is only supported by infiniteQueryOptions",
+				)
+			}
+			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
+			return getQueryKey({ path: paths, input: inputForKey, type: "infinite" })
 		},
 
 		infiniteQueryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const mergedInput = mergePathParamsIntoInputForKey(input, pathParams)
+			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return {
 				...filters,
 				queryKey: getQueryKey({
 					path: paths,
-					input: mergedInput,
+					input: inputForKey,
 					type: "infinite",
 				}),
 			}

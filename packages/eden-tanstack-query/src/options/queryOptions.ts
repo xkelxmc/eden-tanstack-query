@@ -45,6 +45,8 @@ export interface EdenQueryOptionsArgs<TInput, TOutput> {
 	path: string[]
 	/** Input parameters or skipToken */
 	input: TInput | SkipToken
+	/** Cache identity for skipped queries with path params. */
+	inputForKey?: unknown
 	/** Function to fetch data */
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 }
@@ -183,6 +185,7 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(
 export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	path: string[]
 	input: TInput | SkipToken
+	inputForKey?: unknown
 	fetch: (input: TInput, signal?: AbortSignal) => Promise<TOutput>
 	opts?: AnyEdenQueryOptionsIn<TOutput, TOutput, TError>
 }): AnyEdenQueryOptionsOut<TOutput, TOutput, TError> {
@@ -192,7 +195,7 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 
 	const queryKey = getQueryKey({
 		path,
-		input: inputIsSkipToken ? undefined : input,
+		input: inputIsSkipToken ? args.inputForKey : input,
 		type: "query",
 	})
 
@@ -211,13 +214,16 @@ export function edenQueryOptions<TInput, TOutput, TError = Error>(args: {
 	// Extract our custom eden options before passing to queryOptions
 	const { eden: _edenOpts, ...tanstackOpts } = opts ?? {}
 
+	const options = {
+		...tanstackOpts,
+		queryKey,
+		queryFn: inputIsSkipToken ? undefined : queryFn,
+		...(inputIsSkipToken ? { enabled: false } : {}),
+	}
+
 	// Build result - types are enforced by function overloads
 	return Object.assign(
-		queryOptions({
-			...tanstackOpts,
-			queryKey,
-			queryFn: inputIsSkipToken ? skipToken : queryFn,
-		} as Parameters<typeof queryOptions>[0]),
+		queryOptions(options as Parameters<typeof queryOptions>[0]),
 		{
 			eden: {
 				path: path.join("."),

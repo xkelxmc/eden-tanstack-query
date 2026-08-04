@@ -1,5 +1,5 @@
 import type { treaty } from "@elysiajs/eden"
-import { skipToken } from "@tanstack/react-query"
+import { QueryClient, QueryObserver, skipToken } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 import { createEdenOptionsProxy } from "../../src/proxy/createOptionsProxy"
 import { createTestQueryClient } from "../../test-utils"
@@ -221,6 +221,162 @@ describe("createEdenOptionsProxy", () => {
 
 			expect(key[0]).toEqual(["api", "posts", "get"])
 			expect(key[1]).toEqual({ input: { limit: 10 }, type: "infinite" })
+		})
+
+		test("keeps request headers in cache identity", async () => {
+			const requests: string[] = []
+			const client = {
+				api: {
+					users: {
+						get: async (request: { headers?: { Authorization?: string } }) => {
+							const authorization = request.headers?.Authorization ?? ""
+							requests.push(authorization)
+							return { data: authorization, error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+			const isolatedQueryClient = new QueryClient({
+				defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+			})
+			const eden = createEdenOptionsProxy<App>({
+				client,
+				queryClient: isolatedQueryClient,
+			})
+
+			const aliceInput = {
+				status: "active",
+				headers: { Authorization: "Bearer alice" },
+			}
+			const alice = eden.api.users.get.queryOptions(aliceInput)
+			const bob = eden.api.users.get.queryOptions({
+				status: "active",
+				headers: { Authorization: "Bearer bob" },
+			})
+			const helperKey = eden.api.users.get.queryKey(aliceInput)
+
+			expect(alice.queryKey).toEqual([
+				["api", "users", "get"],
+				{ input: aliceInput, type: "query" },
+			])
+			expect(helperKey).toEqual(alice.queryKey)
+
+			expect(alice.queryKey).not.toEqual(bob.queryKey)
+			expect(await isolatedQueryClient.fetchQuery(alice)).toBe("Bearer alice")
+			expect(await isolatedQueryClient.fetchQuery(bob)).toBe("Bearer bob")
+			expect(requests).toEqual(["Bearer alice", "Bearer bob"])
+
+			const wrappedInput = {
+				query: { status: "active" },
+				headers: { Authorization: "Bearer alice" },
+			}
+			expect(eden.api.users.get.queryOptions(wrappedInput).queryKey).toEqual([
+				["api", "users", "get"],
+				{ input: wrappedInput, type: "query" },
+			])
+		})
+
+		test("normalizes numeric path params in the key", () => {
+			const eden = createEden()
+
+			// biome-ignore lint/suspicious/noExplicitAny: same URL, same key
+			const numeric = (eden as any).api.users({ id: 123 }).get.queryKey()
+			const stringy = eden.api.users({ id: "123" }).get.queryKey()
+
+			expect(numeric).toEqual(stringy)
+		})
+
+		test("rejects skipToken in key-only helpers", () => {
+			const eden = createEden()
+
+			expect(() => {
+				// @ts-expect-error Runtime guard for JavaScript callers
+				eden.api.users.get.queryKey(skipToken)
+			}).toThrow("skipToken is only supported by queryOptions")
+			expect(() => {
+				// @ts-expect-error Runtime guard for JavaScript callers
+				eden.api.posts.get.infiniteQueryKey(skipToken)
+			}).toThrow("skipToken is only supported by infiniteQueryOptions")
+		})
+
+		test("skipToken observer does not replace an enabled query function", async () => {
+			let requestCount = 0
+			let defaultRequestCount = 0
+			const client = {
+				api: {
+					users: {
+						get: async () => {
+							requestCount++
+							return { data: requestCount, error: null }
+						},
+					},
+				},
+			} as unknown as ReturnType<typeof treaty<App>>
+			const isolatedQueryClient = new QueryClient({
+				defaultOptions: {
+					queries: {
+						retry: false,
+						queryFn: async () => {
+							defaultRequestCount++
+							return "default"
+						},
+					},
+				},
+			})
+			const eden = createEdenOptionsProxy<App>({
+				client,
+				queryClient: isolatedQueryClient,
+			})
+			const enabledOptions = eden.api.users.get.queryOptions()
+			const skippedOptions = eden.api.users.get.queryOptions(skipToken)
+			expect(skippedOptions.queryKey).toEqual(enabledOptions.queryKey)
+			const enabledObserver = new QueryObserver(
+				isolatedQueryClient,
+				enabledOptions,
+			)
+			const unsubscribeEnabled = enabledObserver.subscribe(() => {})
+
+			await enabledObserver.refetch()
+			const skippedObserver = new QueryObserver(
+				isolatedQueryClient,
+				skippedOptions,
+			)
+			const unsubscribeSkipped = skippedObserver.subscribe(() => {})
+
+			await isolatedQueryClient.invalidateQueries({
+				queryKey: enabledOptions.queryKey,
+			})
+
+			expect(requestCount).toBe(2)
+			expect(defaultRequestCount).toBe(0)
+			unsubscribeSkipped()
+			unsubscribeEnabled()
+			isolatedQueryClient.clear()
+		})
+
+		test("infinite skipToken blocks the global default query function", async () => {
+			let defaultRequestCount = 0
+			const isolatedQueryClient = new QueryClient({
+				defaultOptions: {
+					queries: {
+						retry: false,
+						queryFn: async () => {
+							defaultRequestCount++
+							return "default"
+						},
+					},
+				},
+			})
+			const eden = createEden()
+			const skipped = eden.api.posts.get.infiniteQueryOptions(skipToken, {
+				getNextPageParam: () => undefined,
+			})
+
+			expect(Object.hasOwn(skipped, "queryFn")).toBe(true)
+			await expect(
+				isolatedQueryClient.fetchInfiniteQuery(skipped),
+			).rejects.toBeDefined()
+			expect(defaultRequestCount).toBe(0)
 		})
 	})
 
@@ -700,12 +856,19 @@ describe("createEdenOptionsProxy", () => {
 			const eden = createEden()
 			const options = eden.api.users({ id: "123" }).get.queryOptions(skipToken)
 
-			expect(typeof options.queryFn).toBe("symbol")
-			expect(Object.is(options.queryFn, skipToken)).toBe(true)
+			expect(Object.hasOwn(options, "queryFn")).toBe(true)
+			expect(options.queryFn).toBeUndefined()
+			expect(options.enabled).toBe(false)
 			expect(options.queryKey).toEqual([
 				["api", "users", "get"],
-				{ type: "query" },
+				{ input: { id: "123" }, type: "query" },
 			])
+			expect(options.queryKey).toEqual(
+				eden.api.users({ id: "123" }).get.queryOptions().queryKey,
+			)
+			expect(options.queryKey).not.toEqual(
+				eden.api.users.get.queryOptions().queryKey,
+			)
 		})
 
 		test("multiple path params at different positions work correctly", async () => {
@@ -909,11 +1072,12 @@ describe("createEdenOptionsProxy", () => {
 					getNextPageParam: () => undefined,
 				})
 
-			expect(typeof options.queryFn).toBe("symbol")
-			expect(Object.is(options.queryFn, skipToken)).toBe(true)
+			expect(Object.hasOwn(options, "queryFn")).toBe(true)
+			expect(options.queryFn).toBeUndefined()
+			expect(options.enabled).toBe(false)
 			expect(options.queryKey).toEqual([
 				["api", "comments", "get"],
-				{ type: "infinite" },
+				{ input: { postId: "42" }, type: "infinite" },
 			])
 		})
 	})

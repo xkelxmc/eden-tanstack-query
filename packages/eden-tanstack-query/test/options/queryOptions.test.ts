@@ -114,11 +114,9 @@ describe("edenQueryOptions", () => {
 			fetch: async () => ({ id: "1", name: "Test" }),
 		})
 
-		// skipToken is a symbol - verify queryFn is the skipToken symbol
-		// Note: Type assertion needed because TanStack Query types don't expose
-		// SkipToken in queryFn return type for UndefinedInitialDataOptions
-		expect(typeof options.queryFn).toBe("symbol")
-		expect(Object.is(options.queryFn, skipToken)).toBe(true)
+		expect(Object.hasOwn(options, "queryFn")).toBe(true)
+		expect(options.queryFn).toBeUndefined()
+		expect(options.enabled).toBe(false)
 		// When skipToken, queryKey should not include input
 		expect(options.queryKey[0]).toEqual(["api", "users", "get"])
 		expect(options.queryKey[1]).toEqual({ type: "query" })
