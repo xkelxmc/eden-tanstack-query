@@ -512,6 +512,10 @@ function resolveChild<TApp extends AnyElysia>(
 ): unknown {
 	const { client } = opts
 
+	if (HOST_PROBES.has(prop)) {
+		return undefined
+	}
+
 	if (isQueryMethod(prop)) {
 		const nextPaths = [...paths, prop]
 		return createProcedureProxy(

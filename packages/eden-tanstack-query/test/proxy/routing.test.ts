@@ -186,9 +186,21 @@ describe("proxy routing against a real treaty client", () => {
 			const proc = procedure()
 
 			expect(proc.$$typeof).toBeUndefined()
+			expect(proc.toJSON).toBeUndefined()
 			expect(proc.then).toBeUndefined()
 			expect(proc[Symbol.iterator]).toBeUndefined()
 			expect(proc.mutationOptions).toBeUndefined()
+		})
+
+		test("answers host probes on path nodes", () => {
+			const client = treaty(app)
+			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
+			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			// biome-ignore lint/suspicious/noExplicitAny: exercising runtime shape
+			const path = (eden as any).users
+
+			expect(path.$$typeof).toBeUndefined()
+			expect(path.toJSON).toBeUndefined()
 		})
 	})
 })
