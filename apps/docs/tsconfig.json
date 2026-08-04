@@ -8,15 +8,16 @@
 		"moduleResolution": "Bundler",
 		"lib": ["DOM", "DOM.Iterable", "ES2022"],
 		"isolatedModules": true,
+		"allowImportingTsExtensions": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"target": "ES2022",
 		"allowJs": true,
 		"forceConsistentCasingInFileNames": true,
-		"baseUrl": ".",
+		"types": ["vite/client", "mdx"],
 		"paths": {
 			"~/*": ["./src/*"],
-			"fumadocs-mdx:collections/*": [".source/*"]
+			"fumadocs-mdx:collections/*": ["./.source/*"]
 		},
 		"noEmit": true
 	}

@@ -19,6 +19,7 @@
 		"declarationDir": "./dist",
 		"emitDeclarationOnly": true,
 		"outDir": "./dist",
+		"rootDir": "./src",
 
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,

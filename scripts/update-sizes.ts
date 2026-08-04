@@ -49,6 +49,37 @@ function formatSizeLine(sizes: PackageSize): string {
 	return `**Size:** ${sizes.esm.raw} (gzipped: ${sizes.esm.gzipped})`
 }
 
+// The version cell sits next to the package link in the root README table.
+// Package-level READMEs carry no such table, so this is a no-op there.
+async function updateVersion(readmePath: string, version: string) {
+	const readmeFile = Bun.file(readmePath)
+
+	if (!(await readmeFile.exists())) {
+		return false
+	}
+
+	const readmeContent = await readmeFile.text()
+	const versionPattern =
+		/(\]\(\.\/packages\/eden-tanstack-query\) \| )[^|]+( \| )/
+
+	if (!versionPattern.test(readmeContent)) {
+		return false
+	}
+
+	const newReadmeContent = readmeContent.replace(
+		versionPattern,
+		`$1${version}$2`,
+	)
+
+	if (newReadmeContent === readmeContent) {
+		return false
+	}
+
+	await Bun.write(readmePath, newReadmeContent)
+
+	return true
+}
+
 async function updateReadme(
 	readmePath: string,
 	sizeString: string,
@@ -101,19 +132,26 @@ async function main() {
 	// Update both READMEs
 	const readmePaths = ["README.md", "packages/eden-tanstack-query/README.md"]
 
+	const { version } = await Bun.file(
+		"packages/eden-tanstack-query/package.json",
+	).json()
+
 	let updatedCount = 0
 	for (const readmePath of readmePaths) {
-		const updated = await updateReadme(readmePath, sizeString)
-		if (updated) {
+		const sizeUpdated = await updateReadme(readmePath, sizeString)
+		const versionUpdated = await updateVersion(readmePath, version)
+		if (sizeUpdated || versionUpdated) {
 			console.log(`  ✅ Updated ${readmePath}`)
 			updatedCount++
 		}
 	}
 
 	if (updatedCount === 0) {
-		console.log("\n✅ Bundle sizes are up to date. No changes needed.\n")
+		console.log("\n✅ README metadata is up to date. No changes needed.\n")
 	} else {
-		console.log(`\n✅ Updated ${updatedCount} file(s) with: ${sizeString}\n`)
+		console.log(
+			`\n✅ Updated ${updatedCount} file(s) with: v${version}, ${sizeString}\n`,
+		)
 	}
 }
 

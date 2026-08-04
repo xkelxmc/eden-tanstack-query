@@ -29,7 +29,7 @@ Use vitest for running tests:
 
 - `bun run test` — run all tests once
 - `bun run test:watch` — run tests in watch mode
-- `bun run test:cov` — run tests with coverage
+- `bun run unit-test:run` — run tests with coverage
 - `bun run test:ui` — vitest UI
 
 ```ts#example.test.ts
@@ -44,7 +44,9 @@ describe("example", () => {
 
 ## Frontend
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+For new frontend code, use HTML imports with `Bun.serve()` rather than `vite`. HTML imports fully support React, CSS, Tailwind.
+
+**Existing exception — do not "fix" these:** `apps/docs` and every app under `examples/` are deliberately built on Vite. The docs site runs on TanStack Start, which is a Vite framework, so Vite cannot be removed there at all. The examples mirror how consumers actually wire this library into a Vite app, which is the point of the examples. Migrating them to `Bun.serve()` is not an incidental cleanup — raise it as its own task if it is ever wanted.
 
 Server:
 

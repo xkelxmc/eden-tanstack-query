@@ -21,7 +21,8 @@ Thanks for contributing. This project uses a strict fork-based workflow: all cha
 
 ## Prerequisites
 
-- Bun `1.3.6` (see `packageManager` in `package.json`)
+- Bun `1.3.14` (see `packageManager` in `package.json`)
+- Node `24.18.0` (see `.node-version`) — used by the publish workflow
 - Git
 - A GitHub account with a fork of this repository
 
@@ -60,10 +61,9 @@ Branch naming examples:
 Run the same checks expected by CI before opening a PR:
 
 ```bash
-bun run lint
-bun run build
-bun run test:types
-bun run test:cov
+bun run check
+bun run build:all
+bun run unit-test:run
 ```
 
 Optional fast pass during iteration:
