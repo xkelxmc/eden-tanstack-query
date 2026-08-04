@@ -206,18 +206,14 @@ function navigateToEdenPath(
 	pathSegments: string[],
 	pathParams: PositionedPathParam[],
 ): unknown {
-	// Build a Map for O(1) param lookup by index
-	const positionedParamsIndex = new Map(
-		pathParams.map((p) => [p.pathIndex, p.params]),
-	)
-
 	let edenPath = client
 
 	// Params recorded at index -1 were applied on the root proxy itself
 	// (a route like /:tenant/...) — apply them to the client before descending.
-	const rootParams = positionedParamsIndex.get(-1)
-	if (rootParams && typeof edenPath === "function") {
-		edenPath = (edenPath as (params: unknown) => unknown)(rootParams)
+	for (const { pathIndex, params } of pathParams) {
+		if (pathIndex === -1 && typeof edenPath === "function") {
+			edenPath = (edenPath as (params: unknown) => unknown)(params)
+		}
 	}
 
 	for (let i = 0; i < pathSegments.length; i++) {
@@ -248,35 +244,14 @@ function navigateToEdenPath(
 		// Apply path param if one was recorded at this index. Every element of
 		// pathSegments is a genuine URL segment — the terminal HTTP method is
 		// never part of it — so method-named segments take params like any other.
-		const params = positionedParamsIndex.get(i)
-		if (params && typeof edenPath === "function") {
-			edenPath = (edenPath as (params: unknown) => unknown)(params)
+		for (const { pathIndex, params } of pathParams) {
+			if (pathIndex === i && typeof edenPath === "function") {
+				edenPath = (edenPath as (params: unknown) => unknown)(params)
+			}
 		}
 	}
 
 	return edenPath
-}
-
-/**
- * Resolve the Eden method to call, naming the route when it is missing.
- */
-function resolveMethodFn(
-	edenEndpoint: unknown,
-	method: string,
-	paths: string[],
-): (opts?: unknown) => Promise<{ data: unknown; error: unknown }> {
-	const methodFn = (edenEndpoint as Record<string, unknown> | null)?.[method]
-
-	if (typeof methodFn !== "function") {
-		throw new Error(
-			`Invalid path: '${method}' does not exist on '${paths.slice(0, -1).join(".")}'`,
-		)
-	}
-
-	return methodFn as (opts?: unknown) => Promise<{
-		data: unknown
-		error: unknown
-	}>
 }
 
 // ============================================================================
@@ -319,7 +294,9 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					)
 
 					// Call the method
-					const methodFn = resolveMethodFn(edenEndpoint, method, paths)
+					const methodFn = (edenEndpoint as Record<string, unknown>)[
+						method
+					] as (opts: unknown) => Promise<{ data: unknown; error: unknown }>
 
 					const requestInput: Record<string, unknown> = {
 						fetch: { signal },
@@ -399,7 +376,9 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					)
 
 					// Call the method with cursor included in query
-					const methodFn = resolveMethodFn(edenEndpoint, method, paths)
+					const methodFn = (edenEndpoint as Record<string, unknown>)[
+						method
+					] as (opts: unknown) => Promise<{ data: unknown; error: unknown }>
 
 					const requestInput: Record<string, unknown> = {
 						fetch: { signal },
@@ -473,7 +452,9 @@ function createMutationProcedure(opts: ProcedureOptions) {
 					)
 
 					// Call the method with body
-					const methodFn = resolveMethodFn(edenEndpoint, method, paths)
+					const methodFn = (edenEndpoint as Record<string, unknown>)[
+						method
+					] as (body: unknown) => Promise<{ data: unknown; error: unknown }>
 
 					const result = await methodFn(input)
 
