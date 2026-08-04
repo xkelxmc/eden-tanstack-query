@@ -20,7 +20,18 @@ import type {
 	ExtractRouteDef,
 	HasCursorInput,
 } from "../../src/types/decorators"
-import type { ExtractRoutes } from "../../src/types/infer"
+import type { EdenFetchError, ExtractRoutes } from "../../src/types/infer"
+
+/**
+ * Strict type equality that catches `any` — one-directional `extends` checks
+ * pass vacuously against wide fallback types.
+ * Local copy: the canonical helper ships with the test-foundation PR;
+ * consolidate on merge.
+ */
+type Equals<A, B> =
+	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+		? true
+		: false
 
 // ============================================================================
 // Test App Setup
@@ -1223,24 +1234,76 @@ describe("Error type in decorated procedures", () => {
 		})
 	})
 
-	describe("EdenFetchError structure in decorators", () => {
-		test("error type wraps route error in EdenFetchError", () => {
-			// When using decorators, the error is wrapped in EdenFetchError<status, value>
-			// So the final error type has { status: number, value: RouteError }
-			type RouteError = { message: string }
-			type TestDef = {
-				input: { id: string }
-				output: { name: string }
+	describe("emitted TError (not just ~types)", () => {
+		// Mirrors ExtractRouteDef: TDef["error"] is already an EdenFetchError
+		// union produced by InferRouteError — the decorators must NOT wrap it
+		// a second time.
+		type RouteError =
+			| EdenFetchError<404, { message: string }>
+			| EdenFetchError<500, { error: string }>
+		type TestDef = {
+			input: { id: string }
+			output: { name: string }
+			error: RouteError
+		}
+
+		type ErrorOfTag<K> =
+			K extends DataTag<infer _T, infer _V, infer E> ? E : never
+
+		test("queryOptions emits the route error unwrapped", () => {
+			type Opts = ReturnType<DecorateQueryProcedure<TestDef>["queryOptions"]>
+			type Emitted = ErrorOfTag<Opts["queryKey"]>
+
+			const exact: Equals<Emitted, RouteError> = true
+			expect(exact).toBe(true)
+		})
+
+		test("queryKey tag carries the route error unwrapped", () => {
+			type KeyTag = ReturnType<DecorateQueryProcedure<TestDef>["queryKey"]>
+			type Emitted = ErrorOfTag<KeyTag>
+
+			const exact: Equals<Emitted, RouteError> = true
+			expect(exact).toBe(true)
+		})
+
+		test("mutationOptions emits the route error unwrapped", () => {
+			type Opts = ReturnType<
+				DecorateMutationProcedure<TestDef>["mutationOptions"]
+			>
+			type Emitted = Parameters<NonNullable<Opts["onError"]>>[0]
+
+			const exact: Equals<Emitted, RouteError> = true
+			expect(exact).toBe(true)
+		})
+
+		test("infiniteQueryOptions emits the route error unwrapped", () => {
+			type InfDef = {
+				input: { cursor?: string; limit: number }
+				output: { items: string[]; nextCursor: string | null }
 				error: RouteError
 			}
+			type Opts = ReturnType<
+				DecorateInfiniteQueryProcedure<InfDef>["infiniteQueryOptions"]
+			>
+			type Emitted = ErrorOfTag<Opts["queryKey"]>
 
-			type Decorated = DecorateQueryProcedure<TestDef>
-			type ErrorType = Decorated["~types"]["error"]
+			const exact: Equals<Emitted, RouteError> = true
+			expect(exact).toBe(true)
+		})
 
-			// The error type from decorators should be the route's error type
-			type IsRouteError = ErrorType extends RouteError ? true : false
-			const isRouteError: IsRouteError = true
-			expect(isRouteError).toBe(true)
+		test("error.value is the response body, not another EdenFetchError", () => {
+			type Opts = ReturnType<DecorateQueryProcedure<TestDef>["queryOptions"]>
+			type Emitted = ErrorOfTag<Opts["queryKey"]>
+			type Value404 = Extract<Emitted, { status: 404 }>["value"]
+
+			const exact: Equals<Value404, { message: string }> = true
+			type IsNested = Value404 extends { status: number; value: unknown }
+				? true
+				: false
+			const isNested: IsNested = false
+
+			expect(exact).toBe(true)
+			expect(isNested).toBe(false)
 		})
 	})
 })

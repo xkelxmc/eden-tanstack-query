@@ -181,11 +181,16 @@ type BodylessSuccessStatusCode = 204 | 205
 
 /**
  * Eden-compatible fetch error class shape.
+ *
+ * Mirrors Eden's runtime `EdenFetchError`, which extends `Error` — so
+ * `message`/`name`/`stack` exist. Note the runtime `message` is
+ * `String(value)` (often "[object Object]" for JSON bodies); prefer
+ * `status`/`value` for user-facing output.
  */
 export interface EdenFetchError<
 	TStatus extends number = number,
 	TValue = unknown,
-> {
+> extends Error {
 	status: TStatus
 	value: TValue
 }

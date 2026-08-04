@@ -20,7 +20,6 @@ import type { AnyElysia, RouteSchema } from "elysia"
 import type { EdenMutationKey, EdenQueryKey } from "../keys/types"
 import type { DeepPartial, EmptyToVoid, Simplify } from "../utils/types"
 import type {
-	EdenFetchError,
 	ExtractRoutes,
 	HttpMutationMethod,
 	HttpQueryMethod,
@@ -200,16 +199,8 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 	 */
 	<TQueryFnData extends TDef["output"], TData = TQueryFnData>(
 		input: EmptyToVoid<EdenQueryProcedureInput<TDef["input"]>> | SkipToken,
-		opts: DefinedEdenQueryOptionsIn<
-			TQueryFnData,
-			TData,
-			EdenFetchError<number, TDef["error"]>
-		>,
-	): DefinedEdenQueryOptionsOut<
-		TQueryFnData,
-		TData,
-		EdenFetchError<number, TDef["error"]>
-	>
+		opts: DefinedEdenQueryOptionsIn<TQueryFnData, TData, TDef["error"]>,
+	): DefinedEdenQueryOptionsOut<TQueryFnData, TData, TDef["error"]>
 
 	/**
 	 * Create query options without skipToken.
@@ -221,13 +212,9 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 		opts?: UnusedSkipTokenEdenQueryOptionsIn<
 			TQueryFnData,
 			TData,
-			EdenFetchError<number, TDef["error"]>
+			TDef["error"]
 		>,
-	): UnusedSkipTokenEdenQueryOptionsOut<
-		TQueryFnData,
-		TData,
-		EdenFetchError<number, TDef["error"]>
-	>
+	): UnusedSkipTokenEdenQueryOptionsOut<TQueryFnData, TData, TDef["error"]>
 
 	/**
 	 * Create query options with skipToken support.
@@ -235,16 +222,8 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 	 */
 	<TQueryFnData extends TDef["output"], TData = TQueryFnData>(
 		input?: EmptyToVoid<EdenQueryProcedureInput<TDef["input"]>> | SkipToken,
-		opts?: UndefinedEdenQueryOptionsIn<
-			TQueryFnData,
-			TData,
-			EdenFetchError<number, TDef["error"]>
-		>,
-	): UndefinedEdenQueryOptionsOut<
-		TQueryFnData,
-		TData,
-		EdenFetchError<number, TDef["error"]>
-	>
+		opts?: UndefinedEdenQueryOptionsIn<TQueryFnData, TData, TDef["error"]>,
+	): UndefinedEdenQueryOptionsOut<TQueryFnData, TData, TDef["error"]>
 }
 
 // ============================================================================
@@ -288,13 +267,13 @@ export type EdenMutationOptions<TDef extends RouteDefinition> = <
 >(
 	opts?: EdenMutationOptionsIn<
 		TDef["input"],
-		EdenFetchError<number, TDef["error"]>,
+		TDef["error"],
 		TDef["output"],
 		TContext
 	>,
 ) => EdenMutationOptionsOut<
 	TDef["input"],
-	EdenFetchError<number, TDef["error"]>,
+	TDef["error"],
 	TDef["output"],
 	TContext
 >
@@ -472,13 +451,13 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 		opts: DefinedEdenInfiniteQueryOptionsIn<
 			TQueryFnData,
 			TData,
-			EdenFetchError<number, TDef["error"]>,
+			TDef["error"],
 			TPageParam
 		>,
 	): DefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
-		EdenFetchError<number, TDef["error"]>,
+		TDef["error"],
 		TPageParam
 	>
 
@@ -494,13 +473,13 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 		opts: UnusedSkipTokenEdenInfiniteQueryOptionsIn<
 			TQueryFnData,
 			TData,
-			EdenFetchError<number, TDef["error"]>,
+			TDef["error"],
 			TPageParam
 		>,
 	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
-		EdenFetchError<number, TDef["error"]>,
+		TDef["error"],
 		TPageParam
 	>
 
@@ -518,13 +497,13 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 		opts?: UndefinedEdenInfiniteQueryOptionsIn<
 			TQueryFnData,
 			TData,
-			EdenFetchError<number, TDef["error"]>,
+			TDef["error"],
 			TPageParam
 		>,
 	): UndefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
-		EdenFetchError<number, TDef["error"]>,
+		TDef["error"],
 		TPageParam
 	>
 }
@@ -574,11 +553,7 @@ export interface DecorateQueryProcedure<TDef extends RouteDefinition>
 	 */
 	queryKey: (
 		input?: DeepPartial<EdenQueryProcedureInput<TDef["input"]>>,
-	) => DataTag<
-		EdenQueryKey,
-		TDef["output"],
-		EdenFetchError<number, TDef["error"]>
-	>
+	) => DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
 
 	/**
 	 * Create a query filter for invalidation, cancellation, etc.
@@ -592,20 +567,10 @@ export interface DecorateQueryProcedure<TDef extends RouteDefinition>
 	queryFilter: (
 		input?: DeepPartial<EdenQueryProcedureInput<TDef["input"]>>,
 		filters?: QueryFilters<
-			DataTag<
-				EdenQueryKey,
-				TDef["output"],
-				EdenFetchError<number, TDef["error"]>
-			>
+			DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
 		>,
 	) => WithRequired<
-		QueryFilters<
-			DataTag<
-				EdenQueryKey,
-				TDef["output"],
-				EdenFetchError<number, TDef["error"]>
-			>
-		>,
+		QueryFilters<DataTag<EdenQueryKey, TDef["output"], TDef["error"]>>,
 		"queryKey"
 	>
 }
@@ -628,11 +593,7 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	 */
 	infiniteQueryKey: (
 		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
-	) => DataTag<
-		EdenQueryKey,
-		TDef["output"],
-		EdenFetchError<number, TDef["error"]>
-	>
+	) => DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
 
 	/**
 	 * Create an infinite query filter.
@@ -640,20 +601,10 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	infiniteQueryFilter: (
 		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
 		filters?: QueryFilters<
-			DataTag<
-				EdenQueryKey,
-				TDef["output"],
-				EdenFetchError<number, TDef["error"]>
-			>
+			DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
 		>,
 	) => WithRequired<
-		QueryFilters<
-			DataTag<
-				EdenQueryKey,
-				TDef["output"],
-				EdenFetchError<number, TDef["error"]>
-			>
-		>,
+		QueryFilters<DataTag<EdenQueryKey, TDef["output"], TDef["error"]>>,
 		"queryKey"
 	>
 }
@@ -882,12 +833,8 @@ export type EdenOptionsProxy<TApp extends AnyElysia> = DecorateRoutes<
  * @example
  * type Input = inferInput<typeof api.users.get>
  */
-export type inferInput<
-	TProcedure extends
-		| DecorateQueryProcedure<RouteDefinition>
-		| DecorateMutationProcedure<RouteDefinition>
-		| DecorateInfiniteQueryProcedure<RouteDefinition>,
-> = TProcedure["~types"]["input"]
+export type inferInput<TProcedure extends { "~types": { input: unknown } }> =
+	TProcedure["~types"]["input"]
 
 /**
  * Infer output type from a decorated procedure.
@@ -895,12 +842,8 @@ export type inferInput<
  * @example
  * type Output = inferOutput<typeof api.users.get>
  */
-export type inferOutput<
-	TProcedure extends
-		| DecorateQueryProcedure<RouteDefinition>
-		| DecorateMutationProcedure<RouteDefinition>
-		| DecorateInfiniteQueryProcedure<RouteDefinition>,
-> = TProcedure["~types"]["output"]
+export type inferOutput<TProcedure extends { "~types": { output: unknown } }> =
+	TProcedure["~types"]["output"]
 
 /**
  * Infer error type from a decorated procedure.
@@ -908,9 +851,5 @@ export type inferOutput<
  * @example
  * type Error = inferError<typeof api.users.get>
  */
-export type inferError<
-	TProcedure extends
-		| DecorateQueryProcedure<RouteDefinition>
-		| DecorateMutationProcedure<RouteDefinition>
-		| DecorateInfiniteQueryProcedure<RouteDefinition>,
-> = TProcedure["~types"]["error"]
+export type inferError<TProcedure extends { "~types": { error: unknown } }> =
+	TProcedure["~types"]["error"]
