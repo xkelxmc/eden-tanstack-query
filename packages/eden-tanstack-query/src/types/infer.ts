@@ -125,14 +125,20 @@ type ReplaceGeneratorWithAsyncGenerator<T extends Record<string, unknown>> = {
 }
 
 /**
- * Extract the successful response type (status 200) from a route.
+ * Extract the successful response type from a route.
+ *
+ * Unions every 2xx status declared in the response record, so routes that
+ * respond with 201/202/... (idiomatic for create endpoints) infer correctly.
  *
  * @example
  * type Output = InferRouteOutput<RouteSchema> // { id: string; name: string }
  */
 export type InferRouteOutput<TRoute extends RouteSchema> =
 	TRoute["response"] extends Record<number, unknown>
-		? ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>[200]
+		? ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>[Extract<
+				keyof TRoute["response"],
+				SuccessStatusCode
+			>]
 		: never
 
 /**
@@ -148,10 +154,17 @@ export type InferRouteOutputAll<TRoute extends RouteSchema> =
 // ============================================================================
 
 /** Success status codes (2xx) */
-type SuccessStatusCode = 200 | 201 | 202 | 204
-
-/** Error status code range (non-2xx) */
-type ErrorStatusCode = Exclude<keyof RouteSchema["response"], SuccessStatusCode>
+type SuccessStatusCode =
+	| 200
+	| 201
+	| 202
+	| 203
+	| 204
+	| 205
+	| 206
+	| 207
+	| 208
+	| 226
 
 /**
  * Eden-compatible fetch error class shape.
@@ -166,12 +179,12 @@ export interface EdenFetchError<
 
 /**
  * Helper type to extract error types from response record.
- * Maps each error status code to EdenFetchError.
+ * Maps each non-2xx status code declared on the route to EdenFetchError.
  */
 type ExtractErrorsFromResponse<TResponse extends Record<number, unknown>> = {
-	[K in keyof TResponse]: K extends ErrorStatusCode
-		? EdenFetchError<K & number, TResponse[K]>
-		: never
+	[K in keyof TResponse]: K extends SuccessStatusCode
+		? never
+		: EdenFetchError<K & number, TResponse[K]>
 }[keyof TResponse]
 
 /**
