@@ -27,6 +27,7 @@ import type {
 } from "../utils/types"
 import type {
 	ExtractRoutes,
+	HttpMethod,
 	HttpMutationMethod,
 	HttpQueryMethod,
 	InferRouteError,
@@ -1013,14 +1014,29 @@ type ProcedureReservedPathSegment =
 	| "__proto__"
 	| "toLocaleString"
 
-type DecoratePathNode<
-	TNode,
-	TKey extends PropertyKey,
-> = TNode extends RouteSchema
-	? DecorateRoute<TNode, TKey & string> & DecorateProcedurePathSegments<TNode>
-	: TNode extends Record<string, unknown>
-		? DecorateRoutes<TNode>
+type DecoratePathNode<TNode, TKey extends PropertyKey> = TKey extends HttpMethod
+	? TNode extends RouteSchema
+		? "response" extends keyof TNode
+			? DecorateRoute<TNode, TKey> & DecorateProcedurePathSegments<TNode>
+			: DecorateProcedurePathSegments<TNode>
+		: DecoratePathGroup<TNode>
+	: DecoratePathGroup<TNode>
+
+type DecoratePathGroup<TNode> =
+	TNode extends Record<string, unknown> ? DecorateRoutes<TNode> : never
+
+type SafeAllMethod = "get" | HttpMutationMethod
+
+type DecorateAllMethods<TRoutes extends Record<string, unknown>> = {
+	[TMethod in HttpMethod as TMethod extends SafeAllMethod
+		? TMethod
+		: TRoutes[string] extends TRoutes[TMethod]
+			? never
+			: TMethod]: TRoutes[TMethod] extends RouteSchema
+		? DecorateRoute<TRoutes[TMethod], TMethod> &
+				DecorateProcedurePathSegments<TRoutes[TMethod]>
 		: never
+}
 
 /**
  * Handle regular path segments (excluding path parameters).
@@ -1079,7 +1095,13 @@ type DecoratePathParams<
  * - HTTP methods → decorated procedures
  */
 export type DecorateRoutes<TRoutes extends Record<string, unknown>> =
-	DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
+	string extends keyof TRoutes
+		? TRoutes[string] extends RouteSchema
+			? "response" extends keyof TRoutes[string]
+				? DecorateAllMethods<TRoutes>
+				: DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
+			: DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
+		: DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
 
 /**
  * Full decorated options proxy type for an Elysia app.
