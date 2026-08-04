@@ -312,6 +312,9 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		queryKey: (input?: unknown): EdenQueryKey => {
+			if (input === skipToken) {
+				throw new TypeError("skipToken is only supported by queryOptions")
+			}
 			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return getQueryKey({ path: paths, input: inputForKey, type: "query" })
 		},
@@ -393,6 +396,11 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		},
 
 		infiniteQueryKey: (input?: unknown): EdenQueryKey => {
+			if (input === skipToken) {
+				throw new TypeError(
+					"skipToken is only supported by infiniteQueryOptions",
+				)
+			}
 			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return getQueryKey({ path: paths, input: inputForKey, type: "infinite" })
 		},

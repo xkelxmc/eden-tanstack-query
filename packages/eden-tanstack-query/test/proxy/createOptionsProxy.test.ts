@@ -286,6 +286,19 @@ describe("createEdenOptionsProxy", () => {
 			expect(numeric).toEqual(stringy)
 		})
 
+		test("rejects skipToken in key-only helpers", () => {
+			const eden = createEden()
+
+			expect(() => {
+				// @ts-expect-error Runtime guard for JavaScript callers
+				eden.api.users.get.queryKey(skipToken)
+			}).toThrow("skipToken is only supported by queryOptions")
+			expect(() => {
+				// @ts-expect-error Runtime guard for JavaScript callers
+				eden.api.posts.get.infiniteQueryKey(skipToken)
+			}).toThrow("skipToken is only supported by infiniteQueryOptions")
+		})
+
 		test("skipToken observer does not replace an enabled query function", async () => {
 			let requestCount = 0
 			let defaultRequestCount = 0
