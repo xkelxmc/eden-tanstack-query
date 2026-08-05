@@ -62,6 +62,10 @@ const app = new Elysia()
 		{ body: t.Object({ name: t.String() }) },
 	)
 	.get("/teapot", ({ status }) => status(418, { message: "i am a teapot" }))
+	.get("/no-content", ({ status }) => status(204))
+	.get("/reset-content", ({ status }) => status(205, undefined), {
+		response: { 205: t.Undefined() },
+	})
 	.get("/slow", async ({ request }) => {
 		captured.signal = request.signal
 		captured.slowStarted = true
@@ -154,6 +158,39 @@ describe("real treaty client through the options proxy", () => {
 		const edenError = thrown as { status: number; value: unknown }
 		expect(edenError.status).toBe(418)
 		expect(edenError.value).toEqual({ message: "i am a teapot" })
+	})
+
+	test("204 and 205 resolve to Treaty's empty-string data", async () => {
+		const queryClient = createTestQueryClient()
+
+		const noContent = await queryClient.fetchQuery(
+			eden["no-content"].get.queryOptions(),
+		)
+		const resetContent = await queryClient.fetchQuery(
+			eden["reset-content"].get.queryOptions(),
+		)
+
+		expect(noContent).toBe("")
+		expect(resetContent).toBe("")
+	})
+
+	test("transport failures preserve Treaty's 503 error envelope", async () => {
+		const offlineError = new Error("offline")
+		const offlineFetcher: typeof fetch = Object.assign(
+			async () => {
+				throw offlineError
+			},
+			{ preconnect: fetch.preconnect },
+		)
+		const offlineClient = treaty<App>("http://offline.invalid", {
+			fetcher: offlineFetcher,
+		})
+		const offlineEden = createEdenOptionsProxy<App>({ client: offlineClient })
+		const queryClient = createTestQueryClient()
+
+		await expect(
+			queryClient.fetchQuery(offlineEden.hello.get.queryOptions()),
+		).rejects.toMatchObject({ status: 503, value: offlineError })
 	})
 
 	test("abortOnUnmount forwards the AbortSignal all the way into Eden's request", async () => {

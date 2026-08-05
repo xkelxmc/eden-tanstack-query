@@ -21,7 +21,7 @@ export interface RouteDefinition {
 	input: unknown
 	/** Declared successful response types */
 	output: unknown
-	/** Declared non-success response types */
+	/** Declared non-success response and transport error types */
 	error: unknown
 }
 
@@ -134,25 +134,30 @@ type NormalizeResponseStatusKeys<TResponse extends Record<number, unknown>> = {
 	[K in keyof TResponse as NumericStatusCode<K>]: TResponse[K]
 }
 
-type ExtractSuccessResponses<TResponse extends Record<number, unknown>> =
-	NormalizeResponseStatusKeys<TResponse>[Extract<
-		keyof NormalizeResponseStatusKeys<TResponse>,
-		SuccessStatusCode
-	>]
+type ExtractSuccessResponses<TResponse extends Record<number, unknown>> = {
+	[K in keyof NormalizeResponseStatusKeys<TResponse>]: K extends SuccessStatusCode
+		? K extends BodylessSuccessStatusCode
+			? ""
+			: NormalizeResponseStatusKeys<TResponse>[K]
+		: never
+}[keyof NormalizeResponseStatusKeys<TResponse>]
 
 /**
  * Extract the successful response type from a route.
  *
  * Unions every declared response in Eden Treaty's successful status set.
+ * Bodyless 204 and 205 responses resolve to the empty string returned by Treaty.
  *
  * @example
  * type Output = InferRouteOutput<RouteSchema> // { id: string; name: string }
  */
 export type InferRouteOutput<TRoute extends RouteSchema> =
-	TRoute["response"] extends Record<number, unknown>
-		? ExtractSuccessResponses<
-				ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>
-			>
+	TRoute extends RouteSchema
+		? TRoute["response"] extends Record<number, unknown>
+			? ExtractSuccessResponses<
+					ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>
+				>
+			: never
 		: never
 
 /**
@@ -180,6 +185,8 @@ type SuccessStatusCode =
 	| 208
 	| 226
 
+type BodylessSuccessStatusCode = 204 | 205
+
 /**
  * Eden-compatible fetch error class shape.
  */
@@ -190,6 +197,8 @@ export interface EdenFetchError<
 	status: TStatus
 	value: TValue
 }
+
+type TreatyTransportError = EdenFetchError<503, Error>
 
 /**
  * Helper type to extract error types from response record.
@@ -203,21 +212,27 @@ type ExtractErrorsFromResponse<TResponse extends Record<number, unknown>> = {
 		: never
 }[keyof NormalizeResponseStatusKeys<TResponse>]
 
+type InferRouteErrorMember<TRoute extends RouteSchema> =
+	TRoute["response"] extends Record<number, unknown>
+		? ExtractErrorsFromResponse<TRoute["response"]> extends never
+			? EdenFetchError<number, unknown>
+			: ExtractErrorsFromResponse<TRoute["response"]>
+		: EdenFetchError<number, unknown>
+
 /**
- * Extract declared non-success response types from a route.
+ * Extract non-success response and transport error types from a route.
  *
  * @example
  * type Error = InferRouteError<RouteSchema>
  * // EdenFetchError<404, { message: string }> | EdenFetchError<500, { error: string }>
  *
  * If no error status codes are defined, returns EdenFetchError<number, unknown> as fallback.
+ * All routes also include Treaty's 503 transport error.
  */
 export type InferRouteError<TRoute extends RouteSchema> =
-	TRoute["response"] extends Record<number, unknown>
-		? ExtractErrorsFromResponse<TRoute["response"]> extends never
-			? EdenFetchError<number, unknown>
-			: ExtractErrorsFromResponse<TRoute["response"]>
-		: EdenFetchError<number, unknown>
+	TRoute extends RouteSchema
+		? InferRouteErrorMember<TRoute> | TreatyTransportError
+		: never
 
 // ============================================================================
 // App Routes Extraction

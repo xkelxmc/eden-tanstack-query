@@ -134,7 +134,7 @@ type QueryType = 'query' | 'infinite' | 'any'
 |------|-------------|
 | `InferRouteInput<TRoute, TMethod>` | Input type for route/method |
 | `InferRouteOutput<TRoute>` | Declared successful response types |
-| `InferRouteError<TRoute>` | Declared non-success response types |
+| `InferRouteError<TRoute>` | Non-success response and transport error types |
 
 ### InferRouteInput
 
@@ -151,10 +151,13 @@ type InferRouteInput<TRoute, TMethod> = TMethod extends 'get' | 'head' | 'option
 ### InferRouteOutput
 
 Extract the union of declared successful response types from a route.
+Treaty returns an empty string for bodyless `204` and `205` responses, regardless
+of their declared response schema.
 
 ### InferRouteError
 
-Extract the union of declared non-success response types from a route.
+Extract the union of non-success response and transport error types from a route.
+The union also includes Treaty's `EdenFetchError<503, Error>` transport failure.
 
 ### InferRouteBody
 
