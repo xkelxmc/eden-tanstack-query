@@ -50,16 +50,8 @@ type WithRequired<TObj, TKey extends keyof TObj> = TObj & {
 	[P in TKey]-?: TObj[P]
 }
 
-/**
- * Path parameter with its associated path index.
- * Records which path segment the param was applied to.
- */
-export interface PositionedPathParam {
-	/** The index in the path array where this param should be applied */
-	pathIndex: number
-	/** The actual parameter values */
-	params: Record<string, unknown>
-}
+/** Captured path parameter shared by request routing and query keys. */
+export type PositionedPathParam = EdenQueryKeyPathParam
 
 interface ParsedQueryRequestInput {
 	query: unknown
@@ -95,13 +87,11 @@ function getMethod(paths: string[]): string {
 	return method
 }
 
-/**
- * Preserve path-parameter position, application order, and safe property names.
- */
-function getPathParamsForKey(
-	pathParams: PositionedPathParam[],
-): EdenQueryKeyPathParam[] {
-	return pathParams.map(({ pathIndex, params }) => ({
+function capturePathParam(
+	pathIndex: number,
+	params: Record<string, unknown>,
+): PositionedPathParam {
+	return {
 		pathIndex,
 		entries: Object.entries(params)
 			.map(([name, value]): [string, unknown] => [
@@ -109,7 +99,11 @@ function getPathParamsForKey(
 				typeof value === "number" ? String(value) : value,
 			])
 			.sort(([left], [right]) => left.localeCompare(right)),
-	}))
+	}
+}
+
+function getPathParamInput({ entries }: PositionedPathParam) {
+	return Object.fromEntries(entries)
 }
 
 /**
@@ -193,9 +187,12 @@ function navigateToEdenPath(
 
 	// Params recorded at index -1 were applied on the root proxy itself
 	// (a route like /:tenant/...) — apply them to the client before descending.
-	for (const { pathIndex, params } of pathParams) {
+	for (const pathParam of pathParams) {
+		const { pathIndex } = pathParam
 		if (pathIndex === -1 && typeof edenPath === "function") {
-			edenPath = (edenPath as (params: unknown) => unknown)(params)
+			edenPath = (edenPath as (params: unknown) => unknown)(
+				getPathParamInput(pathParam),
+			)
 		}
 	}
 
@@ -227,9 +224,12 @@ function navigateToEdenPath(
 		// Apply path param if one was recorded at this index. Every element of
 		// pathSegments is a genuine URL segment — the terminal HTTP method is
 		// never part of it — so method-named segments take params like any other.
-		for (const { pathIndex, params } of pathParams) {
+		for (const pathParam of pathParams) {
+			const { pathIndex } = pathParam
 			if (pathIndex === i && typeof edenPath === "function") {
-				edenPath = (edenPath as (params: unknown) => unknown)(params)
+				edenPath = (edenPath as (params: unknown) => unknown)(
+					getPathParamInput(pathParam),
+				)
 			}
 		}
 	}
@@ -252,14 +252,13 @@ interface ProcedureOptions {
  */
 function createQueryProcedure(opts: ProcedureOptions) {
 	const { client, paths, pathParams } = opts
-	const pathParamsForKey = getPathParamsForKey(pathParams)
 
 	return {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
 			return edenQueryOptions({
 				path: paths,
 				input,
-				pathParams: pathParamsForKey,
+				pathParams,
 				fetch: async (_inputForKey, signal) => {
 					const actualInput = input
 					const { query, headers } = parseQueryRequestInput(actualInput)
@@ -302,7 +301,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			return getQueryKey({
 				path: paths,
 				input,
-				pathParams: pathParamsForKey,
+				pathParams,
 				type: "query",
 			})
 		},
@@ -316,7 +315,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 				queryKey: getQueryKey({
 					path: paths,
 					input,
-					pathParams: pathParamsForKey,
+					pathParams,
 					type: "any",
 				}),
 			}
@@ -335,7 +334,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			return edenInfiniteQueryOptions({
 				path: paths,
 				input,
-				pathParams: pathParamsForKey,
+				pathParams,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
 					// Extract the page cursor from the query input.
@@ -392,7 +391,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			return getQueryKey({
 				path: paths,
 				input,
-				pathParams: pathParamsForKey,
+				pathParams,
 				type: "infinite",
 			})
 		},
@@ -406,7 +405,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 				queryKey: getQueryKey({
 					path: paths,
 					input,
-					pathParams: pathParamsForKey,
+					pathParams,
 					type: "infinite",
 				}),
 			}
@@ -631,10 +630,7 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 				args && args.length > 0 && args[0] !== undefined
 					? (args[0] as Record<string, unknown>)
 					: {}
-			const positionedPathParam: PositionedPathParam = {
-				pathIndex: paths.length - 1,
-				params,
-			}
+			const positionedPathParam = capturePathParam(paths.length - 1, params)
 			return createEdenOptionsProxy(
 				opts,
 				[...paths],

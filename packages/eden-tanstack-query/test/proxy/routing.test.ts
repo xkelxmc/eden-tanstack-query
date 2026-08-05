@@ -30,11 +30,9 @@ describe("proxy routing against a real treaty client", () => {
 		test("params applied on the root proxy reach the URL and the key", async () => {
 			hits.length = 0
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: root-param routing is untyped today
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			const eden = createEdenOptionsProxy<typeof app>({ client })
 
-			// biome-ignore lint/suspicious/noExplicitAny: root-param routing is untyped today
-			const options = (eden as any)({ tenant: "t1" }).x.get.queryOptions()
+			const options = eden({ tenant: "t1" }).x.get.queryOptions()
 
 			expect(options.queryKey).toEqual([
 				["x", "get"],
@@ -52,11 +50,9 @@ describe("proxy routing against a real treaty client", () => {
 		test("sequential params at the same path index all reach the URL", async () => {
 			hits.length = 0
 			const client = treaty(app)
-			// biome-ignore lint/suspicious/noExplicitAny: root-param routing is untyped today
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
+			const eden = createEdenOptionsProxy<typeof app>({ client })
 
-			// biome-ignore lint/suspicious/noExplicitAny: root-param routing is untyped today
-			const options = (eden as any)({ tenant: "t1" })({
+			const options = eden({ tenant: "t1" })({
 				locale: "en",
 			}).x.get.queryOptions()
 
@@ -84,10 +80,8 @@ describe("proxy routing against a real treaty client", () => {
 				})
 				.get("/:id/:id/x", ({ request }) => new URL(request.url).pathname)
 			const client = treaty(duplicateApp)
-			// biome-ignore lint/suspicious/noExplicitAny: duplicate root params are not representable in the public type
-			const eden = createEdenOptionsProxy<any>({ client: client as any })
-			// biome-ignore lint/suspicious/noExplicitAny: duplicate root params are not representable in the public type
-			const options = (eden as any)({ id: "a" })({
+			const eden = createEdenOptionsProxy<typeof duplicateApp>({ client })
+			const options = eden({ id: "a" })({
 				id: "b",
 			}).x.get.queryOptions()
 
@@ -114,6 +108,7 @@ describe("proxy routing against a real treaty client", () => {
 			.get("/items/:id/x", ({ params }) => params.id, {
 				query: t.Object({ id: t.String() }),
 			})
+			.get("/users/:id", ({ params }) => params.id)
 			.get("/feeds/:cursor/posts", ({ params }) => params.cursor, {
 				query: t.Object({
 					cursor: t.Optional(t.String()),
@@ -145,6 +140,37 @@ describe("proxy routing against a real treaty client", () => {
 			await queryClient.fetchQuery(first)
 			await queryClient.fetchQuery(second)
 			expect(hits).toEqual(["/items/a/x?id=query", "/items/b/x?id=query"])
+		})
+
+		test("captures params before procedure helper creation", async () => {
+			hits.length = 0
+			const params = { id: "a" }
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+			const procedure = eden.users(params).get
+			params.id = "b"
+			const options = procedure.queryOptions()
+
+			expect(options.queryKey[1]).toEqual({
+				pathParams: [{ pathIndex: 0, entries: [["id", "a"]] }],
+				type: "query",
+			})
+			expect(await createTestQueryClient().fetchQuery(options)).toBe("a")
+			expect(hits).toEqual(["/users/a"])
+		})
+
+		test("keeps captured params after options creation", async () => {
+			hits.length = 0
+			const params = { id: "c" }
+			const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+			const options = eden.users(params).get.queryOptions()
+			params.id = "d"
+
+			expect(options.queryKey[1]).toEqual({
+				pathParams: [{ pathIndex: 0, entries: [["id", "c"]] }],
+				type: "query",
+			})
+			expect(await createTestQueryClient().fetchQuery(options)).toBe("c")
+			expect(hits).toEqual(["/users/c"])
 		})
 
 		test("cursor-named path params remain in infinite query keys", async () => {

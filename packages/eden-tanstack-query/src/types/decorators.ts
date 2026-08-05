@@ -868,8 +868,8 @@ export type DecorateRoutes<TRoutes extends Record<string, unknown>> =
  * // Proxy.users({ id: '1' }).get.queryOptions(...)
  * // Proxy.users.post.mutationOptions(...)
  */
-export type EdenOptionsProxy<TApp extends AnyElysia> = Simplify<
-	DecorateRoutes<ExtractRoutes<TApp>>
+export type EdenOptionsProxy<TApp extends AnyElysia> = DecorateRoutes<
+	ExtractRoutes<TApp>
 >
 
 // ============================================================================

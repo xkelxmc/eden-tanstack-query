@@ -76,9 +76,9 @@ const app = new Elysia()
 function FileViewer({ category, filename }: { category: string; filename: string }) {
   const eden = useEden()
 
-  // Multiple params are passed in a single object
+  // Adjacent params are applied in route order
   const { data: file } = useQuery(
-    eden.files({ category, filename }).get.queryOptions()
+    eden.files({ category })({ filename }).get.queryOptions()
   )
 
   return <div>{file?.url}</div>
