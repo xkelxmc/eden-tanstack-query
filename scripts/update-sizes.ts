@@ -129,14 +129,8 @@ async function main() {
 
 	const sizeString = formatSizeLine(size)
 
-	// Every file carrying the **Size:** pattern; updateVersion only matches
-	// the package table in the root README and is a no-op elsewhere.
-	const readmePaths = [
-		"README.md",
-		"packages/eden-tanstack-query/README.md",
-		"apps/docs/content/docs/index.mdx",
-		"apps/docs/content/docs/comparisons/index.mdx",
-	]
+	// Update both READMEs
+	const readmePaths = ["README.md", "packages/eden-tanstack-query/README.md"]
 
 	const { version } = await Bun.file(
 		"packages/eden-tanstack-query/package.json",

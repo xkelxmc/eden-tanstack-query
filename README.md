@@ -18,7 +18,9 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 |---------|---------|------|
 | [eden-tanstack-react-query](./packages/eden-tanstack-query) | 0.1.11 | **Size:** 13.51 KB (gzipped: 3.19 KB) |
 
-## Quick Start
+## Usage Preview
+
+This shows the component API. See the [Getting Started guide](https://eden-query.xkel.me/docs/getting-started) for the complete client and provider setup.
 
 ```bash
 bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia

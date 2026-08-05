@@ -14,7 +14,6 @@ description: How eden-tanstack-query compares to @ap0nia/eden-react-query and tR
 | Transport | Plain REST (HTTP methods, URLs) | REST + optional batching | RPC protocol |
 | Query Keys | Explicit utilities | tRPC-style utils | Explicit utilities |
 | TQ Integration | Native hooks | Custom wrappers + helpers | Native hooks |
-| Bundle Size | **Size:** 13.51 KB (gzipped: 3.19 KB) | Larger | Larger |
 | Learning Curve | Standard TanStack Query | tRPC-style API | Standard TanStack Query |
 
 ---
@@ -46,10 +45,9 @@ const createUser = useMutation({
 ```
 
 ```tsx title="@ap0nia/eden-react-query"
+const utils = eden.useUtils()
 const createUser = eden.users.post.useMutation({
-  onSuccess: () => {
-    // Invalidation goes through tRPC-style utils
-  }
+  onSuccess: () => utils.users.get.invalidate()
 })
 ```
 
@@ -76,7 +74,9 @@ const createUser = eden.users.post.useMutation({
 
 ```tsx
 // Before
-import { edenTreaty } from '@ap0nia/eden-react-query'
+import { createEdenTreatyReactQuery } from '@ap0nia/eden-react-query'
+
+const eden = createEdenTreatyReactQuery<App>()
 
 // After
 import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
@@ -116,7 +116,10 @@ const mutation = useMutation(eden.users.post.mutationOptions())
 **5. Update cache operations**
 
 ```tsx
-// Before: queryClient.invalidateQueries(['eden', 'users'])
+// Before:
+const utils = eden.useUtils()
+utils.users.get.invalidate()
+
 // After:
 queryClient.invalidateQueries(eden.users.get.queryFilter())
 ```

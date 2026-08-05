@@ -31,6 +31,12 @@ bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
 // server.ts
 import { Elysia, t } from 'elysia'
 
+const posts = [
+  { id: 1, title: 'First post' },
+  { id: 2, title: 'Second post' },
+  { id: 3, title: 'Third post' }
+]
+
 const app = new Elysia()
   .get('/users', () => [
     { id: '1', name: 'Alice' },
@@ -45,6 +51,21 @@ const app = new Elysia()
     ...body
   }), {
     body: t.Object({ name: t.String() })
+  })
+  .get('/posts', ({ query }) => {
+    const cursor = query.cursor ?? 0
+    const limit = query.limit ?? 10
+    const items = posts.slice(cursor, cursor + limit)
+    const nextCursor = cursor + items.length < posts.length
+      ? cursor + items.length
+      : null
+
+    return { items, nextCursor }
+  }, {
+    query: t.Object({
+      cursor: t.Optional(t.Numeric()),
+      limit: t.Optional(t.Numeric())
+    })
   })
   .listen(3000)
 
@@ -207,7 +228,6 @@ eden.users.get.queryOptions({
 | TanStack Query Native | ✅ Standard hooks only | ⚠️ Custom hooks first, helpers available |
 | Query Keys | Explicit `queryKey()` / `queryFilter()` | tRPC-style utils |
 | Learning Curve | Standard TanStack Query | tRPC-style API |
-| Bundle Size | **Size:** 13.51 KB (gzipped: 3.19 KB) | Larger |
 
 ## 📄 License
 
