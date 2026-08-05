@@ -1,7 +1,7 @@
 # eden-tanstack-react-query
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://github.com/xkelxmc/eden-tanstack-query/actions/workflows/test.yml/badge.svg)](https://github.com/xkelxmc/eden-tanstack-query/actions/workflows/test.yml)
 
 Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, but for Elysia.
@@ -20,7 +20,7 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 ## 📦 Installation
 
 ```bash
-bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden
+bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
 ```
 
 ## 🚀 Quick Start
@@ -30,6 +30,12 @@ bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden
 ```typescript
 // server.ts
 import { Elysia, t } from 'elysia'
+
+const posts = [
+  { id: 1, title: 'First post' },
+  { id: 2, title: 'Second post' },
+  { id: 3, title: 'Third post' }
+]
 
 const app = new Elysia()
   .get('/users', () => [
@@ -46,6 +52,21 @@ const app = new Elysia()
   }), {
     body: t.Object({ name: t.String() })
   })
+  .get('/posts', ({ query }) => {
+    const cursor = query.cursor ?? 0
+    const limit = query.limit ?? 10
+    const items = posts.slice(cursor, cursor + limit)
+    const nextCursor = cursor + items.length < posts.length
+      ? cursor + items.length
+      : null
+
+    return { items, nextCursor }
+  }, {
+    query: t.Object({
+      cursor: t.Optional(t.Numeric({ minimum: 0, multipleOf: 1 })),
+      limit: t.Optional(t.Numeric({ minimum: 1, multipleOf: 1 }))
+    })
+  })
   .listen(3000)
 
 export type App = typeof app
@@ -57,7 +78,7 @@ export type App = typeof app
 // lib/eden.ts
 import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
 import { treaty } from '@elysiajs/eden'
-import type { App } from './server'
+import type { App } from '../server'
 
 export const { EdenProvider, useEden, useEdenClient } = createEdenTanStackQuery<App>()
 export const edenClient = treaty<App>('http://localhost:3000')
@@ -201,13 +222,12 @@ eden.users.get.queryOptions({
 
 ## 🔄 Comparison
 
-| Feature | eden-tanstack-react-query | eden-query |
-|---------|---------------------------|------------|
-| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` |
-| TanStack Query Native | ✅ Standard hooks | ❌ Custom wrappers |
-| Query Options | ✅ Full access | ❌ Limited |
-| Learning Curve | Standard TanStack Query | Custom API |
-| Bundle Size | ~10 KB | Larger |
+| Feature | eden-tanstack-react-query | @ap0nia/eden-react-query |
+|---------|---------------------------|--------------------------|
+| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` + `useUtils()` |
+| TanStack Query Native | ✅ Standard hooks only | ⚠️ Wrapper hooks |
+| Query Keys | Explicit `queryKey()` / `queryFilter()` | tRPC-style utils |
+| Learning Curve | Standard TanStack Query | tRPC-style API |
 
 ## 📄 License
 

@@ -19,11 +19,8 @@ bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
 
 | Package | Minimum Version |
 |---------|-----------------|
-| `eden-tanstack-react-query` | 0.1.0 |
-| `@tanstack/react-query` | 5.0.0 |
-| `@elysiajs/eden` | 1.0.0 |
-| `elysia` | 1.0.0 |
-| `typescript` | 5.0.0 |
+| `@tanstack/react-query` | 5.62.0 |
+| `typescript` | 5.4.0 |
 
 ---
 
@@ -93,10 +90,16 @@ If different path params return the same data, verify query keys differ:
 
 ```tsx
 console.log(eden.users({ id: '1' }).get.queryKey())
-// [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+// [['users', 'get'], {
+//   pathParams: [{ pathIndex: 0, entries: [['id', '1']] }],
+//   type: 'query'
+// }]
 
 console.log(eden.users({ id: '2' }).get.queryKey())
-// [['users', 'get'], { input: { id: '2' }, type: 'query' }]
+// [['users', 'get'], {
+//   pathParams: [{ pathIndex: 0, entries: [['id', '2']] }],
+//   type: 'query'
+// }]
 ```
 
 If keys are identical, update to the latest version of `eden-tanstack-react-query`.
@@ -133,16 +136,14 @@ Also ensure you use `import type`:
 import type { App } from '../server'
 ```
 
-### Path Parameters Must Be Strings
+### Numeric Path Parameters
 
-HTTP URL params are always strings:
+Path params accept both strings and numbers (`string | number`). Values are serialized into the URL, and the library normalizes them when building the query key, so both forms address the same cache entry:
 
 ```ts
-// Error: number not assignable to string
+// Both compile and hit the same cache entry
 eden.users({ id: 123 }).get.queryOptions()
-
-// Correct
-eden.users({ id: String(userId) }).get.queryOptions()
+eden.users({ id: '123' }).get.queryOptions()
 ```
 
 ### Query Parameters Not Typed

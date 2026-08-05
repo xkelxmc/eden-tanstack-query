@@ -1,24 +1,24 @@
 ---
 title: Comparisons
-description: How eden-tanstack-query compares to @elysiajs/eden-query and tRPC
+description: How eden-tanstack-query compares to @ap0nia/eden-react-query and tRPC
 ---
 
 # Comparisons
 
 ## Quick Comparison
 
-| Feature | eden-tanstack-query | @elysiajs/eden-query | tRPC |
-|---------|---------------------|----------------------|------|
+| Feature | eden-tanstack-query | @ap0nia/eden-react-query | tRPC v11 |
+|---------|---------------------|--------------------------|----------|
 | Backend | Elysia | Elysia | Any (adapters) |
-| API Style | Options-based | Wrapper hooks | Wrapper hooks |
-| Query Keys | Explicit utilities | Implicit | Implicit (via utils) |
-| TQ Integration | Native hooks | Custom wrappers | Custom wrappers |
-| Bundle Size | ~2.5 KB | Larger | Larger |
-| Learning Curve | Standard TanStack Query | Custom API | Custom API |
+| API Style | Options-based | Wrapper hooks + cache utilities | Options-based (`@trpc/tanstack-react-query`) |
+| Transport | Plain REST (HTTP methods, URLs) | REST + optional batching | RPC protocol |
+| Query Keys | Explicit utilities | tRPC-style utils | Explicit utilities |
+| TQ Integration | Native hooks | Wrapper hooks | Native hooks |
+| Learning Curve | Standard TanStack Query | tRPC-style API | Standard TanStack Query |
 
 ---
 
-## vs @elysiajs/eden-query
+## vs @ap0nia/eden-react-query
 
 ### API Comparison
 
@@ -29,7 +29,7 @@ const eden = useEden()
 const { data } = useQuery(eden.users.get.queryOptions())
 ```
 
-```tsx title="@elysiajs/eden-query"
+```tsx title="@ap0nia/eden-react-query"
 const { data } = eden.users.get.useQuery()
 ```
 
@@ -44,38 +44,39 @@ const createUser = useMutation({
 })
 ```
 
-```tsx title="@elysiajs/eden-query"
+```tsx title="@ap0nia/eden-react-query"
+const utils = eden.useUtils()
 const createUser = eden.users.post.useMutation({
-  onSuccess: () => {
-    // Query invalidation is less explicit
-  }
+  onSuccess: () => utils.users.get.invalidate()
 })
 ```
 
 ### Key Differences
 
-**Options-based vs wrapper hooks** — eden-tanstack-query generates options objects that work with any TanStack Query hook (`useQuery`, `useSuspenseQuery`, `prefetchQuery`, `fetchQuery`), while eden-query provides custom wrapper hooks with a different API surface.
+**Options-based vs wrapper hooks** — eden-tanstack-query generates options objects that work with any TanStack Query hook (`useQuery`, `useSuspenseQuery`, `prefetchQuery`, `fetchQuery`). eden-react-query provides tRPC-style wrapper hooks on the route proxy and cache utilities through `useUtils()`.
 
-**Explicit query keys** — eden-tanstack-query exposes `.queryKey()`, `.queryFilter()`, and `.infiniteQueryFilter()` for full control over cache invalidation. eden-query handles keys implicitly, making complex cache operations harder.
+**Explicit query keys** — eden-tanstack-query exposes `.queryKey()`, `.queryFilter()`, and `.infiniteQueryFilter()` for full control over cache invalidation. eden-react-query manages keys through tRPC-style utils.
 
 **Standard patterns** — If you know TanStack Query, you already know eden-tanstack-query. No custom API to learn.
 
 ### When to Choose
 
-| Choose eden-tanstack-query | Choose @elysiajs/eden-query |
+| Choose eden-tanstack-query | Choose @ap0nia/eden-react-query |
 |---|---|
-| Standard TanStack Query patterns | "Batteries included" approach |
-| Explicit cache control needed | Don't need fine-grained cache control |
-| Complex invalidation patterns | Official Elysia ecosystem support |
-| Already familiar with TanStack Query | Simpler API surface preferred |
+| Standard TanStack Query patterns | Prefer tRPC-style wrapper hooks |
+| Explicit cache control needed | Utils-based invalidation feels natural |
+| Complex invalidation patterns | Coming from tRPC and want that API |
+| Already familiar with TanStack Query | Batching support wanted |
 
-### Migration from eden-query
+### Migration from @ap0nia/eden-react-query
 
 **1. Update imports**
 
 ```tsx
 // Before
-import { edenTreaty } from '@elysiajs/eden-query'
+import { createEdenTreatyReactQuery } from '@ap0nia/eden-react-query'
+
+const eden = createEdenTreatyReactQuery<App>()
 
 // After
 import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
@@ -115,7 +116,10 @@ const mutation = useMutation(eden.users.post.mutationOptions())
 **5. Update cache operations**
 
 ```tsx
-// Before: queryClient.invalidateQueries(['eden', 'users'])
+// Before:
+const utils = eden.useUtils()
+utils.users.get.invalidate()
+
 // After:
 queryClient.invalidateQueries(eden.users.get.queryFilter())
 ```
@@ -169,22 +173,27 @@ const createUser = useMutation({
 })
 ```
 
-```tsx title="tRPC"
-const { data } = trpc.users.list.useQuery()
+```tsx title="tRPC (@trpc/tanstack-react-query)"
+const trpc = useTRPC()
+const queryClient = useQueryClient()
 
-const utils = trpc.useUtils()
-const createUser = trpc.users.create.useMutation({
-  onSuccess: () => utils.users.list.invalidate()
-})
+const { data } = useQuery(trpc.users.list.queryOptions())
+
+const createUser = useMutation(trpc.users.create.mutationOptions({
+  onSuccess: () => queryClient.invalidateQueries(trpc.users.list.queryFilter())
+}))
 ```
+
+Since tRPC v11, `@trpc/tanstack-react-query` offers the same options-based surface as this library (`queryOptions`, `queryKey`, `queryFilter`, `infiniteQueryOptions`, `mutationOptions`, `mutationKey`). The differences that remain are about the backend and the transport, not the client API style.
 
 ### Key Differences
 
-| Aspect | eden-tanstack-query | tRPC |
-|--------|---------------------|------|
+| Aspect | eden-tanstack-query | tRPC v11 |
+|--------|---------------------|----------|
 | Backend | Elysia (Bun) | Any (Node.js, Bun, etc.) |
 | API style | REST (HTTP methods, URL paths) | RPC (procedures in routers) |
-| Cache management | Explicit keys + filters | Utils pattern |
+| Client surface | Options factories + explicit keys | Options factories + explicit keys |
+| Transport | Plain HTTP requests, no codec | tRPC link protocol, optional batching |
 | Ecosystem | Elysia plugins | Large tRPC ecosystem |
 | Tooling | Standard REST tools (curl, Postman) | Requires tRPC-aware clients |
 
@@ -194,5 +203,5 @@ const createUser = trpc.users.create.useMutation({
 |---|---|
 | Using Elysia + Bun | Need backend framework flexibility |
 | Prefer REST conventions | Need request batching |
-| Want standard TQ patterns | Existing tRPC codebase |
+| Types flow from real HTTP routes | Existing tRPC codebase |
 | Standard HTTP tooling needed | Need the larger ecosystem |
