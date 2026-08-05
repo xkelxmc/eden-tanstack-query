@@ -22,7 +22,7 @@ import type {
 	IsQueryMethod,
 	PathParamsToObject,
 } from "../../src/types/infer"
-import type { IsNever } from "../../src/utils/types"
+import type { Equals, IsNever } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
@@ -85,6 +85,24 @@ const app = new Elysia()
 		deleted: true,
 		id: params.id,
 	}))
+	// GET route with explicit response status schemas
+	.get("/items", ({ query }) => ({ data: `item-${query.id}` }), {
+		query: t.Object({ id: t.String() }),
+		response: {
+			200: t.Object({ data: t.String() }),
+			"404": t.Object({ message: t.String() }),
+		},
+	})
+	.get("/no-content", ({ status }) => status(204))
+	.get("/reset-content", ({ status }) => status(205, undefined), {
+		response: { 205: t.Undefined() },
+	})
+	.post("/created", ({ status }) => status(201, { id: "created" }), {
+		response: {
+			201: t.Object({ id: t.String() }),
+			409: t.Object({ reason: t.String() }),
+		},
+	})
 
 type App = typeof app
 
@@ -467,79 +485,216 @@ describe("InferRouteError", () => {
 		response: unknown
 	}
 
-	test("extracts error types from route with defined errors", () => {
+	type RouteWithDeclared503 = {
+		body: unknown
+		params: unknown
+		query: unknown
+		headers: unknown
+		response: {
+			200: { data: string }
+			503: { retryAfter: number }
+		}
+	}
+
+	test("extracts the exact union of declared error responses", () => {
 		type ErrorType = InferRouteError<RouteWithErrors>
+		type Expected =
+			| EdenFetchError<400, { message: string; code: string }>
+			| EdenFetchError<404, { message: string }>
+			| EdenFetchError<500, { error: string }>
+			| EdenFetchError<503, unknown>
 
-		// Should be a union of EdenFetchError types for 400, 404, 500
-		type Is400Error =
-			EdenFetchError<400, { message: string; code: string }> extends ErrorType
-				? true
-				: false
-		type Is404Error =
-			EdenFetchError<404, { message: string }> extends ErrorType ? true : false
-		type Is500Error =
-			EdenFetchError<500, { error: string }> extends ErrorType ? true : false
-
-		const is400Error: Is400Error = true
-		const is404Error: Is404Error = true
-		const is500Error: Is500Error = true
-
-		expect(is400Error).toBe(true)
-		expect(is404Error).toBe(true)
-		expect(is500Error).toBe(true)
+		const exact: Equals<ErrorType, Expected> = true
+		expect(exact).toBe(true)
 	})
 
-	test("error type is NOT never when route has only success responses", () => {
-		type ErrorType = InferRouteError<RouteWithOnlySuccess>
+	test("keeps the declared 503 response alongside the transport error", () => {
+		type Error503 = Extract<
+			InferRouteError<RouteWithDeclared503>,
+			{ status: 503 }
+		>
+		type Expected =
+			| EdenFetchError<503, { retryAfter: number }>
+			| EdenFetchError<503, unknown>
 
-		// CRITICAL: Error should NOT be never - should default to EdenFetchError<number, unknown>
-		type IsNotNever = IsNever<ErrorType> extends true ? false : true
-
-		const isNotNever: IsNotNever = true
-		expect(isNotNever).toBe(true)
+		const exact: Equals<Error503, Expected> = true
+		expect(exact).toBe(true)
 	})
 
-	test("error.value is NOT never when route has only success responses", () => {
+	test("falls back to the wide error type when route has only success responses", () => {
 		type ErrorType = InferRouteError<RouteWithOnlySuccess>
 
-		// The value type should be accessible (not never)
-		type HasStatus = ErrorType extends { status: number } ? true : false
-		type HasValue = ErrorType extends { value: unknown } ? true : false
-
-		const hasStatus: HasStatus = true
-		const hasValue: HasValue = true
-
-		expect(hasStatus).toBe(true)
-		expect(hasValue).toBe(true)
+		type Expected =
+			| EdenFetchError<number, unknown>
+			| EdenFetchError<503, unknown>
+		const exactFallback: Equals<ErrorType, Expected> = true
+		expect(exactFallback).toBe(true)
 	})
 
 	test("error defaults to EdenFetchError<number, unknown> when no response defined", () => {
 		type ErrorType = InferRouteError<RouteWithNoResponse>
 
-		// Should default to generic error type
-		type IsNotNever = IsNever<ErrorType> extends true ? false : true
-		type HasStatus = ErrorType extends { status: number } ? true : false
-		type HasValue = ErrorType extends { value: unknown } ? true : false
-
-		const isNotNever: IsNotNever = true
-		const hasStatus: HasStatus = true
-		const hasValue: HasValue = true
-
-		expect(isNotNever).toBe(true)
-		expect(hasStatus).toBe(true)
-		expect(hasValue).toBe(true)
+		type Expected =
+			| EdenFetchError<number, unknown>
+			| EdenFetchError<503, unknown>
+		const exactFallback: Equals<ErrorType, Expected> = true
+		expect(exactFallback).toBe(true)
 	})
 
-	test("error.value.message is accessible when error defines message", () => {
+	test("error narrows by status to the exact declared member", () => {
 		type ErrorType = InferRouteError<RouteWithErrors>
-
-		// For routes with defined errors, we should be able to narrow and access message
 		type Error404 = Extract<ErrorType, { status: 404 }>
-		type ValueHasMessage = Error404["value"] extends { message: string }
-			? true
-			: false
 
-		const valueHasMessage: ValueHasMessage = true
-		expect(valueHasMessage).toBe(true)
+		const exact: Equals<
+			Error404,
+			EdenFetchError<404, { message: string }>
+		> = true
+
+		expect(exact).toBe(true)
+	})
+})
+
+// ============================================================================
+// InferRouteOutput Status Code Tests
+// ============================================================================
+
+describe("InferRouteOutput status codes", () => {
+	type Routes = ExtractRoutes<App>
+
+	type RouteWith201Only = {
+		body: unknown
+		params: unknown
+		query: unknown
+		headers: unknown
+		response: {
+			"201": { id: string }
+			422: { message: string }
+		}
+	}
+
+	type RouteWithMultipleSuccess = {
+		body: unknown
+		params: unknown
+		query: unknown
+		headers: unknown
+		response: {
+			200: { ok: boolean }
+			201: { id: string }
+			404: { message: string }
+		}
+	}
+
+	type RouteWithUncommonSuccess = {
+		body: unknown
+		params: unknown
+		query: unknown
+		headers: unknown
+		response: {
+			299: { ok: true }
+			404: { message: string }
+		}
+	}
+
+	test("infers a quoted 201-only response instead of unknown", () => {
+		type Output = InferRouteOutput<RouteWith201Only>
+		const exact: Equals<Output, { id: string }> = true
+		expect(exact).toBe(true)
+	})
+
+	test("unions all declared successful responses", () => {
+		type Output = InferRouteOutput<RouteWithMultipleSuccess>
+		const exact: Equals<Output, { ok: boolean } | { id: string }> = true
+		expect(exact).toBe(true)
+	})
+
+	test("treats the full 200-299 range as successful", () => {
+		type Output = InferRouteOutput<RouteWithUncommonSuccess>
+		type ErrorType = InferRouteError<RouteWithUncommonSuccess>
+		type ExpectedError =
+			| EdenFetchError<404, { message: string }>
+			| EdenFetchError<503, unknown>
+
+		const exactOutput: Equals<Output, { ok: true }> = true
+		const exactError: Equals<ErrorType, ExpectedError> = true
+
+		expect(exactOutput).toBe(true)
+		expect(exactError).toBe(true)
+	})
+
+	test("uses Treaty's empty-string value for bodyless responses", () => {
+		type NoContentRoute = Routes["no-content"]["get"]
+		type ResetContentRoute = Routes["reset-content"]["get"]
+
+		const implicit204: Equals<InferRouteOutput<NoContentRoute>, ""> = true
+		const explicit205: Equals<InferRouteOutput<ResetContentRoute>, ""> = true
+
+		expect(implicit204).toBe(true)
+		expect(explicit205).toBe(true)
+	})
+
+	test("distributes over a union of real Elysia routes", () => {
+		type Route = Routes["items"]["get"] | Routes["created"]["post"]
+		type Output = InferRouteOutput<Route>
+
+		const exact: Equals<Output, { data: string } | { id: string }> = true
+		expect(exact).toBe(true)
+	})
+})
+
+// ============================================================================
+// InferRouteError against a real Elysia route
+// ============================================================================
+
+describe("InferRouteError (real Elysia app)", () => {
+	type Routes = ExtractRoutes<App>
+	type ItemsRoute = Routes["items"]["get"]
+	type CreatedRoute = Routes["created"]["post"]
+
+	test("extracts declared error statuses from a real route", () => {
+		type ItemsError = InferRouteError<ItemsRoute>
+		type Error404 = Extract<ItemsError, { status: 404 }>
+
+		const quotedKey: Equals<
+			Extract<keyof ItemsRoute["response"], "404">,
+			"404"
+		> = true
+		const exact: Equals<
+			Error404,
+			EdenFetchError<404, { message: string }>
+		> = true
+
+		expect(quotedKey).toBe(true)
+		expect(exact).toBe(true)
+	})
+
+	test("includes Treaty's transport error", () => {
+		type Error503 = Extract<InferRouteError<ItemsRoute>, { status: 503 }>
+
+		const exact: Equals<Error503, EdenFetchError<503, unknown>> = true
+		expect(exact).toBe(true)
+	})
+
+	test("distributes declared errors over a union of real Elysia routes", () => {
+		type RouteError = InferRouteError<ItemsRoute | CreatedRoute>
+		type Error404 = Extract<RouteError, { status: 404 }>
+		type Error409 = Extract<RouteError, { status: 409 }>
+
+		const error404: Equals<
+			Error404,
+			EdenFetchError<404, { message: string }>
+		> = true
+		const error409: Equals<
+			Error409,
+			EdenFetchError<409, { reason: string }>
+		> = true
+
+		expect(error404).toBe(true)
+		expect(error409).toBe(true)
+	})
+
+	test("infers the declared 200 response exactly on a real route", () => {
+		type Output = InferRouteOutput<ItemsRoute>
+		const exact: Equals<Output, { data: string }> = true
+		expect(exact).toBe(true)
 	})
 })

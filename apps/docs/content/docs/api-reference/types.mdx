@@ -133,8 +133,8 @@ type QueryType = 'query' | 'infinite' | 'any'
 | Type | Description |
 |------|-------------|
 | `InferRouteInput<TRoute, TMethod>` | Input type for route/method |
-| `InferRouteOutput<TRoute>` | Success response type (status 200) |
-| `InferRouteError<TRoute>` | Error response types (3xx-5xx) |
+| `InferRouteOutput<TRoute>` | Declared successful response types |
+| `InferRouteError<TRoute>` | Non-success response and transport error types |
 
 ### InferRouteInput
 
@@ -150,11 +150,20 @@ type InferRouteInput<TRoute, TMethod> = TMethod extends 'get' | 'head' | 'option
 
 ### InferRouteOutput
 
-Extract successful response type (status 200) from a route.
+Extract the union of declared successful response types from a route.
+Treaty treats every status from `200` through `299` as successful and returns an
+empty string for bodyless `204` and `205` responses, regardless of their declared
+response schema.
 
 ### InferRouteError
 
-Extract error response types (status 300-599) from a route.
+Extract the union of non-success response and transport error types from a route.
+The union also includes Treaty's `EdenFetchError<503, unknown>` transport failure
+because a custom fetcher can reject with any JavaScript value.
+Routes without a declared non-success response fall back to
+`EdenFetchError<number, unknown>`. A declared HTTP `503` response remains in the
+union, but narrowing only by status leaves `value` unknown because the same status
+can represent a transport failure.
 
 ### InferRouteBody
 
