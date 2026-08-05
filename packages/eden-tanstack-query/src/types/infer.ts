@@ -19,9 +19,9 @@ import type { IsNever, IsUnknown, Simplify } from "../utils/types"
 export interface RouteDefinition {
 	/** Combined input: params + query + headers (for GET) or body (for mutations) */
 	input: unknown
-	/** Response type (status 200) */
+	/** Declared successful response types */
 	output: unknown
-	/** Error response types (status 300-599) */
+	/** Declared non-success response types */
 	error: unknown
 }
 
@@ -124,21 +124,35 @@ type ReplaceGeneratorWithAsyncGenerator<T extends Record<string, unknown>> = {
 			: T[K]
 }
 
+type NumericStatusCode<TStatus> = TStatus extends number
+	? TStatus
+	: TStatus extends `${infer TNumber extends number}`
+		? TNumber
+		: never
+
+type NormalizeResponseStatusKeys<TResponse extends Record<number, unknown>> = {
+	[K in keyof TResponse as NumericStatusCode<K>]: TResponse[K]
+}
+
+type ExtractSuccessResponses<TResponse extends Record<number, unknown>> =
+	NormalizeResponseStatusKeys<TResponse>[Extract<
+		keyof NormalizeResponseStatusKeys<TResponse>,
+		SuccessStatusCode
+	>]
+
 /**
  * Extract the successful response type from a route.
  *
- * Unions every 2xx status declared in the response record, so routes that
- * respond with 201/202/... (idiomatic for create endpoints) infer correctly.
+ * Unions every declared response in Eden Treaty's successful status set.
  *
  * @example
  * type Output = InferRouteOutput<RouteSchema> // { id: string; name: string }
  */
 export type InferRouteOutput<TRoute extends RouteSchema> =
 	TRoute["response"] extends Record<number, unknown>
-		? ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>[Extract<
-				keyof TRoute["response"],
-				SuccessStatusCode
-			>]
+		? ExtractSuccessResponses<
+				ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>
+			>
 		: never
 
 /**
@@ -153,7 +167,7 @@ export type InferRouteOutputAll<TRoute extends RouteSchema> =
 // Route Error Extraction
 // ============================================================================
 
-/** Success status codes (2xx) */
+/** Status codes treated as successful by Eden Treaty */
 type SuccessStatusCode =
 	| 200
 	| 201
@@ -179,16 +193,18 @@ export interface EdenFetchError<
 
 /**
  * Helper type to extract error types from response record.
- * Maps each non-2xx status code declared on the route to EdenFetchError.
+ * Maps each declared non-success status code to EdenFetchError.
  */
 type ExtractErrorsFromResponse<TResponse extends Record<number, unknown>> = {
-	[K in keyof TResponse]: K extends SuccessStatusCode
-		? never
-		: EdenFetchError<K & number, TResponse[K]>
-}[keyof TResponse]
+	[K in keyof NormalizeResponseStatusKeys<TResponse>]: K extends number
+		? K extends SuccessStatusCode
+			? never
+			: EdenFetchError<K, NormalizeResponseStatusKeys<TResponse>[K]>
+		: never
+}[keyof NormalizeResponseStatusKeys<TResponse>]
 
 /**
- * Extract error response types from a route (status 300-599).
+ * Extract declared non-success response types from a route.
  *
  * @example
  * type Error = InferRouteError<RouteSchema>

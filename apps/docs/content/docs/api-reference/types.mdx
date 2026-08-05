@@ -133,8 +133,8 @@ type QueryType = 'query' | 'infinite' | 'any'
 | Type | Description |
 |------|-------------|
 | `InferRouteInput<TRoute, TMethod>` | Input type for route/method |
-| `InferRouteOutput<TRoute>` | Success response type (status 200) |
-| `InferRouteError<TRoute>` | Error response types (3xx-5xx) |
+| `InferRouteOutput<TRoute>` | Declared successful response types |
+| `InferRouteError<TRoute>` | Declared non-success response types |
 
 ### InferRouteInput
 
@@ -150,11 +150,11 @@ type InferRouteInput<TRoute, TMethod> = TMethod extends 'get' | 'head' | 'option
 
 ### InferRouteOutput
 
-Extract successful response type (status 200) from a route.
+Extract the union of declared successful response types from a route.
 
 ### InferRouteError
 
-Extract error response types (status 300-599) from a route.
+Extract the union of declared non-success response types from a route.
 
 ### InferRouteBody
 

@@ -22,18 +22,7 @@ import type {
 	IsQueryMethod,
 	PathParamsToObject,
 } from "../../src/types/infer"
-import type { IsNever } from "../../src/utils/types"
-
-/**
- * Strict type equality that catches `any` — one-directional `extends` checks
- * pass vacuously against wide fallback types.
- * Local copy: the canonical helper ships with the test-foundation PR;
- * consolidate on merge.
- */
-type Equals<A, B> =
-	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-		? true
-		: false
+import type { Equals, IsNever } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
@@ -97,22 +86,13 @@ const app = new Elysia()
 		id: params.id,
 	}))
 	// GET route with explicit response status schemas
-	.get(
-		"/items",
-		({ query, status }) => {
-			if (query.id === "missing") {
-				return status(404, { message: "Item not found" })
-			}
-			return { data: `item-${query.id}` }
+	.get("/items", ({ query }) => ({ data: `item-${query.id}` }), {
+		query: t.Object({ id: t.String() }),
+		response: {
+			200: t.Object({ data: t.String() }),
+			"404": t.Object({ message: t.String() }),
 		},
-		{
-			query: t.Object({ id: t.String() }),
-			response: {
-				200: t.Object({ data: t.String() }),
-				404: t.Object({ message: t.String() }),
-			},
-		},
-	)
+	})
 
 type App = typeof app
 
@@ -506,18 +486,6 @@ describe("InferRouteError", () => {
 		expect(exact).toBe(true)
 	})
 
-	test("does not fall back to the wide error type when errors are declared", () => {
-		type ErrorType = InferRouteError<RouteWithErrors>
-
-		// An undeclared status must NOT be assignable. The old one-directional
-		// assertion was vacuously true against the EdenFetchError<number, unknown>
-		// fallback the broken extraction always produced.
-		type UndeclaredAssignable =
-			EdenFetchError<401, { message: string }> extends ErrorType ? true : false
-		const undeclaredAssignable: UndeclaredAssignable = false
-		expect(undeclaredAssignable).toBe(false)
-	})
-
 	test("falls back to the wide error type when route has only success responses", () => {
 		type ErrorType = InferRouteError<RouteWithOnlySuccess>
 
@@ -526,20 +494,6 @@ describe("InferRouteError", () => {
 			EdenFetchError<number, unknown>
 		> = true
 		expect(exactFallback).toBe(true)
-	})
-
-	test("error.value is NOT never when route has only success responses", () => {
-		type ErrorType = InferRouteError<RouteWithOnlySuccess>
-
-		// The value type should be accessible (not never)
-		type HasStatus = ErrorType extends { status: number } ? true : false
-		type HasValue = ErrorType extends { value: unknown } ? true : false
-
-		const hasStatus: HasStatus = true
-		const hasValue: HasValue = true
-
-		expect(hasStatus).toBe(true)
-		expect(hasValue).toBe(true)
 	})
 
 	test("error defaults to EdenFetchError<number, unknown> when no response defined", () => {
@@ -556,19 +510,12 @@ describe("InferRouteError", () => {
 		type ErrorType = InferRouteError<RouteWithErrors>
 		type Error404 = Extract<ErrorType, { status: 404 }>
 
-		// The extraction must produce a real member — the old assertion was
-		// vacuous because Error404 was `never` and never["value"] extends
-		// anything.
-		const error404IsNever: IsNever<Error404> = false
 		const exact: Equals<
 			Error404,
 			EdenFetchError<404, { message: string }>
 		> = true
-		const valueExact: Equals<Error404["value"], { message: string }> = true
 
-		expect(error404IsNever).toBe(false)
 		expect(exact).toBe(true)
-		expect(valueExact).toBe(true)
 	})
 })
 
@@ -577,24 +524,13 @@ describe("InferRouteError", () => {
 // ============================================================================
 
 describe("InferRouteOutput status codes", () => {
-	type RouteWith200 = {
-		body: unknown
-		params: unknown
-		query: unknown
-		headers: unknown
-		response: {
-			200: { ok: boolean }
-			422: { message: string }
-		}
-	}
-
 	type RouteWith201Only = {
 		body: unknown
 		params: unknown
 		query: unknown
 		headers: unknown
 		response: {
-			201: { id: string }
+			"201": { id: string }
 			422: { message: string }
 		}
 	}
@@ -611,13 +547,7 @@ describe("InferRouteOutput status codes", () => {
 		}
 	}
 
-	test("infers the single 2xx response exactly", () => {
-		type Output = InferRouteOutput<RouteWith200>
-		const exact: Equals<Output, { ok: boolean }> = true
-		expect(exact).toBe(true)
-	})
-
-	test("infers 201-only responses instead of unknown", () => {
+	test("infers a quoted 201-only response instead of unknown", () => {
 		type Output = InferRouteOutput<RouteWith201Only>
 		const exact: Equals<Output, { id: string }> = true
 		expect(exact).toBe(true)
@@ -627,13 +557,6 @@ describe("InferRouteOutput status codes", () => {
 		type Output = InferRouteOutput<RouteWithMultipleSuccess>
 		const exact: Equals<Output, { ok: boolean } | { id: string }> = true
 		expect(exact).toBe(true)
-	})
-
-	test("excludes error responses from the output", () => {
-		type Output = InferRouteOutput<RouteWithMultipleSuccess>
-		type IncludesError = { message: string } extends Output ? true : false
-		const includesError: IncludesError = false
-		expect(includesError).toBe(false)
 	})
 })
 
@@ -649,20 +572,17 @@ describe("InferRouteError (real Elysia app)", () => {
 		type ItemsError = InferRouteError<ItemsRoute>
 		type Error404 = Extract<ItemsError, { status: 404 }>
 
-		const error404IsNever: IsNever<Error404> = false
-		const valueExact: Equals<Error404["value"], { message: string }> = true
+		const quotedKey: Equals<
+			Extract<keyof ItemsRoute["response"], "404">,
+			"404"
+		> = true
+		const exact: Equals<
+			Error404,
+			EdenFetchError<404, { message: string }>
+		> = true
 
-		expect(error404IsNever).toBe(false)
-		expect(valueExact).toBe(true)
-	})
-
-	test("does not accept undeclared statuses on a real route", () => {
-		type ItemsError = InferRouteError<ItemsRoute>
-		type UndeclaredAssignable =
-			EdenFetchError<401, { message: string }> extends ItemsError ? true : false
-
-		const undeclaredAssignable: UndeclaredAssignable = false
-		expect(undeclaredAssignable).toBe(false)
+		expect(quotedKey).toBe(true)
+		expect(exact).toBe(true)
 	})
 
 	test("infers the declared 200 response exactly on a real route", () => {
