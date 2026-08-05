@@ -561,8 +561,6 @@ describe("useInfiniteQuery integration", () => {
 						),
 					)
 
-					// CRITICAL: Compile-time type check for error shape
-					// EdenFetchError has status and value, NOT message
 					if (query.error) {
 						type ErrorType = typeof query.error
 						type HasStatus = "status" extends keyof ErrorType ? true : false

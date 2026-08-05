@@ -375,14 +375,18 @@ describe("EdenFetchError", () => {
 		expect(hasValue).toBe(true)
 	})
 
-	test("does NOT have message property", () => {
-		type Error = EdenFetchError<500, { message: string }>
-		type HasMessage = "message" extends keyof Error ? true : false
+	test("is an Error subtype with a message property", () => {
+		// Eden's runtime EdenFetchError extends Error, so `message` exists —
+		// but it is String(value) at runtime (often "[object Object]" for JSON
+		// bodies); status/value carry the useful payload.
+		type Err = EdenFetchError<500, { message: string }>
+		type IsError = Err extends Error ? true : false
+		type HasMessage = "message" extends keyof Err ? true : false
 
-		// CRITICAL: EdenFetchError should NOT have message at top level
-		// message is inside value, not on the error itself
-		const hasMessage: HasMessage = false
-		expect(hasMessage).toBe(false)
+		const isError: IsError = true
+		const hasMessage: HasMessage = true
+		expect(isError).toBe(true)
+		expect(hasMessage).toBe(true)
 	})
 
 	test("status is typed number", () => {

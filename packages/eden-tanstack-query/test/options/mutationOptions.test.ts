@@ -291,8 +291,7 @@ describe("edenMutationOptions error type inference", () => {
 		expect(options.onError).toBeDefined()
 	})
 
-	test("error type has status and value, NOT message at top level", () => {
-		// Critical test - EdenFetchError structure
+	test("preserves a custom status and value error type", () => {
 		type EdenError = {
 			status: 400
 			value: { message: string; errors: string[] }

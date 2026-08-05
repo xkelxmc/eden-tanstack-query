@@ -315,8 +315,7 @@ describe("edenQueryOptions error type inference", () => {
 		expect(options.throwOnError).toBeDefined()
 	})
 
-	test("error type does NOT have message at top level", () => {
-		// This is the critical test - EdenFetchError has status and value, NOT message
+	test("accepts a custom error type", () => {
 		type EdenError = { status: number; value: unknown }
 
 		// Generic order: <TInput, TOutput, TError>

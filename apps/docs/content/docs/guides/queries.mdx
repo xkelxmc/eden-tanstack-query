@@ -23,7 +23,7 @@ function UserList() {
   )
 
   if (isLoading) return <div>Loading...</div>
-  if (error) return <div>Error: {error.message}</div>
+  if (error) return <div>Request failed with status {error.status}</div>
 
   return (
     <ul>
@@ -183,7 +183,8 @@ const handleMouseEnter = () => {
 
 ## Error Handling
 
-Errors are typed as `EdenFetchError` with access to the HTTP status and response body:
+Errors are typed as `EdenFetchError`: `status` is the HTTP status code and
+`value` is the response body.
 
 ```tsx
 const { data, error } = useQuery(eden.users.get.queryOptions())
@@ -192,6 +193,34 @@ if (error) {
   if (error.status === 401) {
     return <div>Please log in</div>
   }
-  return <div>Error: {error.value?.message}</div>
+  return <div>Request failed with status {error.status}</div>
 }
 ```
+
+`error.value` is typed as `unknown` unless the route declares its error
+responses. Declare them in Elysia to get typed narrowing by status:
+
+```ts
+// server
+.get('/items/:id', handler, {
+  response: {
+    200: t.Object({ name: t.String() }),
+    404: t.Object({ message: t.String() }),
+  },
+})
+```
+
+```tsx
+// client
+if (error) {
+  if (error.status === 404) {
+    // error.value is narrowed to { message: string }
+    return <div>{error.value.message}</div>
+  }
+  return <div>Request failed with status {error.status}</div>
+}
+```
+
+Avoid rendering `error.message`: the error extends `Error`, but its runtime
+`message` is `String(value)` — for JSON bodies that renders as
+`[object Object]`. Use `status` and `value` instead.

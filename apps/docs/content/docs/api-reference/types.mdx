@@ -50,10 +50,12 @@ type HttpMethod = HttpQueryMethod | HttpMutationMethod
 
 ### EdenFetchError
 
-Error type for Eden requests. Contains status code and error value.
+Error type for Eden requests. It includes standard `Error` fields alongside the
+typed status code and response value. Eden derives `message` with
+`String(value)`, so object response bodies may produce `[object Object]`.
 
 ```ts
-interface EdenFetchError<TStatus extends number = number, TValue = unknown> {
+interface EdenFetchError<TStatus extends number = number, TValue = unknown> extends Error {
   status: TStatus
   value: TValue
 }
