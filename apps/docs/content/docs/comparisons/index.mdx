@@ -10,10 +10,10 @@ description: How eden-tanstack-query compares to @ap0nia/eden-react-query and tR
 | Feature | eden-tanstack-query | @ap0nia/eden-react-query | tRPC v11 |
 |---------|---------------------|--------------------------|----------|
 | Backend | Elysia | Elysia | Any (adapters) |
-| API Style | Options-based | Wrapper hooks + options helpers | Options-based (`@trpc/tanstack-react-query`) |
+| API Style | Options-based | Wrapper hooks + cache utilities | Options-based (`@trpc/tanstack-react-query`) |
 | Transport | Plain REST (HTTP methods, URLs) | REST + optional batching | RPC protocol |
 | Query Keys | Explicit utilities | tRPC-style utils | Explicit utilities |
-| TQ Integration | Native hooks | Custom wrappers + helpers | Native hooks |
+| TQ Integration | Native hooks | Wrapper hooks | Native hooks |
 | Learning Curve | Standard TanStack Query | tRPC-style API | Standard TanStack Query |
 
 ---
@@ -53,7 +53,7 @@ const createUser = eden.users.post.useMutation({
 
 ### Key Differences
 
-**Options-based vs wrapper hooks** — eden-tanstack-query generates options objects that work with any TanStack Query hook (`useQuery`, `useSuspenseQuery`, `prefetchQuery`, `fetchQuery`). eden-react-query's primary API is tRPC-style wrapper hooks (`useQuery()` on the route proxy), with options helpers also available.
+**Options-based vs wrapper hooks** — eden-tanstack-query generates options objects that work with any TanStack Query hook (`useQuery`, `useSuspenseQuery`, `prefetchQuery`, `fetchQuery`). eden-react-query provides tRPC-style wrapper hooks on the route proxy and cache utilities through `useUtils()`.
 
 **Explicit query keys** — eden-tanstack-query exposes `.queryKey()`, `.queryFilter()`, and `.infiniteQueryFilter()` for full control over cache invalidation. eden-react-query manages keys through tRPC-style utils.
 

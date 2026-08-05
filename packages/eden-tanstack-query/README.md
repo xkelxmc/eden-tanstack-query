@@ -224,8 +224,8 @@ eden.users.get.queryOptions({
 
 | Feature | eden-tanstack-react-query | @ap0nia/eden-react-query |
 |---------|---------------------------|--------------------------|
-| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` + options helpers |
-| TanStack Query Native | ✅ Standard hooks only | ⚠️ Custom hooks first, helpers available |
+| API Style | `useQuery(eden.users.get.queryOptions())` | `eden.users.get.useQuery()` + `useUtils()` |
+| TanStack Query Native | ✅ Standard hooks only | ⚠️ Wrapper hooks |
 | Query Keys | Explicit `queryKey()` / `queryFilter()` | tRPC-style utils |
 | Learning Curve | Standard TanStack Query | tRPC-style API |
 
