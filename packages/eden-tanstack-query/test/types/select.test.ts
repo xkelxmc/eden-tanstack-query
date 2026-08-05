@@ -77,6 +77,7 @@ export function querySelectProbe(qc: QueryClient, eden: EdenOptionsProxy<App>) {
 export function useInfiniteSelectProbe(
 	qc: QueryClient,
 	eden: EdenOptionsProxy<App>,
+	maybeCursor?: number,
 ) {
 	const withSelect = eden.feed.get.infiniteQueryOptions(
 		{},
@@ -172,7 +173,6 @@ export function useInfiniteSelectProbe(
 		InfiniteData<FeedPage, number | null> | undefined
 	> = true
 
-	const maybeCursor: number | undefined = Math.random() > 0.5 ? 0 : undefined
 	const maybeCursorOptions = eden.feed.get.infiniteQueryOptions(
 		{},
 		{
