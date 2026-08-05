@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-05
+
+### Breaking Changes
+
+- `queryOptions()` now requires input when a route declares required query fields
+- Infinite-query helpers are exposed only for routes with a supported top-level cursor; required cursors need an explicit non-null `initialCursor`
+- `queryKey(skipToken)` and `infiniteQueryKey(skipToken)` now reject `skipToken`; use the corresponding options helper to disable a query
+- Query-key identity now preserves ordered path parameters and exact infinite-query initial cursors; persisted or dehydrated caches from previous versions should be discarded
+- Public route errors expose the response body at `error.value` instead of the incorrectly inferred `error.value.value`
+- Minimum supported versions are now TanStack Query 5.62.0, Elysia 1.3.0, Eden 1.3.0 and TypeScript 5.5.2
+
+### Fixed
+
+- Keep request routing and cache identity aligned for root, nested, sequential, duplicate and numeric path parameters ([#12](https://github.com/xkelxmc/eden-tanstack-query/pull/12), [#13](https://github.com/xkelxmc/eden-tanstack-query/pull/13))
+- Prevent skipped observers from replacing enabled query functions, including clients with a global default query function ([#12](https://github.com/xkelxmc/eden-tanstack-query/pull/12))
+- Separate infinite queries by their initial cursor while keeping broad filters partially matchable and respecting custom query-key hash functions ([#16](https://github.com/xkelxmc/eden-tanstack-query/pull/16))
+- Preserve raw fetched data, selected data, route errors, page data and page parameters across query options, infinite-query options and tagged query keys ([#16](https://github.com/xkelxmc/eden-tanstack-query/pull/16))
+- Infer every successful HTTP status from 200 through 299, including Treaty's bodyless 204 and 205 responses, and preserve status-discriminated route and transport errors ([#14](https://github.com/xkelxmc/eden-tanstack-query/pull/14), [#15](https://github.com/xkelxmc/eden-tanstack-query/pull/15))
+- Enforce required query input and expose infinite-query helpers only when the route cursor can be represented soundly ([#17](https://github.com/xkelxmc/eden-tanstack-query/pull/17))
+- Correctly discriminate HTTP procedures, method-named child routes, reserved route-schema names, dynamic paths and supported `.all()` routes ([#18](https://github.com/xkelxmc/eden-tanstack-query/pull/18))
+
+### Changed
+
+- Include the Apache-2.0 license in the published package and validate the packed artifact against exact lower-bound dependencies ([#11](https://github.com/xkelxmc/eden-tanstack-query/pull/11), [#19](https://github.com/xkelxmc/eden-tanstack-query/pull/19))
+- Expand strict compile-time assertions and real Eden Treaty integration coverage ([#9](https://github.com/xkelxmc/eden-tanstack-query/pull/9))
+- Align the README, API reference, guides, examples, compatibility tables and package-size figures with the current API ([#10](https://github.com/xkelxmc/eden-tanstack-query/pull/10), [#19](https://github.com/xkelxmc/eden-tanstack-query/pull/19))
+
 ## [0.1.11] - 2026-08-04
 
 ### Changed
