@@ -1,3 +1,4 @@
+import { treaty } from "@elysiajs/eden"
 import {
 	type DataTag,
 	type InfiniteData,
@@ -5,12 +6,14 @@ import {
 	skipToken,
 } from "@tanstack/react-query"
 import {
+	createEdenOptionsProxy,
 	type DecorateInfiniteQueryProcedure,
 	type DecorateQueryProcedure,
 	type EdenQueryKey,
 	edenInfiniteQueryOptions,
 	edenQueryOptions,
 } from "eden-tanstack-react-query"
+import { Elysia, t } from "elysia"
 
 interface UserInput {
 	id: string
@@ -135,6 +138,28 @@ const nullableInfinite = edenInfiniteQueryOptions<
 })
 
 declare const queryClient: QueryClient
+
+const compatibilityApp = new Elysia().get(
+	"/users",
+	({ query }) => [{ id: query.id }],
+	{ query: t.Object({ id: t.String() }) },
+)
+const compatibilityClient = treaty<typeof compatibilityApp>(
+	"http://localhost:3000",
+)
+const compatibilityProxy = createEdenOptionsProxy<typeof compatibilityApp>({
+	client: compatibilityClient,
+	queryClient,
+})
+const compatibilityQuery = compatibilityProxy.users.get.queryOptions({
+	id: "1",
+})
+const compatibilityData: Array<{ id: string }> | undefined =
+	queryClient.getQueryData(compatibilityQuery.queryKey)
+queryClient.setQueryData(compatibilityQuery.queryKey, [{ id: "cached" }])
+// @ts-expect-error route output ids are strings
+queryClient.setQueryData(compatibilityQuery.queryKey, [{ id: 1 }])
+
 const selectedQueryCached: User | undefined = queryClient.getQueryData(
 	selectedQuery.queryKey,
 )
@@ -252,6 +277,7 @@ const invalidKey: number = skipped.queryKey
 
 void [
 	defined,
+	compatibilityData,
 	infiniteCached,
 	infiniteDefined,
 	infiniteSkipped,

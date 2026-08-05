@@ -1,12 +1,12 @@
 # eden-tanstack-react-query
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://github.com/xkelxmc/eden-tanstack-query/actions/workflows/test.yml/badge.svg)](https://github.com/xkelxmc/eden-tanstack-query/actions/workflows/test.yml)
 
 Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, but for Elysia.
 
-**Size:** 13.51 KB (gzipped: 3.19 KB)
+**Size:** 15.90 KB (gzipped: 3.81 KB)
 
 ## ✨ Features
 
