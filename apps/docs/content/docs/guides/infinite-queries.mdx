@@ -142,6 +142,12 @@ const eden = useEden()
 // Get the infinite query key
 const key = eden.posts.get.infiniteQueryKey({ limit: 10 })
 
+// Match options that start from a non-default cursor
+const resumedKey = eden.posts.get.infiniteQueryKey(
+  { limit: 10 },
+  { initialCursor: 'cursor-20' }
+)
+
 // Invalidate infinite query
 queryClient.invalidateQueries({
   queryKey: eden.posts.get.infiniteQueryKey()
@@ -151,7 +157,19 @@ queryClient.invalidateQueries({
 queryClient.invalidateQueries(
   eden.posts.get.infiniteQueryFilter({ category: 'tech' })
 )
+
+// Invalidate only the variant that starts from cursor-20
+queryClient.invalidateQueries(
+  eden.posts.get.infiniteQueryFilter(
+    { category: 'tech' },
+    { initialCursor: 'cursor-20' }
+  )
+)
 ```
+
+Exact infinite-query keys include the initial cursor. Filters omit it on
+purpose and match every starting cursor for the selected input unless an
+`initialCursor` filter option is provided.
 
 ## Conditional with skipToken
 

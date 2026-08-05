@@ -382,7 +382,10 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			})
 		},
 
-		infiniteQueryKey: (input?: unknown): EdenQueryKey => {
+		infiniteQueryKey: (
+			input?: unknown,
+			keyOpts?: { initialCursor?: unknown },
+		): EdenQueryKey => {
 			if (input === skipToken) {
 				throw new TypeError(
 					"skipToken is only supported by infiniteQueryOptions",
@@ -393,20 +396,28 @@ function createQueryProcedure(opts: ProcedureOptions) {
 				input,
 				pathParams,
 				type: "infinite",
+				initialPageParam: keyOpts?.initialCursor ?? null,
 			})
 		},
 
 		infiniteQueryFilter: (
 			input?: unknown,
-			filters?: QueryFilters,
+			filters?: QueryFilters & { initialCursor?: unknown },
 		): WithRequired<QueryFilters, "queryKey"> => {
+			const { initialCursor, ...queryFilters } = filters ?? {}
+			const hasExactInitialCursor =
+				Object.hasOwn(filters ?? {}, "initialCursor") || filters?.exact === true
+
 			return {
-				...filters,
+				...queryFilters,
 				queryKey: getQueryKey({
 					path: paths,
 					input,
 					pathParams,
 					type: "infinite",
+					...(hasExactInitialCursor
+						? { initialPageParam: initialCursor ?? null }
+						: {}),
 				}),
 			}
 		},

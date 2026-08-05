@@ -42,6 +42,10 @@ export type EdenQueryKeyMeta<TInput = unknown> = {
 	pathParams?: EdenQueryKeyPathParam[]
 	/** Query type discriminator (excludes 'any' as it's only for filtering) */
 	type?: Exclude<QueryType, "any">
+	/** Exact infinite-query identity that filters may omit for broad matching. */
+	infinite?: {
+		initialPageParam?: unknown
+	}
 }
 
 /**

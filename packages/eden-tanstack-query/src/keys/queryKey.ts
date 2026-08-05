@@ -52,6 +52,8 @@ export interface GetQueryKeyOptions {
 	pathParams?: EdenQueryKeyPathParam[]
 	/** Query type: 'query', 'infinite', or 'any' */
 	type?: QueryType
+	/** Initial page parameter that distinguishes exact infinite queries. */
+	initialPageParam?: unknown
 }
 
 /**
@@ -109,6 +111,11 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 
 	if (type && type !== "any") {
 		meta.type = type
+	}
+	if (type === "infinite" && Object.hasOwn(opts, "initialPageParam")) {
+		meta.infinite = {
+			initialPageParam: sanitizeInput(opts.initialPageParam),
+		}
 	}
 
 	// Return with metadata if any, otherwise just path

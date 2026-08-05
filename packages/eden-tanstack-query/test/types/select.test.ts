@@ -147,6 +147,18 @@ export function useInfiniteSelectProbe(
 		typeof explicitCursor.initialPageParam,
 		number
 	> = true
+	const nullCursor = eden.feed.get.infiniteQueryOptions(
+		{},
+		{
+			initialCursor: null,
+			getNextPageParam: () => 1,
+		},
+	)
+	const nullCursorCached = qc.getQueryData(nullCursor.queryKey)
+	const nullCursorExact: Equals<
+		typeof nullCursorCached,
+		InfiniteData<FeedPage, number | null> | undefined
+	> = true
 	const undefinedCursor = eden.feed.get.infiniteQueryOptions(
 		{},
 		{
@@ -184,6 +196,19 @@ export function useInfiniteSelectProbe(
 		pages: [{ items: [], next: null }],
 		pageParams: [null],
 	})
+	const manualExplicitKey = eden.feed.get.infiniteQueryKey(
+		{},
+		{ initialCursor: 0 },
+	)
+	const manualExplicitCached = qc.getQueryData(manualExplicitKey)
+	const manualExplicitExact: Equals<
+		typeof manualExplicitCached,
+		InfiniteData<FeedPage, number> | undefined
+	> = true
+	const explicitKeysAgree: Equals<
+		typeof manualExplicitKey,
+		typeof explicitCursor.queryKey
+	> = true
 	// @ts-expect-error an infinite cache entry contains pages and pageParams
 	qc.setQueryData(manualKey, { items: [], next: null })
 
@@ -199,11 +224,14 @@ export function useInfiniteSelectProbe(
 
 	return {
 		cachedExact,
+		explicitKeysAgree,
 		explicitCachedExact,
 		explicitInitialExact,
 		manualCachedExact,
 		manualErrorExact,
+		manualExplicitExact,
 		maybeCursorExact,
+		nullCursorExact,
 		pagesExact,
 		selectedExact,
 		selectedResultExact,
@@ -380,6 +408,36 @@ export function useStandaloneInfiniteSelectProbe(qc: QueryClient) {
 		InfiniteData<FeedPage, number> | undefined
 	> = true
 
+	const nullable = edenInfiniteQueryOptions<
+		{ limit: number },
+		FeedPage,
+		Error,
+		number | null
+	>({
+		path: ["feed", "get"],
+		input: { limit: 10 },
+		initialPageParam: null,
+		fetch: async (input: { limit: number; cursor: number | null }) => ({
+			items: [{ id: `${input.limit}-${input.cursor}` }],
+			next: input.cursor,
+		}),
+		opts: { getNextPageParam: (last) => last.next },
+	})
+	qc.setQueryData(nullable.queryKey, {
+		pages: [{ items: [], next: null }],
+		pageParams: [null],
+	})
+	const nullableCached = qc.getQueryData(nullable.queryKey)
+	const nullableCachedExact: Equals<
+		typeof nullableCached,
+		InfiniteData<FeedPage, number | null> | undefined
+	> = true
+	const numericCachedAfterNullableWrite = qc.getQueryData(defined.queryKey)
+	const numericCachedAfterNullableWriteExact: Equals<
+		typeof numericCachedAfterNullableWrite,
+		InfiniteData<FeedPage, number> | undefined
+	> = true
+
 	const skipped = edenInfiniteQueryOptions({
 		path: ["feed", "get"],
 		input: skipToken,
@@ -414,6 +472,8 @@ export function useStandaloneInfiniteSelectProbe(qc: QueryClient) {
 	return {
 		cachedExact,
 		definedExact,
+		nullableCachedExact,
+		numericCachedAfterNullableWriteExact,
 		selectedExact,
 		skippedExact,
 		undefinedInitialExact,

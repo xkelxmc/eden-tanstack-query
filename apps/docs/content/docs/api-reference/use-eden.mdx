@@ -222,16 +222,30 @@ eden.users.post.mutationKey()
 Generates an infinite query key (separate from regular query cache).
 
 ```ts
-eden.route.get.infiniteQueryKey(input?): DataTag<EdenQueryKey>
+eden.route.get.infiniteQueryKey(
+  input?,
+  { initialCursor? }?
+): DataTag<EdenQueryKey>
 ```
 
 ```ts
 eden.posts.get.infiniteQueryKey()
-// => [['posts', 'get'], { type: 'infinite' }]
+// => [['posts', 'get'], {
+//   type: 'infinite',
+//   infinite: { initialPageParam: null }
+// }]
 
 eden.posts.get.infiniteQueryKey({ category: 'tech' })
-// => [['posts', 'get'], { input: { category: 'tech' }, type: 'infinite' }]
+
+eden.posts.get.infiniteQueryKey(
+  { category: 'tech' },
+  { initialCursor: 'start' }
+)
 ```
+
+The initial cursor is part of the exact infinite-query key. Pass the same
+`initialCursor` used by `infiniteQueryOptions`; omitting it targets the default
+`null` cursor.
 
 ---
 
@@ -270,7 +284,19 @@ eden.route.get.infiniteQueryFilter(input?, filters?): QueryFilters
 
 ```tsx
 queryClient.invalidateQueries(eden.posts.get.infiniteQueryFilter())
+
+queryClient.invalidateQueries(
+  eden.posts.get.infiniteQueryFilter(
+    { category: 'tech' },
+    { initialCursor: 'start' }
+  )
+)
 ```
+
+The filter intentionally omits the initial cursor, so it matches every
+initial-cursor variant for the selected route input. Pass `initialCursor` in
+the filter options to target one variant. With `exact: true`, an omitted
+`initialCursor` defaults to `null`, matching `infiniteQueryKey(input)`.
 
 ---
 
@@ -330,7 +356,7 @@ Methods on query routes with cursor input:
 | Method | Type | Description |
 |--------|------|-------------|
 | `infiniteQueryOptions` | `(input, opts) => EdenInfiniteQueryOptions` | Options for useInfiniteQuery |
-| `infiniteQueryKey` | `(input?) => DataTag<EdenQueryKey>` | Infinite query key |
+| `infiniteQueryKey` | `(input?, keyOpts?) => DataTag<EdenQueryKey>` | Infinite query key |
 | `infiniteQueryFilter` | `(input?, filters?) => QueryFilters` | Filter for infinite queries |
 
 ### DecorateMutationProcedure

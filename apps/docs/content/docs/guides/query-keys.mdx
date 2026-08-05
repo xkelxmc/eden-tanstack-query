@@ -87,7 +87,11 @@ Returns the query key for infinite queries:
 ```ts
 eden.posts.get.infiniteQueryKey()
 eden.posts.get.infiniteQueryKey({ limit: 10 })
+eden.posts.get.infiniteQueryKey({ limit: 10 }, { initialCursor: 'start' })
 ```
+
+The initial cursor is part of an exact infinite-query key. The helper defaults
+it to `null`, matching `infiniteQueryOptions()`.
 
 ### infiniteQueryFilter()
 
@@ -96,7 +100,15 @@ Returns a filter object for infinite queries:
 ```ts
 eden.posts.get.infiniteQueryFilter()
 eden.posts.get.infiniteQueryFilter({ category: 'tech' })
+eden.posts.get.infiniteQueryFilter(
+  { category: 'tech' },
+  { initialCursor: 'start' }
+)
 ```
+
+Infinite-query filters match all initial-cursor variants by default. Pass
+`initialCursor` in the filter options to target one variant. `exact: true`
+uses the default `null` cursor when `initialCursor` is omitted.
 
 ### mutationKey()
 

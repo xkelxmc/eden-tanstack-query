@@ -516,7 +516,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			DefaultedInfinitePageParam<TPageParam>
-		> & { initialCursor?: NoInfer<TPageParam> },
+		> & {
+			initialCursor?: DefaultedInfinitePageParam<NoInfer<TPageParam>>
+		},
 	): DefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -563,7 +565,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			DefaultedInfinitePageParam<TPageParam>
-		> & { initialCursor?: NoInfer<TPageParam> },
+		> & {
+			initialCursor?: DefaultedInfinitePageParam<NoInfer<TPageParam>>
+		},
 	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -614,7 +618,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			DefaultedInfinitePageParam<TPageParam>
-		> & { initialCursor?: NoInfer<TPageParam> },
+		> & {
+			initialCursor?: DefaultedInfinitePageParam<NoInfer<TPageParam>>
+		},
 	): UndefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -690,6 +696,33 @@ export interface DecorateQueryProcedure<TDef extends RouteDefinition>
 	>
 }
 
+interface EdenInfiniteQueryKey<TDef extends RouteDefinition> {
+	(
+		input:
+			| DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>
+			| undefined,
+		opts: {
+			initialCursor: ExplicitInfinitePageParam<ExtractCursorType<TDef["input"]>>
+		},
+	): DataTag<
+		EdenQueryKey,
+		InfiniteData<
+			TDef["output"],
+			ExplicitInfinitePageParam<ExtractCursorType<TDef["input"]>>
+		>,
+		TDef["error"]
+	>
+
+	(
+		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
+		opts?: { initialCursor?: DefaultInfinitePageParam<TDef> },
+	): DataTag<
+		EdenQueryKey,
+		InfiniteData<TDef["output"], DefaultInfinitePageParam<TDef>>,
+		TDef["error"]
+	>
+}
+
 /**
  * Decorator for query procedures that support infinite queries.
  * Added when input has a `cursor` property.
@@ -706,13 +739,7 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	/**
 	 * Generate an infinite query key for cache operations.
 	 */
-	infiniteQueryKey: (
-		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
-	) => DataTag<
-		EdenQueryKey,
-		InfiniteData<TDef["output"], DefaultInfinitePageParam<TDef>>,
-		TDef["error"]
-	>
+	infiniteQueryKey: EdenInfiniteQueryKey<TDef>
 
 	/**
 	 * Create an infinite query filter.
@@ -725,7 +752,7 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 				InfiniteData<TDef["output"], DefaultInfinitePageParam<TDef>>,
 				TDef["error"]
 			>
-		>,
+		> & { initialCursor?: DefaultInfinitePageParam<TDef> },
 	) => WithRequired<
 		QueryFilters<
 			DataTag<

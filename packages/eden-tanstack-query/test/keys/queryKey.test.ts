@@ -79,6 +79,31 @@ describe("getQueryKey", () => {
 		])
 	})
 
+	test("distinguishes exact infinite queries by initial page param", () => {
+		const nullable = getQueryKey({
+			path: ["api", "posts", "get"],
+			input: { limit: 10 },
+			type: "infinite",
+			initialPageParam: null,
+		})
+		const numeric = getQueryKey({
+			path: ["api", "posts", "get"],
+			input: { limit: 10 },
+			type: "infinite",
+			initialPageParam: 0,
+		})
+
+		expect(nullable).toEqual([
+			["api", "posts", "get"],
+			{
+				input: { limit: 10 },
+				type: "infinite",
+				infinite: { initialPageParam: null },
+			},
+		])
+		expect(numeric).not.toEqual(nullable)
+	})
+
 	test("strips cursor from infinite query input", () => {
 		const key = getQueryKey({
 			path: ["api", "posts", "get"],

@@ -353,6 +353,7 @@ export function edenInfiniteQueryOptions<
 		input: inputIsSkipToken ? args.inputForKey : input,
 		pathParams: args.pathParams,
 		type: "infinite",
+		initialPageParam,
 	}) as DataTag<EdenQueryKey, InfiniteData<TOutput, TPageParam>, TError>
 
 	const queryFn: QueryFunction<TOutput, EdenQueryKey, TPageParam> = async (

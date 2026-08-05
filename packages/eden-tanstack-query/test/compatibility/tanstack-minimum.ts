@@ -118,6 +118,22 @@ const infiniteSkipped = edenInfiniteQueryOptions({
 	opts: { getNextPageParam: (last) => last.next },
 })
 
+const nullableInfinite = edenInfiniteQueryOptions<
+	{ limit: number },
+	FeedPage,
+	Error,
+	number | null
+>({
+	path: ["feed", "get"],
+	input: { limit: 10 },
+	initialPageParam: null,
+	fetch: async (input: { limit: number; cursor: number | null }) => ({
+		items: [{ id: `${input.limit}-${input.cursor}` }],
+		next: input.cursor,
+	}),
+	opts: { getNextPageParam: (last) => last.next },
+})
+
 declare const queryClient: QueryClient
 const selectedQueryCached: User | undefined = queryClient.getQueryData(
 	selectedQuery.queryKey,
@@ -128,6 +144,10 @@ const infiniteCached: InfiniteData<FeedPage, number> | undefined =
 queryClient.setQueryData(infinite.queryKey, {
 	pages: [{ items: [], next: null }],
 	pageParams: [0],
+})
+queryClient.setQueryData(nullableInfinite.queryKey, {
+	pages: [{ items: [], next: null }],
+	pageParams: [null],
 })
 
 interface UnionQueryDef {
@@ -190,6 +210,32 @@ queryClient.setQueryData(optionalCursorOptions.queryKey, {
 	pageParams: [null],
 })
 
+const nullCursorOptions = infiniteProcedure.infiniteQueryOptions(
+	{},
+	{
+		initialCursor: null,
+		getNextPageParam: () => 1,
+	},
+)
+queryClient.setQueryData(nullCursorOptions.queryKey, {
+	pages: [{ kind: "a", value: "cached" }],
+	pageParams: [null],
+})
+
+const explicitCursorOptions = infiniteProcedure.infiniteQueryOptions(
+	{},
+	{
+		initialCursor: 0,
+		getNextPageParam: () => 1,
+	},
+)
+const explicitManualKey = infiniteProcedure.infiniteQueryKey(
+	{},
+	{ initialCursor: 0 },
+)
+const explicitOptionsKey: typeof explicitManualKey =
+	explicitCursorOptions.queryKey
+
 type InfiniteSelected = ReturnType<NonNullable<typeof infinite.select>>
 const selected: InfiniteSelected = [{ id: "1" }]
 
@@ -201,8 +247,11 @@ void [
 	infiniteCached,
 	infiniteDefined,
 	infiniteSkipped,
+	nullableInfinite,
 	invalidKey,
 	optionalCursorOptions,
+	nullCursorOptions,
+	explicitOptionsKey,
 	selected,
 	selectedQueryCached,
 	selectedQueryData,

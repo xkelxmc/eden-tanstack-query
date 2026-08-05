@@ -117,6 +117,7 @@ Metadata included in query keys.
 type EdenQueryKeyMeta<TInput = unknown> = {
   input?: TInput
   type?: 'query' | 'infinite'
+  infinite?: { initialPageParam?: unknown }
 }
 ```
 

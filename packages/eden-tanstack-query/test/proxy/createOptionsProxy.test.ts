@@ -220,7 +220,78 @@ describe("createEdenOptionsProxy", () => {
 			const key = eden.api.posts.get.infiniteQueryKey({ limit: 10 })
 
 			expect(key[0]).toEqual(["api", "posts", "get"])
-			expect(key[1]).toEqual({ input: { limit: 10 }, type: "infinite" })
+			expect(key[1]).toEqual({
+				input: { limit: 10 },
+				type: "infinite",
+				infinite: { initialPageParam: null },
+			})
+		})
+
+		test("manual infinite keys match options and filters match all cursors", () => {
+			const eden = createEden()
+			const isolatedQueryClient = createTestQueryClient()
+			const input = { limit: 10 }
+			const nullableOptions = eden.api.posts.get.infiniteQueryOptions(input, {
+				getNextPageParam: (page) => page.nextCursor,
+			})
+			const explicitOptions = eden.api.posts.get.infiniteQueryOptions(input, {
+				initialCursor: "start",
+				getNextPageParam: (page) => page.nextCursor,
+			})
+			const nullOptions = eden.api.posts.get.infiniteQueryOptions(input, {
+				initialCursor: null,
+				getNextPageParam: (page) => page.nextCursor,
+			})
+			const undefinedOptions = eden.api.posts.get.infiniteQueryOptions(input, {
+				initialCursor: undefined,
+				getNextPageParam: (page) => page.nextCursor,
+			})
+			const nullableKey = eden.api.posts.get.infiniteQueryKey(input)
+			const nullKey = eden.api.posts.get.infiniteQueryKey(input, {
+				initialCursor: null,
+			})
+			const undefinedKey = eden.api.posts.get.infiniteQueryKey(input, {
+				initialCursor: undefined,
+			})
+			const explicitKey = eden.api.posts.get.infiniteQueryKey(input, {
+				initialCursor: "start",
+			})
+
+			expect(nullableKey).toEqual(nullableOptions.queryKey)
+			expect(nullKey).toEqual(nullableOptions.queryKey)
+			expect(undefinedKey).toEqual(nullableOptions.queryKey)
+			expect(nullOptions.queryKey).toEqual(nullableOptions.queryKey)
+			expect(undefinedOptions.queryKey).toEqual(nullableOptions.queryKey)
+			expect(explicitKey).toEqual(explicitOptions.queryKey)
+			expect(nullableKey).not.toEqual(explicitKey)
+
+			isolatedQueryClient.setQueryData(nullableKey, {
+				pages: [{ items: [], nextCursor: "done" }],
+				pageParams: [null],
+			})
+			isolatedQueryClient.setQueryData(explicitKey, {
+				pages: [{ items: [], nextCursor: "done" }],
+				pageParams: ["start"],
+			})
+
+			const matches = isolatedQueryClient
+				.getQueryCache()
+				.findAll(eden.api.posts.get.infiniteQueryFilter(input))
+			expect(matches).toHaveLength(2)
+			expect(
+				isolatedQueryClient
+					.getQueryCache()
+					.findAll(
+						eden.api.posts.get.infiniteQueryFilter(input, { exact: true }),
+					),
+			).toHaveLength(1)
+			expect(
+				isolatedQueryClient.getQueryCache().findAll(
+					eden.api.posts.get.infiniteQueryFilter(input, {
+						initialCursor: "start",
+					}),
+				),
+			).toHaveLength(1)
 		})
 
 		test("keeps request headers in cache identity", async () => {
@@ -1101,6 +1172,7 @@ describe("createEdenOptionsProxy", () => {
 				{
 					pathParams: [{ pathIndex: 1, entries: [["postId", "42"]] }],
 					type: "infinite",
+					infinite: { initialPageParam: null },
 				},
 			])
 		})
