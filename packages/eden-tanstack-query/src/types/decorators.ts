@@ -289,6 +289,15 @@ export type ExtractCursorType<TInput> = TInput extends {
 	? TCursor
 	: unknown
 
+type DefaultInfinitePageParam<TDef extends RouteDefinition> = ExtractCursorType<
+	TDef["input"]
+> | null
+
+type DefaultInfiniteData<
+	TDef extends RouteDefinition,
+	TQueryFnData,
+> = InfiniteData<TQueryFnData, DefaultInfinitePageParam<TDef>>
+
 /** Cursor input shape */
 type CursorInput = { cursor?: unknown }
 
@@ -321,9 +330,7 @@ interface UndefinedEdenInfiniteQueryOptionsIn<
 			>,
 			ReservedInfiniteQueryOptions
 		>,
-		EdenQueryBaseOptions {
-	initialCursor?: TPageParam
-}
+		EdenQueryBaseOptions {}
 
 /**
  * Output options for undefined initial data infinite queries.
@@ -368,9 +375,7 @@ interface DefinedEdenInfiniteQueryOptionsIn<
 			>,
 			ReservedInfiniteQueryOptions
 		>,
-		EdenQueryBaseOptions {
-	initialCursor?: TPageParam
-}
+		EdenQueryBaseOptions {}
 
 /**
  * Output options for defined initial data infinite queries.
@@ -415,9 +420,7 @@ interface UnusedSkipTokenEdenInfiniteQueryOptionsIn<
 			>,
 			ReservedInfiniteQueryOptions
 		>,
-		EdenQueryBaseOptions {
-	initialCursor?: TPageParam
-}
+		EdenQueryBaseOptions {}
 
 /**
  * Output options when skipToken is not used for infinite queries.
@@ -450,12 +453,12 @@ interface UnusedSkipTokenEdenInfiniteQueryOptionsOut<
  */
 export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 	/**
-	 * Create infinite query options with defined initial data.
+	 * Create infinite query options with defined initial data and an explicit cursor.
 	 */
 	<
 		TQueryFnData extends TDef["output"] = TDef["output"],
-		TPageParam = ExtractCursorType<TDef["input"]> | null,
-		TData = InfiniteData<TQueryFnData, TPageParam>,
+		TData = InfiniteData<TQueryFnData, ExtractCursorType<TDef["input"]>>,
+		TPageParam = ExtractCursorType<TDef["input"]>,
 	>(
 		input:
 			| EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>
@@ -465,7 +468,7 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			TPageParam
-		>,
+		> & { initialCursor: TPageParam },
 	): DefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -474,12 +477,36 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 	>
 
 	/**
-	 * Create infinite query options without skipToken.
+	 * Create infinite query options with defined initial data and the null default.
 	 */
 	<
 		TQueryFnData extends TDef["output"] = TDef["output"],
-		TPageParam = ExtractCursorType<TDef["input"]> | null,
-		TData = InfiniteData<TQueryFnData, TPageParam>,
+		TData = DefaultInfiniteData<TDef, TQueryFnData>,
+		TPageParam = ExtractCursorType<TDef["input"]>,
+	>(
+		input:
+			| EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>
+			| SkipToken,
+		opts: DefinedEdenInfiniteQueryOptionsIn<
+			TQueryFnData,
+			TData,
+			TDef["error"],
+			TPageParam | null
+		> & { initialCursor?: TPageParam },
+	): DefinedEdenInfiniteQueryOptionsOut<
+		TQueryFnData,
+		TData,
+		TDef["error"],
+		TPageParam | null
+	>
+
+	/**
+	 * Create infinite query options without skipToken and with an explicit cursor.
+	 */
+	<
+		TQueryFnData extends TDef["output"] = TDef["output"],
+		TData = InfiniteData<TQueryFnData, ExtractCursorType<TDef["input"]>>,
+		TPageParam = ExtractCursorType<TDef["input"]>,
 	>(
 		input: EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
 		opts: UnusedSkipTokenEdenInfiniteQueryOptionsIn<
@@ -487,7 +514,7 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			TPageParam
-		>,
+		> & { initialCursor: TPageParam },
 	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -496,12 +523,34 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 	>
 
 	/**
-	 * Create infinite query options with skipToken support.
+	 * Create infinite query options without skipToken and with the null default.
 	 */
 	<
 		TQueryFnData extends TDef["output"] = TDef["output"],
-		TPageParam = ExtractCursorType<TDef["input"]> | null,
-		TData = InfiniteData<TQueryFnData, TPageParam>,
+		TData = DefaultInfiniteData<TDef, TQueryFnData>,
+		TPageParam = ExtractCursorType<TDef["input"]>,
+	>(
+		input: EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
+		opts: UnusedSkipTokenEdenInfiniteQueryOptionsIn<
+			TQueryFnData,
+			TData,
+			TDef["error"],
+			TPageParam | null
+		> & { initialCursor?: TPageParam },
+	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
+		TQueryFnData,
+		TData,
+		TDef["error"],
+		TPageParam | null
+	>
+
+	/**
+	 * Create infinite query options with skipToken support and an explicit cursor.
+	 */
+	<
+		TQueryFnData extends TDef["output"] = TDef["output"],
+		TData = InfiniteData<TQueryFnData, ExtractCursorType<TDef["input"]>>,
+		TPageParam = ExtractCursorType<TDef["input"]>,
 	>(
 		input?:
 			| EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>
@@ -511,12 +560,36 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			TPageParam
-		>,
+		> & { initialCursor: TPageParam },
 	): UndefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
 		TDef["error"],
 		TPageParam
+	>
+
+	/**
+	 * Create infinite query options with skipToken support and the null default.
+	 */
+	<
+		TQueryFnData extends TDef["output"] = TDef["output"],
+		TData = DefaultInfiniteData<TDef, TQueryFnData>,
+		TPageParam = ExtractCursorType<TDef["input"]>,
+	>(
+		input?:
+			| EmptyToVoid<EdenInfiniteQueryProcedureInput<TDef["input"]>>
+			| SkipToken,
+		opts?: UndefinedEdenInfiniteQueryOptionsIn<
+			TQueryFnData,
+			TData,
+			TDef["error"],
+			TPageParam | null
+		> & { initialCursor?: TPageParam },
+	): UndefinedEdenInfiniteQueryOptionsOut<
+		TQueryFnData,
+		TData,
+		TDef["error"],
+		TPageParam | null
 	>
 }
 
@@ -605,7 +678,11 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	 */
 	infiniteQueryKey: (
 		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
-	) => DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
+	) => DataTag<
+		EdenQueryKey,
+		InfiniteData<TDef["output"], DefaultInfinitePageParam<TDef>>,
+		TDef["error"]
+	>
 
 	/**
 	 * Create an infinite query filter.
@@ -613,10 +690,20 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
 	infiniteQueryFilter: (
 		input?: DeepPartial<EdenInfiniteQueryProcedureInput<TDef["input"]>>,
 		filters?: QueryFilters<
-			DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
+			DataTag<
+				EdenQueryKey,
+				InfiniteData<TDef["output"], DefaultInfinitePageParam<TDef>>,
+				TDef["error"]
+			>
 		>,
 	) => WithRequired<
-		QueryFilters<DataTag<EdenQueryKey, TDef["output"], TDef["error"]>>,
+		QueryFilters<
+			DataTag<
+				EdenQueryKey,
+				InfiniteData<TDef["output"], DefaultInfinitePageParam<TDef>>,
+				TDef["error"]
+			>
+		>,
 		"queryKey"
 	>
 }
