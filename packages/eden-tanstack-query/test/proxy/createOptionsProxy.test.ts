@@ -1,6 +1,9 @@
 import { treaty } from "@elysiajs/eden"
+import type { QueryKey } from "@tanstack/react-query"
 import { QueryClient, QueryObserver, skipToken } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
+import type { EdenQueryKey } from "../../src/keys/types"
+import { edenInfiniteQueryOptions } from "../../src/options/infiniteQueryOptions"
 import { createEdenOptionsProxy } from "../../src/proxy/createOptionsProxy"
 import { createTestQueryClient } from "../../test-utils"
 
@@ -103,6 +106,7 @@ const compositeCursorApp = new Elysia().get(
 					}),
 					t.Array(t.Number()),
 					t.Date(),
+					t.BigInt(),
 					t.Null(),
 				]),
 			),
@@ -115,6 +119,30 @@ const compositeCursorApp = new Elysia().get(
 		}),
 	},
 )
+
+function isKeyRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function getInfiniteKeyMeta(queryKey: QueryKey) {
+	const meta = queryKey[1]
+	if (!isKeyRecord(meta)) return
+
+	const infinite = meta.infinite
+	if (!isKeyRecord(infinite)) return
+	return infinite
+}
+
+const compositeCursorInput = {
+	scope: { tenant: "tenant-a", region: "west" },
+}
+
+function createCompositeEden(queryClient: QueryClient) {
+	return createEdenOptionsProxy<typeof compositeCursorApp>({
+		client: treaty(compositeCursorApp),
+		queryClient,
+	})
+}
 
 // ============================================================================
 // Test Setup
@@ -329,27 +357,21 @@ describe("createEdenOptionsProxy", () => {
 
 		test("cursor filters compare composite cursors atomically", () => {
 			const isolatedQueryClient = createTestQueryClient()
-			const eden = createEdenOptionsProxy<typeof compositeCursorApp>({
-				client: treaty(compositeCursorApp),
-				queryClient: isolatedQueryClient,
-			})
-			const input = {
-				scope: { tenant: "tenant-a", region: "west" },
-			}
+			const eden = createCompositeEden(isolatedQueryClient)
 			const objectCursor = { offset: 1, shard: "a" }
 			const arrayCursor = [1, 2]
 			const dateCursor = new Date("2026-01-01T00:00:00.000Z")
 
-			const objectKey = eden.cursor.get.infiniteQueryKey(input, {
+			const objectKey = eden.cursor.get.infiniteQueryKey(compositeCursorInput, {
 				initialCursor: objectCursor,
 			})
-			const arrayKey = eden.cursor.get.infiniteQueryKey(input, {
+			const arrayKey = eden.cursor.get.infiniteQueryKey(compositeCursorInput, {
 				initialCursor: arrayCursor,
 			})
-			const dateKey = eden.cursor.get.infiniteQueryKey(input, {
+			const dateKey = eden.cursor.get.infiniteQueryKey(compositeCursorInput, {
 				initialCursor: dateCursor,
 			})
-			const nullKey = eden.cursor.get.infiniteQueryKey(input)
+			const nullKey = eden.cursor.get.infiniteQueryKey(compositeCursorInput)
 
 			isolatedQueryClient.setQueryData(objectKey, {
 				pages: [{ value: "object" }],
@@ -395,9 +417,11 @@ describe("createEdenOptionsProxy", () => {
 					.findAll(eden.cursor.get.infiniteQueryFilter(partialInput)),
 			).toHaveLength(4)
 			expect(
-				isolatedQueryClient
-					.getQueryCache()
-					.findAll(eden.cursor.get.infiniteQueryFilter(input, { exact: true })),
+				isolatedQueryClient.getQueryCache().findAll(
+					eden.cursor.get.infiniteQueryFilter(compositeCursorInput, {
+						exact: true,
+					}),
+				),
 			).toHaveLength(1)
 
 			const callerPredicate = vi.fn(() => false)
@@ -410,6 +434,125 @@ describe("createEdenOptionsProxy", () => {
 				),
 			).toHaveLength(0)
 			expect(callerPredicate).toHaveBeenCalledTimes(1)
+		})
+
+		test("cursor filters distinguish null from undefined and omitted metadata", () => {
+			const isolatedQueryClient = createTestQueryClient()
+			const eden = createCompositeEden(isolatedQueryClient)
+			const undefinedOptions = edenInfiniteQueryOptions({
+				path: ["cursor", "get"],
+				input: compositeCursorInput,
+				initialPageParam: undefined,
+				fetch: async () => ({ value: "undefined" }),
+				opts: { getNextPageParam: () => undefined },
+			})
+			const nullKey = eden.cursor.get.infiniteQueryKey(compositeCursorInput)
+
+			isolatedQueryClient.setQueryData(undefinedOptions.queryKey, {
+				pages: [],
+				pageParams: [],
+			})
+			isolatedQueryClient.setQueryData(nullKey, { pages: [], pageParams: [] })
+
+			const nullFilter = eden.cursor.get.infiniteQueryFilter(
+				compositeCursorInput,
+				{
+					initialCursor: null,
+				},
+			)
+			const nullMatches = isolatedQueryClient
+				.getQueryCache()
+				.findAll(nullFilter)
+			expect(nullMatches).toHaveLength(1)
+			expect(nullMatches[0]?.queryKey).toEqual(nullKey)
+			const undefinedInfinite = getInfiniteKeyMeta(undefinedOptions.queryKey)
+			expect(Object.hasOwn(undefinedInfinite ?? {}, "initialPageParam")).toBe(
+				true,
+			)
+			expect(undefinedInfinite?.initialPageParam).toBe(undefined)
+
+			const hydratedQueryClient = createTestQueryClient()
+			const hydratedKey: EdenQueryKey = [
+				["cursor", "get"],
+				{ input: compositeCursorInput, type: "infinite", infinite: {} },
+			]
+			hydratedQueryClient.setQueryData(hydratedKey, {
+				pages: [],
+				pageParams: [],
+			})
+
+			expect(
+				hydratedQueryClient.getQueryCache().findAll(nullFilter),
+			).toHaveLength(0)
+			expect(
+				Object.hasOwn(
+					getInfiniteKeyMeta(hydratedKey) ?? {},
+					"initialPageParam",
+				),
+			).toBe(false)
+		})
+
+		test("cursor filters use each query's custom key hash", () => {
+			const cursorAgnosticHash = (queryKey: QueryKey) =>
+				JSON.stringify(queryKey, (key, value) =>
+					key === "initialPageParam" ? undefined : value,
+				) ?? ""
+			const cursorAgnosticClient = new QueryClient({
+				defaultOptions: {
+					queries: { queryKeyHashFn: cursorAgnosticHash, retry: false },
+				},
+			})
+			const cursorAgnosticEden = createCompositeEden(cursorAgnosticClient)
+			const objectCursor = { offset: 1, shard: "a" }
+			const objectKey = cursorAgnosticEden.cursor.get.infiniteQueryKey(
+				compositeCursorInput,
+				{ initialCursor: objectCursor },
+			)
+			const originalInfinite = getInfiniteKeyMeta(objectKey)
+			cursorAgnosticClient.setQueryData(objectKey, {
+				pages: [],
+				pageParams: [],
+			})
+
+			const ignoredCursorFilter =
+				cursorAgnosticEden.cursor.get.infiniteQueryFilter(
+					compositeCursorInput,
+					{ initialCursor: { offset: 2 } },
+				)
+			expect(
+				cursorAgnosticClient.getQueryCache().findAll(ignoredCursorFilter),
+			).toHaveLength(1)
+			expect(getInfiniteKeyMeta(objectKey)).toBe(originalInfinite)
+			expect(getInfiniteKeyMeta(objectKey)?.initialPageParam).toEqual(
+				objectCursor,
+			)
+
+			const bigintHash = (queryKey: QueryKey) =>
+				JSON.stringify(queryKey, (_key, value) =>
+					typeof value === "bigint" ? `bigint:${value}` : value,
+				) ?? ""
+			const bigintQueryClient = new QueryClient({
+				defaultOptions: {
+					queries: { queryKeyHashFn: bigintHash, retry: false },
+				},
+			})
+			const bigintEden = createCompositeEden(bigintQueryClient)
+			const bigintKey = bigintEden.cursor.get.infiniteQueryKey(
+				compositeCursorInput,
+				{
+					initialCursor: 1n,
+				},
+			)
+			bigintQueryClient.setQueryData(bigintKey, { pages: [], pageParams: [] })
+
+			const findBigint = (initialCursor: bigint) =>
+				bigintQueryClient.getQueryCache().findAll(
+					bigintEden.cursor.get.infiniteQueryFilter(compositeCursorInput, {
+						initialCursor,
+					}),
+				)
+			expect(findBigint(1n)).toHaveLength(1)
+			expect(findBigint(2n)).toHaveLength(0)
 		})
 
 		test("keeps request headers in cache identity", async () => {

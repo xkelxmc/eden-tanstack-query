@@ -297,10 +297,12 @@ queryClient.invalidateQueries(
 ```
 
 The filter matches every initial-cursor variant for the selected route input by
-default. Pass `initialCursor` to target one complete cursor value; object and
-array cursors are not treated as partial prefixes. Route input still uses
-TanStack Query's normal partial matching. With `exact: true`, an omitted
-`initialCursor` defaults to `null`, matching `infiniteQueryKey(input)`.
+default. Pass `initialCursor` to target one cursor identity. With the default
+hash, object and array cursors are complete values rather than partial prefixes;
+a custom `queryKeyHashFn` defines identity exactly as it does for the cache.
+Route input still uses TanStack Query's normal partial matching. With
+`exact: true`, an omitted `initialCursor` defaults to `null`, matching
+`infiniteQueryKey(input)`.
 
 ---
 

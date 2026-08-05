@@ -11,8 +11,12 @@
  * // Query with input
  * [['api', 'users', 'get'], { input: { id: '1' } }]
  *
- * // Infinite query
- * [['api', 'posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
+ * // Exact infinite query
+ * [['api', 'posts', 'get'], {
+ *   input: { limit: 10 },
+ *   type: 'infinite',
+ *   infinite: { initialPageParam: null }
+ * }]
  */
 
 /**
@@ -66,10 +70,14 @@ export type EdenQueryKeyMeta<TInput = unknown> = {
  *   { input: { id: '123' } }
  * ]
  *
- * // Key with type
+ * // Exact infinite key
  * const key3: EdenQueryKey = [
  *   ['posts', 'list'],
- *   { input: { limit: 10 }, type: 'infinite' }
+ *   {
+ *     input: { limit: 10 },
+ *     type: 'infinite',
+ *     infinite: { initialPageParam: null }
+ *   }
  * ]
  */
 export type EdenQueryKey<TInput = unknown> =

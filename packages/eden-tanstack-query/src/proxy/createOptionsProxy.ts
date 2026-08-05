@@ -5,7 +5,7 @@
  * Transforms Eden Treaty client paths into queryOptions/mutationOptions factories.
  */
 import type { Treaty } from "@elysiajs/eden"
-import type { QueryClient, QueryFilters } from "@tanstack/react-query"
+import type { Query, QueryClient, QueryFilters } from "@tanstack/react-query"
 import { hashKey, skipToken } from "@tanstack/react-query"
 import type { AnyElysia } from "elysia"
 
@@ -113,19 +113,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-function hasExactInitialPageParam(
-	queryKey: readonly unknown[],
-	expected: unknown,
-) {
+function hasExactInitialPageParam(query: Query, expected: unknown) {
+	const { queryKey } = query
 	const meta = queryKey[1]
 	if (!isRecord(meta)) return false
 
 	const infinite = meta.infinite
-	return (
-		isRecord(infinite) &&
-		Object.hasOwn(infinite, "initialPageParam") &&
-		hashKey([infinite.initialPageParam]) === hashKey([expected])
-	)
+	if (!isRecord(infinite)) return false
+
+	const expectedQueryKey = [...queryKey]
+	expectedQueryKey[1] = {
+		...meta,
+		infinite: { ...infinite, initialPageParam: expected },
+	}
+
+	const queryKeyHashFn = query.options.queryKeyHashFn ?? hashKey
+	return queryKeyHashFn(expectedQueryKey) === query.queryHash
 }
 
 /**
@@ -430,10 +433,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 				...(compareInitialPageParam
 					? {
 							predicate: (query) =>
-								hasExactInitialPageParam(
-									query.queryKey,
-									expectedInitialPageParam,
-								) &&
+								hasExactInitialPageParam(query, expectedInitialPageParam) &&
 								(queryFilters.predicate?.(query) ?? true),
 						}
 					: {}),

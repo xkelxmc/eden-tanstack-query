@@ -111,10 +111,12 @@ eden.posts.get.infiniteQueryFilter(
 ```
 
 Infinite-query filters match all initial-cursor variants by default. Pass
-`initialCursor` in the filter options to target one variant. Cursor values are
-compared as complete values rather than partial object or array prefixes, while
-route input keeps TanStack Query's normal partial matching. `exact: true` uses
-the default `null` cursor when `initialCursor` is omitted.
+`initialCursor` in the filter options to target one variant. With the default
+hash, cursor values are compared as complete values rather than partial object
+or array prefixes, while route input keeps TanStack Query's normal partial
+matching. A custom `queryKeyHashFn` defines cursor identity just as it does for
+cache entries. `exact: true` uses the default `null` cursor when `initialCursor`
+is omitted.
 
 ### mutationKey()
 
