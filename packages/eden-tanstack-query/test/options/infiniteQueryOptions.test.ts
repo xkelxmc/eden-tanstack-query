@@ -514,8 +514,7 @@ describe("edenInfiniteQueryOptions error type inference", () => {
 		expect(options.throwOnError).toBeDefined()
 	})
 
-	test("error type has status and value, NOT message at top level", () => {
-		// Critical test - EdenFetchError structure
+	test("preserves a custom status and value error type", () => {
 		type EdenError = { status: 404; value: { message: string } }
 
 		// Generic order: <TInput, TOutput, TError, TPageParam>

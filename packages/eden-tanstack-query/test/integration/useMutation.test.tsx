@@ -432,8 +432,6 @@ describe("useMutation integration", () => {
 					const eden = useEden()
 					const mutation = useMutation(eden.users.post.mutationOptions())
 
-					// CRITICAL: Compile-time type check for error shape
-					// EdenFetchError has status and value, NOT message
 					if (mutation.error) {
 						type ErrorType = typeof mutation.error
 						type HasStatus = "status" extends keyof ErrorType ? true : false

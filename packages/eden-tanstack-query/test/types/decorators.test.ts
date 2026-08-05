@@ -19,19 +19,12 @@ import type {
 	ExtractCursorType,
 	ExtractRouteDef,
 	HasCursorInput,
+	inferError,
+	inferInput,
+	inferOutput,
 } from "../../src/types/decorators"
 import type { EdenFetchError, ExtractRoutes } from "../../src/types/infer"
-
-/**
- * Strict type equality that catches `any` — one-directional `extends` checks
- * pass vacuously against wide fallback types.
- * Local copy: the canonical helper ships with the test-foundation PR;
- * consolidate on merge.
- */
-type Equals<A, B> =
-	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-		? true
-		: false
+import type { Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
@@ -658,38 +651,17 @@ describe("RouteParamsInput", () => {
 // ============================================================================
 
 describe("inferInput / inferOutput / inferError", () => {
-	// These utilities are already tested indirectly via ~types tests above
-	// Testing they exist and have correct structure
+	test("propagate types from a concrete proxy procedure", () => {
+		type Procedure = EdenOptionsProxy<App>["users"]["get"]
+		type Definition = ExtractRouteDef<Routes["users"]["get"], "get">
 
-	test("inferInput type exists", () => {
-		// Test via ~types which is the internal mechanism
-		type TestDef = { input: { id: string }; output: unknown; error: unknown }
-		type QueryProc = DecorateQueryProcedure<TestDef>
-		type Input = QueryProc["~types"]["input"]
+		const input: Equals<inferInput<Procedure>, Definition["input"]> = true
+		const output: Equals<inferOutput<Procedure>, Definition["output"]> = true
+		const error: Equals<inferError<Procedure>, Definition["error"]> = true
 
-		type Check = Input extends { id: string } ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
-	})
-
-	test("inferOutput type exists", () => {
-		type TestDef = { input: unknown; output: { name: string }; error: unknown }
-		type QueryProc = DecorateQueryProcedure<TestDef>
-		type Output = QueryProc["~types"]["output"]
-
-		type Check = Output extends { name: string } ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
-	})
-
-	test("inferError type exists", () => {
-		type TestDef = { input: unknown; output: unknown; error: { code: number } }
-		type QueryProc = DecorateQueryProcedure<TestDef>
-		type Err = QueryProc["~types"]["error"]
-
-		type Check = Err extends { code: number } ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
+		expect(input).toBe(true)
+		expect(output).toBe(true)
+		expect(error).toBe(true)
 	})
 })
 
@@ -1163,9 +1135,6 @@ describe("EdenInfiniteQueryOptions InfiniteData types", () => {
 // ============================================================================
 
 describe("Error type in decorated procedures", () => {
-	// EdenFetchError has status and value, NOT message at top level
-	// This is critical for proper error handling
-
 	describe("DecorateQueryProcedure error type", () => {
 		type TestDef = {
 			input: { id: string }
