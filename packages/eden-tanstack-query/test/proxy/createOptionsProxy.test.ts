@@ -120,6 +120,13 @@ const compositeCursorApp = new Elysia().get(
 	},
 )
 
+const requiredCursorApp = new Elysia().get("/cursor", () => ({ value: "ok" }), {
+	query: t.Object({
+		cursor: t.String(),
+		scope: t.Optional(t.String()),
+	}),
+})
+
 function isKeyRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -140,6 +147,13 @@ const compositeCursorInput = {
 function createCompositeEden(queryClient: QueryClient) {
 	return createEdenOptionsProxy<typeof compositeCursorApp>({
 		client: treaty(compositeCursorApp),
+		queryClient,
+	})
+}
+
+function createRequiredCursorEden(queryClient: QueryClient) {
+	return createEdenOptionsProxy<typeof requiredCursorApp>({
+		client: treaty(requiredCursorApp),
 		queryClient,
 	})
 }
@@ -353,6 +367,70 @@ describe("createEdenOptionsProxy", () => {
 					}),
 				),
 			).toHaveLength(1)
+		})
+
+		test("required cursor filters distinguish broad and cursor-specific matches", () => {
+			const isolatedQueryClient = createTestQueryClient()
+			const eden = createRequiredCursorEden(isolatedQueryClient)
+			const input = { scope: "tenant-a" }
+			const startKey = eden.cursor.get.infiniteQueryKey(input, {
+				initialCursor: "start",
+			})
+			const resumedKey = eden.cursor.get.infiniteQueryKey(input, {
+				initialCursor: "resumed",
+			})
+
+			isolatedQueryClient.setQueryData(startKey, {
+				pages: [{ value: "start" }],
+				pageParams: ["start"],
+			})
+			isolatedQueryClient.setQueryData(resumedKey, {
+				pages: [{ value: "resumed" }],
+				pageParams: ["resumed"],
+			})
+
+			expect(
+				isolatedQueryClient
+					.getQueryCache()
+					.findAll(eden.cursor.get.infiniteQueryFilter(input)),
+			).toHaveLength(2)
+
+			const callerPredicate = vi.fn(() => true)
+			expect(
+				isolatedQueryClient.getQueryCache().findAll(
+					eden.cursor.get.infiniteQueryFilter(input, {
+						exact: false,
+						predicate: callerPredicate,
+					}),
+				),
+			).toHaveLength(2)
+			expect(callerPredicate).toHaveBeenCalledTimes(2)
+
+			const startMatches = isolatedQueryClient.getQueryCache().findAll(
+				eden.cursor.get.infiniteQueryFilter(input, {
+					initialCursor: "start",
+				}),
+			)
+			expect(startMatches).toHaveLength(1)
+			expect(startMatches[0]?.queryKey).toEqual(startKey)
+
+			const resumedMatches = isolatedQueryClient.getQueryCache().findAll(
+				eden.cursor.get.infiniteQueryFilter(input, {
+					exact: false,
+					initialCursor: "resumed",
+				}),
+			)
+			expect(resumedMatches).toHaveLength(1)
+			expect(resumedMatches[0]?.queryKey).toEqual(resumedKey)
+
+			const exactStartMatches = isolatedQueryClient.getQueryCache().findAll(
+				eden.cursor.get.infiniteQueryFilter(input, {
+					exact: true,
+					initialCursor: "start",
+				}),
+			)
+			expect(exactStartMatches).toHaveLength(1)
+			expect(exactStartMatches[0]?.queryKey).toEqual(startKey)
 		})
 
 		test("cursor filters compare composite cursors atomically", () => {
@@ -774,7 +852,8 @@ describe("createEdenOptionsProxy", () => {
 			expect(typeof procedure.queryOptions).toBe("function")
 			expect(typeof procedure.queryKey).toBe("function")
 			expect(typeof procedure.queryFilter).toBe("function")
-			expect(typeof procedure.infiniteQueryOptions).toBe("function")
+			// The public type exposes infinite methods only on cursor routes.
+			expect(typeof eden.api.posts.get.infiniteQueryOptions).toBe("function")
 		})
 
 		test("queryOptions creates valid options", () => {

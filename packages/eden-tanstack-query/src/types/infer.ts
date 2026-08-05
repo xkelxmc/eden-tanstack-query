@@ -6,7 +6,7 @@
  */
 import type { AnyElysia, RouteSchema } from "elysia"
 
-import type { IsNever, IsUnknown, Simplify } from "../utils/types"
+import type { IsAny, IsNever, IsUnknown, Simplify } from "../utils/types"
 
 // ============================================================================
 // Route Definition
@@ -91,6 +91,9 @@ export type InferRouteOptions<TRoute extends RouteSchema> = Simplify<
 			: { headers: TRoute["headers"] })
 >
 
+type NormalizeRouteQuery<TQuery> =
+	IsAny<TQuery> extends true ? TQuery : Simplify<TQuery>
+
 /**
  * Combined input type for a route.
  *
@@ -105,7 +108,7 @@ export type InferRouteInput<
 	TRoute extends RouteSchema,
 	TMethod extends string = "get",
 > = TMethod extends "get" | "head" | "options"
-	? Simplify<InferRouteQuery<TRoute>>
+	? NormalizeRouteQuery<InferRouteQuery<TRoute>>
 	: InferRouteBody<TRoute>
 
 // ============================================================================

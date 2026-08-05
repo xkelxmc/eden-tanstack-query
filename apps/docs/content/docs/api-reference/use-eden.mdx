@@ -22,9 +22,9 @@ Returns an `EdenOptionsProxy<TApp>` — a proxy object that mirrors your API rou
 | [`queryOptions`](#queryoptions) | Creates options for `useQuery` / `useSuspenseQuery` |
 | [`queryKey`](#querykey) | Generates a query key for cache operations |
 | [`queryFilter`](#queryfilter) | Creates a filter for `invalidateQueries`, `cancelQueries`, etc. |
-| [`infiniteQueryOptions`](#infinitequeryoptions) | Creates options for `useInfiniteQuery` |
-| [`infiniteQueryKey`](#infinitequerykey) | Generates an infinite query key |
-| [`infiniteQueryFilter`](#infinitequeryfilter) | Creates a filter for infinite queries |
+| [`infiniteQueryOptions`](#infinitequeryoptions) | Creates options for `useInfiniteQuery` on supported non-union cursor routes |
+| [`infiniteQueryKey`](#infinitequerykey) | Generates an infinite query key on supported non-union cursor routes |
+| [`infiniteQueryFilter`](#infinitequeryfilter) | Creates an infinite-query filter on supported non-union cursor routes |
 
 ### Mutation Routes (POST, PUT, PATCH, DELETE)
 
@@ -40,14 +40,14 @@ Returns an `EdenOptionsProxy<TApp>` — a proxy object that mirrors your API rou
 Creates type-safe options for `useQuery`, `useSuspenseQuery`, `prefetchQuery`, and other TanStack Query functions.
 
 ```ts
-eden.route.get.queryOptions(input?, opts?): QueryOptions
+eden.route.get.queryOptions(input, opts?): QueryOptions
 ```
 
 ### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `input` | `TInput \| SkipToken` | Query parameters or `skipToken` to disable |
+| `input` | `TInput \| SkipToken` | Query parameters or `skipToken` to disable. Optional only when the route query has no required fields |
 | `opts` | `EdenQueryOptionsIn` | TanStack Query options (excluding reserved) |
 
 ### Returns
@@ -147,6 +147,10 @@ createUser.mutate({ name: 'Alice', email: 'alice@example.com' })
 
 Creates type-safe options for `useInfiniteQuery` with cursor-based pagination.
 
+This method and the related key and filter helpers are available only when the
+route declares a usable top-level `cursor` query field on a non-union query
+schema. A required null-only or `any` cursor is not usable.
+
 ```ts
 eden.route.get.infiniteQueryOptions(input, opts): InfiniteQueryOptions
 ```
@@ -157,7 +161,7 @@ eden.route.get.infiniteQueryOptions(input, opts): InfiniteQueryOptions
 |-----------|------|-------------|
 | `input` | `TInput \| SkipToken` | Query params (excluding cursor) or `skipToken` |
 | `opts.getNextPageParam` | `(lastPage) => TCursor \| undefined` | **Required.** Returns next page cursor |
-| `opts.initialCursor` | `TCursor \| null` | Initial cursor value. Defaults to `null` |
+| `opts.initialCursor` | `NonNullable<TCursor> \| null` | Defaults to `null` for optional cursor fields; required cursor fields need an explicit non-null value |
 | `opts.getPreviousPageParam` | `(firstPage) => TCursor \| undefined` | For bi-directional pagination |
 | `opts.maxPages` | `number` | Max pages to keep in memory |
 
@@ -244,8 +248,9 @@ eden.posts.get.infiniteQueryKey(
 ```
 
 The initial cursor is part of the exact infinite-query key. Pass the same
-`initialCursor` used by `infiniteQueryOptions`; omitting it targets the default
-`null` cursor.
+`initialCursor` used by `infiniteQueryOptions`. Omission targets the default
+`null` cursor for optional cursor routes; required cursor routes must provide a
+non-null value.
 
 ---
 
@@ -281,7 +286,7 @@ Same as `queryFilter` but scoped to infinite queries.
 ```ts
 eden.route.get.infiniteQueryFilter(
   input?,
-  filters?: QueryFilters & { initialCursor?: TCursor | null }
+  filters?
 ): QueryFilters
 ```
 
@@ -301,8 +306,10 @@ default. Pass `initialCursor` to target one cursor identity. With the default
 hash, object and array cursors are complete values rather than partial prefixes;
 a custom `queryKeyHashFn` defines identity exactly as it does for the cache.
 Route input still uses TanStack Query's normal partial matching. With
-`exact: true`, an omitted `initialCursor` defaults to `null`, matching
-`infiniteQueryKey(input)`.
+`exact: true`, an optional cursor route may omit `initialCursor` to target its
+default `null` variant. A required cursor route may omit `initialCursor` only
+for a broad filter with `exact` absent or `false`; exact and cursor-specific
+filters require an explicit non-null cursor.
 
 ---
 
@@ -351,19 +358,20 @@ Methods on GET/HEAD/OPTIONS routes:
 
 | Method | Type | Description |
 |--------|------|-------------|
-| `queryOptions` | `(input?, opts?) => EdenQueryOptions` | Options for useQuery |
+| `queryOptions` | `(input, opts?) => EdenQueryOptions` | Options for useQuery; input is conditional on the route query |
 | `queryKey` | `(input?) => DataTag<EdenQueryKey>` | Query key for cache ops |
 | `queryFilter` | `(input?, filters?) => QueryFilters` | Filter for invalidation |
 
 ### DecorateInfiniteQueryProcedure
 
-Methods on query routes with cursor input:
+Methods on non-union query routes with a usable required or optional top-level
+`cursor` input:
 
 | Method | Type | Description |
 |--------|------|-------------|
 | `infiniteQueryOptions` | `(input, opts) => EdenInfiniteQueryOptions` | Options for useInfiniteQuery |
-| `infiniteQueryKey` | `(input?, keyOpts?) => DataTag<EdenQueryKey>` | Infinite query key |
-| `infiniteQueryFilter` | `(input?, filters?) => QueryFilters` | Filter for infinite queries |
+| `infiniteQueryKey` | `(input?, keyOpts?) => DataTag<EdenQueryKey>` | Infinite query key; required cursors need explicit key options |
+| `infiniteQueryFilter` | `(input?, filters?) => QueryFilters` | Broad or cursor-specific filter; required cursors need an explicit value for exact matching |
 
 ### DecorateMutationProcedure
 

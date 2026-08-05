@@ -28,7 +28,7 @@ This section provides comprehensive documentation for all exports from `eden-tan
 |--------|-------------|
 | [`queryOptions`](/docs/api-reference/use-eden#queryoptions) | Method on query routes for creating query options |
 | [`mutationOptions`](/docs/api-reference/use-eden#mutationoptions) | Method on mutation routes for creating mutation options |
-| [`infiniteQueryOptions`](/docs/api-reference/use-eden#infinitequeryoptions) | Method on query routes for creating infinite query options |
+| [`infiniteQueryOptions`](/docs/api-reference/use-eden#infinitequeryoptions) | Method on supported non-union cursor routes for creating infinite query options |
 
 ### Query Keys
 
@@ -54,11 +54,11 @@ This section provides comprehensive documentation for all exports from `eden-tan
 const eden = useEden()
 
 // Available methods on query routes
-eden.users.get.queryOptions(input?, opts?)     // For useQuery
+eden.users.get.queryOptions(input, opts?)      // Input is conditional on the route query
 eden.users.get.queryKey(input?)                // For cache operations
 eden.users.get.queryFilter(input?, filters?)   // For invalidation
 
-// For paginated data (when input has cursor)
+// Available for a non-union query schema with a usable top-level cursor field
 eden.posts.get.infiniteQueryOptions(input, opts)  // For useInfiniteQuery
 eden.posts.get.infiniteQueryKey(input?, keyOpts?) // For cache operations
 eden.posts.get.infiniteQueryFilter(input?, filters?)

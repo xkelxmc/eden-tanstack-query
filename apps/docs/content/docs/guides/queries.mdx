@@ -46,6 +46,9 @@ const { data } = useQuery(
 )
 ```
 
+The input argument is optional only when every query field is optional. A route
+with required query fields must receive the complete input or `skipToken`.
+
 Pass additional TanStack Query options as the second argument:
 
 ```tsx

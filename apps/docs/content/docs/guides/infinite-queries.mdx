@@ -6,6 +6,10 @@ description: Implement pagination with cursor-based infinite queries
 # Infinite Queries
 
 Use `infiniteQueryOptions()` for cursor-based pagination with TanStack Query's `useInfiniteQuery`.
+The infinite-query methods are exposed only when the route declares a required
+or optional usable top-level `cursor` query field on a non-union query schema.
+Union query schemas are excluded because TypeScript cannot safely correlate a
+variant's remaining input with its cursor type through this API.
 
 ## Server Route
 
@@ -88,13 +92,29 @@ function PostList() {
 }
 ```
 
-`initialCursor` sets the cursor value for the first page and defaults to `null`:
+For an optional cursor field, `initialCursor` defaults to `null`. Treaty omits
+that null query value, which represents an absent optional cursor:
 
 ```tsx
 {
   initialCursor: null  // or 0, '', depending on your API
 }
 ```
+
+For a required cursor field, provide an explicit non-null value:
+
+```tsx
+eden.posts.get.infiniteQueryOptions(
+  { limit: 10 },
+  {
+    initialCursor: 'start',
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  }
+)
+```
+
+This also applies when the required cursor schema includes `null`: Treaty omits
+null query values, so null cannot satisfy a required query property on the wire.
 
 ## Input Parameters
 
@@ -173,7 +193,10 @@ purpose and match every starting cursor for the selected input unless an
 the candidate query's key hash, so the default hash treats it as one complete
 value while a custom `queryKeyHashFn` retains its own cache identity. Route input
 remains partially matchable. With `exact: true`, omitting `initialCursor` targets
-only queries whose initial cursor is the default `null`.
+only queries whose initial cursor is the default `null` on optional cursor
+routes. Required cursor routes allow omission only for broad filters with
+`exact` absent or `false`; pass an explicit non-null `initialCursor` for exact
+or cursor-specific filtering.
 
 ## Conditional with skipToken
 
