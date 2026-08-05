@@ -580,6 +580,17 @@ describe("InferRouteOutput status codes", () => {
 		}
 	}
 
+	type RouteWithUncommonSuccess = {
+		body: unknown
+		params: unknown
+		query: unknown
+		headers: unknown
+		response: {
+			299: { ok: true }
+			404: { message: string }
+		}
+	}
+
 	test("infers a quoted 201-only response instead of unknown", () => {
 		type Output = InferRouteOutput<RouteWith201Only>
 		const exact: Equals<Output, { id: string }> = true
@@ -590,6 +601,20 @@ describe("InferRouteOutput status codes", () => {
 		type Output = InferRouteOutput<RouteWithMultipleSuccess>
 		const exact: Equals<Output, { ok: boolean } | { id: string }> = true
 		expect(exact).toBe(true)
+	})
+
+	test("treats the full 200-299 range as successful", () => {
+		type Output = InferRouteOutput<RouteWithUncommonSuccess>
+		type ErrorType = InferRouteError<RouteWithUncommonSuccess>
+		type ExpectedError =
+			| EdenFetchError<404, { message: string }>
+			| EdenFetchError<503, Error>
+
+		const exactOutput: Equals<Output, { ok: true }> = true
+		const exactError: Equals<ErrorType, ExpectedError> = true
+
+		expect(exactOutput).toBe(true)
+		expect(exactError).toBe(true)
 	})
 
 	test("uses Treaty's empty-string value for bodyless responses", () => {

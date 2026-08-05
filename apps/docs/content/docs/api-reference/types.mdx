@@ -151,13 +151,17 @@ type InferRouteInput<TRoute, TMethod> = TMethod extends 'get' | 'head' | 'option
 ### InferRouteOutput
 
 Extract the union of declared successful response types from a route.
-Treaty returns an empty string for bodyless `204` and `205` responses, regardless
-of their declared response schema.
+Treaty treats every status from `200` through `299` as successful and returns an
+empty string for bodyless `204` and `205` responses, regardless of their declared
+response schema.
 
 ### InferRouteError
 
 Extract the union of non-success response and transport error types from a route.
 The union also includes Treaty's `EdenFetchError<503, Error>` transport failure.
+Routes without a declared non-success response fall back to
+`EdenFetchError<number, unknown>`. If a route declares a `503` response, narrowing
+to `503` produces either its declared body or the transport `Error`.
 
 ### InferRouteBody
 

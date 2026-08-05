@@ -145,7 +145,7 @@ type ExtractSuccessResponses<TResponse extends Record<number, unknown>> = {
 /**
  * Extract the successful response type from a route.
  *
- * Unions every declared response in Eden Treaty's successful status set.
+ * Unions every declared response in Eden Treaty's runtime-success range (200-299).
  * Bodyless 204 and 205 responses resolve to the empty string returned by Treaty.
  *
  * @example
@@ -172,18 +172,10 @@ export type InferRouteOutputAll<TRoute extends RouteSchema> =
 // Route Error Extraction
 // ============================================================================
 
+type DecimalDigit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
 /** Status codes treated as successful by Eden Treaty */
-type SuccessStatusCode =
-	| 200
-	| 201
-	| 202
-	| 203
-	| 204
-	| 205
-	| 206
-	| 207
-	| 208
-	| 226
+type SuccessStatusCode = NumericStatusCode<`2${DecimalDigit}${DecimalDigit}`>
 
 type BodylessSuccessStatusCode = 204 | 205
 
