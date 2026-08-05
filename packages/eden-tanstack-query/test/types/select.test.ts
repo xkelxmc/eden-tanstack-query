@@ -148,6 +148,14 @@ export function useInfiniteSelectProbe(
 		typeof explicitCursor.initialPageParam,
 		number
 	> = true
+	eden.feed.get.infiniteQueryOptions(
+		{},
+		{
+			// @ts-expect-error feed cursors are numeric
+			initialCursor: "start",
+			getNextPageParam: () => 1,
+		},
+	)
 	const nullCursor = eden.feed.get.infiniteQueryOptions(
 		{},
 		{

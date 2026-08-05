@@ -169,8 +169,10 @@ queryClient.invalidateQueries(
 
 Exact infinite-query keys include the initial cursor. Filters omit it on
 purpose and match every starting cursor for the selected input unless an
-`initialCursor` filter option is provided. With `exact: true`, omitting
-`initialCursor` targets only queries whose initial cursor is the default `null`.
+`initialCursor` filter option is provided. A provided cursor is compared as one
+complete value, while route input remains partially matchable. With
+`exact: true`, omitting `initialCursor` targets only queries whose initial cursor
+is the default `null`.
 
 ## Conditional with skipToken
 

@@ -6,7 +6,7 @@
  */
 import type { Treaty } from "@elysiajs/eden"
 import type { QueryClient, QueryFilters } from "@tanstack/react-query"
-import { skipToken } from "@tanstack/react-query"
+import { hashKey, skipToken } from "@tanstack/react-query"
 import type { AnyElysia } from "elysia"
 
 import { getMutationKey, getQueryKey } from "../keys/queryKey"
@@ -111,6 +111,21 @@ function getPathParamInput({ entries }: PositionedPathParam) {
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function hasExactInitialPageParam(
+	queryKey: readonly unknown[],
+	expected: unknown,
+) {
+	const meta = queryKey[1]
+	if (!isRecord(meta)) return false
+
+	const infinite = meta.infinite
+	return (
+		isRecord(infinite) &&
+		Object.hasOwn(infinite, "initialPageParam") &&
+		hashKey([infinite.initialPageParam]) === hashKey([expected])
+	)
 }
 
 /**
@@ -405,18 +420,30 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			filters?: QueryFilters & { initialCursor?: unknown },
 		): WithRequired<QueryFilters, "queryKey"> => {
 			const { initialCursor, ...queryFilters } = filters ?? {}
-			const hasExactInitialCursor =
-				Object.hasOwn(filters ?? {}, "initialCursor") || filters?.exact === true
+			const hasInitialCursor = Object.hasOwn(filters ?? {}, "initialCursor")
+			const expectedInitialPageParam = initialCursor ?? null
+			const compareInitialPageParam =
+				hasInitialCursor && filters?.exact !== true
 
 			return {
 				...queryFilters,
+				...(compareInitialPageParam
+					? {
+							predicate: (query) =>
+								hasExactInitialPageParam(
+									query.queryKey,
+									expectedInitialPageParam,
+								) &&
+								(queryFilters.predicate?.(query) ?? true),
+						}
+					: {}),
 				queryKey: getQueryKey({
 					path: paths,
 					input,
 					pathParams,
 					type: "infinite",
-					...(hasExactInitialCursor
-						? { initialPageParam: initialCursor ?? null }
+					...(filters?.exact === true
+						? { initialPageParam: expectedInitialPageParam }
 						: {}),
 				}),
 			}

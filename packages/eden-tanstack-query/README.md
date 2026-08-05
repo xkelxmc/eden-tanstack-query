@@ -175,7 +175,7 @@ const { data, fetchNextPage, hasNextPage } = useInfiniteQuery(
     { limit: 10 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      initialPageParam: null,
+      initialCursor: null,
     }
   )
 )

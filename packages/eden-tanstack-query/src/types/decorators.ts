@@ -307,6 +307,12 @@ type DefaultedInfinitePageParam<TPageParam> =
 type DefaultInfinitePageParam<TDef extends RouteDefinition> =
 	DefaultedInfinitePageParam<ExtractCursorType<TDef["input"]>>
 
+type ValidRoutePageParam<TDef extends RouteDefinition, TPageParam> = [
+	TPageParam,
+] extends [ExtractCursorType<TDef["input"]>]
+	? unknown
+	: never
+
 type DefaultInfiniteData<
 	TDef extends RouteDefinition,
 	TQueryFnData,
@@ -492,7 +498,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			ExplicitInfinitePageParam<TPageParam>
-		> & { initialCursor: ExplicitInfinitePageParam<TPageParam> },
+		> & {
+			initialCursor: ExplicitInfinitePageParam<TPageParam>
+		} & ValidRoutePageParam<TDef, TPageParam>,
 	): DefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -518,7 +526,7 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			DefaultedInfinitePageParam<TPageParam>
 		> & {
 			initialCursor?: DefaultedInfinitePageParam<NoInfer<TPageParam>>
-		},
+		} & ValidRoutePageParam<TDef, TPageParam>,
 	): DefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -543,7 +551,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			ExplicitInfinitePageParam<TPageParam>
-		> & { initialCursor: ExplicitInfinitePageParam<TPageParam> },
+		> & {
+			initialCursor: ExplicitInfinitePageParam<TPageParam>
+		} & ValidRoutePageParam<TDef, TPageParam>,
 	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -567,7 +577,7 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			DefaultedInfinitePageParam<TPageParam>
 		> & {
 			initialCursor?: DefaultedInfinitePageParam<NoInfer<TPageParam>>
-		},
+		} & ValidRoutePageParam<TDef, TPageParam>,
 	): UnusedSkipTokenEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -594,7 +604,9 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			TData,
 			TDef["error"],
 			ExplicitInfinitePageParam<TPageParam>
-		> & { initialCursor: ExplicitInfinitePageParam<TPageParam> },
+		> & {
+			initialCursor: ExplicitInfinitePageParam<TPageParam>
+		} & ValidRoutePageParam<TDef, TPageParam>,
 	): UndefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,
@@ -620,7 +632,7 @@ export interface EdenInfiniteQueryOptions<TDef extends RouteDefinition> {
 			DefaultedInfinitePageParam<TPageParam>
 		> & {
 			initialCursor?: DefaultedInfinitePageParam<NoInfer<TPageParam>>
-		},
+		} & ValidRoutePageParam<TDef, TPageParam>,
 	): UndefinedEdenInfiniteQueryOptionsOut<
 		TQueryFnData,
 		TData,

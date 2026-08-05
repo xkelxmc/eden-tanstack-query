@@ -235,6 +235,14 @@ const explicitManualKey = infiniteProcedure.infiniteQueryKey(
 )
 const explicitOptionsKey: typeof explicitManualKey =
 	explicitCursorOptions.queryKey
+infiniteProcedure.infiniteQueryOptions(
+	{},
+	{
+		// @ts-expect-error feed cursors are numeric
+		initialCursor: "start",
+		getNextPageParam: () => 1,
+	},
+)
 
 type InfiniteSelected = ReturnType<NonNullable<typeof infinite.select>>
 const selected: InfiniteSelected = [{ id: "1" }]

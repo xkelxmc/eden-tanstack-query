@@ -72,9 +72,18 @@ export interface GetQueryKeyOptions {
  * getQueryKey({ path: ['users', 'get'], input: { id: '1' } })
  * // => [['users', 'get'], { input: { id: '1' } }]
  *
- * // Infinite query
- * getQueryKey({ path: ['posts', 'list'], input: { limit: 10 }, type: 'infinite' })
- * // => [['posts', 'list'], { input: { limit: 10 }, type: 'infinite' }]
+ * // Exact infinite query
+ * getQueryKey({
+ *   path: ['posts', 'list'],
+ *   input: { limit: 10 },
+ *   type: 'infinite',
+ *   initialPageParam: null,
+ * })
+ * // => [['posts', 'list'], {
+ * //   input: { limit: 10 },
+ * //   type: 'infinite',
+ * //   infinite: { initialPageParam: null },
+ * // }]
  */
 export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 	const { path, type } = opts

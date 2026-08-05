@@ -1,4 +1,4 @@
-import type { treaty } from "@elysiajs/eden"
+import { treaty } from "@elysiajs/eden"
 import { QueryClient, QueryObserver, skipToken } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 import { createEdenOptionsProxy } from "../../src/proxy/createOptionsProxy"
@@ -89,6 +89,32 @@ const app = new Elysia()
 	)
 
 type App = typeof app
+
+const compositeCursorApp = new Elysia().get(
+	"/cursor",
+	() => ({ value: "ok" }),
+	{
+		query: t.Object({
+			cursor: t.Optional(
+				t.Union([
+					t.Object({
+						offset: t.Number(),
+						shard: t.Optional(t.String()),
+					}),
+					t.Array(t.Number()),
+					t.Date(),
+					t.Null(),
+				]),
+			),
+			scope: t.Optional(
+				t.Object({
+					tenant: t.String(),
+					region: t.Optional(t.String()),
+				}),
+			),
+		}),
+	},
+)
 
 // ============================================================================
 // Test Setup
@@ -292,6 +318,98 @@ describe("createEdenOptionsProxy", () => {
 					}),
 				),
 			).toHaveLength(1)
+			expect(
+				isolatedQueryClient.getQueryCache().findAll(
+					eden.api.posts.get.infiniteQueryFilter(input, {
+						initialCursor: undefined,
+					}),
+				),
+			).toHaveLength(1)
+		})
+
+		test("cursor filters compare composite cursors atomically", () => {
+			const isolatedQueryClient = createTestQueryClient()
+			const eden = createEdenOptionsProxy<typeof compositeCursorApp>({
+				client: treaty(compositeCursorApp),
+				queryClient: isolatedQueryClient,
+			})
+			const input = {
+				scope: { tenant: "tenant-a", region: "west" },
+			}
+			const objectCursor = { offset: 1, shard: "a" }
+			const arrayCursor = [1, 2]
+			const dateCursor = new Date("2026-01-01T00:00:00.000Z")
+
+			const objectKey = eden.cursor.get.infiniteQueryKey(input, {
+				initialCursor: objectCursor,
+			})
+			const arrayKey = eden.cursor.get.infiniteQueryKey(input, {
+				initialCursor: arrayCursor,
+			})
+			const dateKey = eden.cursor.get.infiniteQueryKey(input, {
+				initialCursor: dateCursor,
+			})
+			const nullKey = eden.cursor.get.infiniteQueryKey(input)
+
+			isolatedQueryClient.setQueryData(objectKey, {
+				pages: [{ value: "object" }],
+				pageParams: [objectCursor],
+			})
+			isolatedQueryClient.setQueryData(arrayKey, {
+				pages: [{ value: "array" }],
+				pageParams: [arrayCursor],
+			})
+			isolatedQueryClient.setQueryData(dateKey, {
+				pages: [{ value: "date" }],
+				pageParams: [dateCursor],
+			})
+			isolatedQueryClient.setQueryData(nullKey, {
+				pages: [{ value: "null" }],
+				pageParams: [null],
+			})
+
+			const partialInput = { scope: { tenant: "tenant-a" } }
+			const find = (
+				initialCursor:
+					| { offset: number; shard?: string }
+					| number[]
+					| Date
+					| null,
+			) =>
+				isolatedQueryClient.getQueryCache().findAll(
+					eden.cursor.get.infiniteQueryFilter(partialInput, {
+						initialCursor,
+					}),
+				)
+
+			expect(find({ offset: 1 })).toHaveLength(0)
+			expect(find(objectCursor)).toHaveLength(1)
+			expect(find([1])).toHaveLength(0)
+			expect(find(arrayCursor)).toHaveLength(1)
+			expect(find(new Date("2027-01-01T00:00:00.000Z"))).toHaveLength(0)
+			expect(find(dateCursor)).toHaveLength(1)
+			expect(find(null)).toHaveLength(1)
+			expect(
+				isolatedQueryClient
+					.getQueryCache()
+					.findAll(eden.cursor.get.infiniteQueryFilter(partialInput)),
+			).toHaveLength(4)
+			expect(
+				isolatedQueryClient
+					.getQueryCache()
+					.findAll(eden.cursor.get.infiniteQueryFilter(input, { exact: true })),
+			).toHaveLength(1)
+
+			const callerPredicate = vi.fn(() => false)
+			expect(
+				isolatedQueryClient.getQueryCache().findAll(
+					eden.cursor.get.infiniteQueryFilter(partialInput, {
+						initialCursor: objectCursor,
+						predicate: callerPredicate,
+					}),
+				),
+			).toHaveLength(0)
+			expect(callerPredicate).toHaveBeenCalledTimes(1)
 		})
 
 		test("keeps request headers in cache identity", async () => {

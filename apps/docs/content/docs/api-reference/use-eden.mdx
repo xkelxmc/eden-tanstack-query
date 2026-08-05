@@ -157,7 +157,7 @@ eden.route.get.infiniteQueryOptions(input, opts): InfiniteQueryOptions
 |-----------|------|-------------|
 | `input` | `TInput \| SkipToken` | Query params (excluding cursor) or `skipToken` |
 | `opts.getNextPageParam` | `(lastPage) => TCursor \| undefined` | **Required.** Returns next page cursor |
-| `opts.initialCursor` | `TCursor` | Initial cursor value. Defaults to `null` |
+| `opts.initialCursor` | `TCursor \| null` | Initial cursor value. Defaults to `null` |
 | `opts.getPreviousPageParam` | `(firstPage) => TCursor \| undefined` | For bi-directional pagination |
 | `opts.maxPages` | `number` | Max pages to keep in memory |
 
@@ -224,7 +224,7 @@ Generates an infinite query key (separate from regular query cache).
 ```ts
 eden.route.get.infiniteQueryKey(
   input?,
-  { initialCursor? }?
+  { initialCursor?: TCursor | null }?
 ): DataTag<EdenQueryKey>
 ```
 
@@ -279,7 +279,10 @@ queryClient.invalidateQueries(
 Same as `queryFilter` but scoped to infinite queries.
 
 ```ts
-eden.route.get.infiniteQueryFilter(input?, filters?): QueryFilters
+eden.route.get.infiniteQueryFilter(
+  input?,
+  filters?: QueryFilters & { initialCursor?: TCursor | null }
+): QueryFilters
 ```
 
 ```tsx
@@ -293,9 +296,10 @@ queryClient.invalidateQueries(
 )
 ```
 
-The filter intentionally omits the initial cursor, so it matches every
-initial-cursor variant for the selected route input. Pass `initialCursor` in
-the filter options to target one variant. With `exact: true`, an omitted
+The filter matches every initial-cursor variant for the selected route input by
+default. Pass `initialCursor` to target one complete cursor value; object and
+array cursors are not treated as partial prefixes. Route input still uses
+TanStack Query's normal partial matching. With `exact: true`, an omitted
 `initialCursor` defaults to `null`, matching `infiniteQueryKey(input)`.
 
 ---
