@@ -11,8 +11,12 @@
  * // Query with input
  * [['api', 'users', 'get'], { input: { id: '1' } }]
  *
- * // Infinite query
- * [['api', 'posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
+ * // Exact infinite query
+ * [['api', 'posts', 'get'], {
+ *   input: { limit: 10 },
+ *   type: 'infinite',
+ *   infinite: { initialPageParam: null }
+ * }]
  */
 
 /**
@@ -42,6 +46,10 @@ export type EdenQueryKeyMeta<TInput = unknown> = {
 	pathParams?: EdenQueryKeyPathParam[]
 	/** Query type discriminator (excludes 'any' as it's only for filtering) */
 	type?: Exclude<QueryType, "any">
+	/** Exact infinite-query identity that filters may omit for broad matching. */
+	infinite?: {
+		initialPageParam?: unknown
+	}
 }
 
 /**
@@ -62,10 +70,14 @@ export type EdenQueryKeyMeta<TInput = unknown> = {
  *   { input: { id: '123' } }
  * ]
  *
- * // Key with type
+ * // Exact infinite key
  * const key3: EdenQueryKey = [
  *   ['posts', 'list'],
- *   { input: { limit: 10 }, type: 'infinite' }
+ *   {
+ *     input: { limit: 10 },
+ *     type: 'infinite',
+ *     infinite: { initialPageParam: null }
+ *   }
  * ]
  */
 export type EdenQueryKey<TInput = unknown> =

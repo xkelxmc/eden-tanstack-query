@@ -161,10 +161,46 @@ describe("edenInfiniteQueryOptions", () => {
 		expect(options.queryKey[1]).toEqual({
 			input: { limit: 10 },
 			type: "infinite",
+			infinite: { initialPageParam: null },
 		})
 		expect(options.eden.path).toBe("api.posts.get")
 		expect(options.initialPageParam).toBe(null)
 		expect(typeof options.queryFn).toBe("function")
+	})
+
+	test("separates caches with different initial page params", () => {
+		const nullable = edenInfiniteQueryOptions<
+			{ limit: number },
+			{ items: unknown[]; nextCursor: null },
+			Error,
+			number | null
+		>({
+			path: ["api", "posts", "get"],
+			input: { limit: 10 },
+			initialPageParam: null,
+			fetch: async (_input: { limit: number; cursor: number | null }) => ({
+				items: [],
+				nextCursor: null,
+			}),
+			opts: { getNextPageParam: () => undefined },
+		})
+		const numeric = edenInfiniteQueryOptions({
+			path: ["api", "posts", "get"],
+			input: { limit: 10 },
+			initialPageParam: 0,
+			fetch: async (_input: { limit: number; cursor: number }) => ({
+				items: [],
+				nextCursor: null,
+			}),
+			opts: { getNextPageParam: () => undefined },
+		})
+
+		expect(nullable.queryKey).not.toEqual(numeric.queryKey)
+		queryClient.setQueryData(nullable.queryKey, {
+			pages: [{ items: [], nextCursor: null }],
+			pageParams: [null],
+		})
+		expect(queryClient.getQueryData(numeric.queryKey)).toBeUndefined()
 	})
 
 	test("passes pageParam to fetch function", async () => {
@@ -222,7 +258,10 @@ describe("edenInfiniteQueryOptions", () => {
 		expect(options.enabled).toBe(false)
 		// When skipToken, queryKey should not include input
 		expect(options.queryKey[0]).toEqual(["api", "posts", "get"])
-		expect(options.queryKey[1]).toEqual({ type: "infinite" })
+		expect(options.queryKey[1]).toEqual({
+			type: "infinite",
+			infinite: { initialPageParam: null },
+		})
 	})
 
 	test("fetches data correctly with queryClient", async () => {
@@ -296,7 +335,10 @@ describe("edenInfiniteQueryOptions", () => {
 
 		// Undefined input should result in type: "infinite" only
 		expect(options.queryKey[0]).toEqual(["api", "posts", "get"])
-		expect(options.queryKey[1]).toEqual({ type: "infinite" })
+		expect(options.queryKey[1]).toEqual({
+			type: "infinite",
+			infinite: { initialPageParam: null },
+		})
 	})
 
 	test("passes AbortSignal when abortOnUnmount is true", async () => {
@@ -365,6 +407,7 @@ describe("edenInfiniteQueryOptions", () => {
 		expect(options.queryKey[1]).toEqual({
 			input: complexInput,
 			type: "infinite",
+			infinite: { initialPageParam: null },
 		})
 	})
 

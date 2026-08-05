@@ -395,6 +395,7 @@ describe("useInfiniteQuery integration", () => {
 			expect(result.current.queryKey[1]).toEqual({
 				input: { limit: 10 },
 				type: "infinite",
+				infinite: { initialPageParam: null },
 			})
 		})
 

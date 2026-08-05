@@ -76,9 +76,9 @@ function PostList() {
 }
 ```
 
-## Required Options
+## Pagination Options
 
-Two options are required when using `infiniteQueryOptions()`:
+`getNextPageParam` is required when using `infiniteQueryOptions()`:
 
 **getNextPageParam** -- determines the cursor for the next page. Return `undefined` to indicate there are no more pages:
 
@@ -88,7 +88,7 @@ Two options are required when using `infiniteQueryOptions()`:
 }
 ```
 
-**initialCursor** -- the cursor value for the first page:
+`initialCursor` sets the cursor value for the first page and defaults to `null`:
 
 ```tsx
 {
@@ -142,6 +142,12 @@ const eden = useEden()
 // Get the infinite query key
 const key = eden.posts.get.infiniteQueryKey({ limit: 10 })
 
+// Match options that start from a non-default cursor
+const resumedKey = eden.posts.get.infiniteQueryKey(
+  { limit: 10 },
+  { initialCursor: 'cursor-20' }
+)
+
 // Invalidate infinite query
 queryClient.invalidateQueries({
   queryKey: eden.posts.get.infiniteQueryKey()
@@ -151,7 +157,23 @@ queryClient.invalidateQueries({
 queryClient.invalidateQueries(
   eden.posts.get.infiniteQueryFilter({ category: 'tech' })
 )
+
+// Invalidate only the variant that starts from cursor-20
+queryClient.invalidateQueries(
+  eden.posts.get.infiniteQueryFilter(
+    { category: 'tech' },
+    { initialCursor: 'cursor-20' }
+  )
+)
 ```
+
+Exact infinite-query keys include the initial cursor. Filters omit it on
+purpose and match every starting cursor for the selected input unless an
+`initialCursor` filter option is provided. A provided cursor is compared through
+the candidate query's key hash, so the default hash treats it as one complete
+value while a custom `queryKeyHashFn` retains its own cache identity. Route input
+remains partially matchable. With `exact: true`, omitting `initialCursor` targets
+only queries whose initial cursor is the default `null`.
 
 ## Conditional with skipToken
 

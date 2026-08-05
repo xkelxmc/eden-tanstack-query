@@ -95,7 +95,11 @@ type EdenQueryKey<TInput = unknown> =
 // Examples:
 [['users', 'get']]
 [['users', 'get'], { input: { role: 'admin' } }]
-[['posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
+[['posts', 'get'], {
+  input: { limit: 10 },
+  type: 'infinite',
+  infinite: { initialPageParam: null }
+}]
 ```
 
 ### EdenMutationKey
@@ -117,6 +121,7 @@ Metadata included in query keys.
 type EdenQueryKeyMeta<TInput = unknown> = {
   input?: TInput
   type?: 'query' | 'infinite'
+  infinite?: { initialPageParam?: unknown }
 }
 ```
 

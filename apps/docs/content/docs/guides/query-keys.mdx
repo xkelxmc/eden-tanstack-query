@@ -33,7 +33,11 @@ The `type` field differentiates regular queries from infinite queries:
 
 ```ts
 eden.posts.get.infiniteQueryKey({ limit: 10 })
-// => [['posts', 'get'], { input: { limit: 10 }, type: 'infinite' }]
+// => [['posts', 'get'], {
+//   input: { limit: 10 },
+//   type: 'infinite',
+//   infinite: { initialPageParam: null }
+// }]
 ```
 
 ## Cache Identity
@@ -87,7 +91,11 @@ Returns the query key for infinite queries:
 ```ts
 eden.posts.get.infiniteQueryKey()
 eden.posts.get.infiniteQueryKey({ limit: 10 })
+eden.posts.get.infiniteQueryKey({ limit: 10 }, { initialCursor: 'start' })
 ```
+
+The initial cursor is part of an exact infinite-query key. The helper defaults
+it to `null`, matching `infiniteQueryOptions()`.
 
 ### infiniteQueryFilter()
 
@@ -96,7 +104,19 @@ Returns a filter object for infinite queries:
 ```ts
 eden.posts.get.infiniteQueryFilter()
 eden.posts.get.infiniteQueryFilter({ category: 'tech' })
+eden.posts.get.infiniteQueryFilter(
+  { category: 'tech' },
+  { initialCursor: 'start' }
+)
 ```
+
+Infinite-query filters match all initial-cursor variants by default. Pass
+`initialCursor` in the filter options to target one variant. With the default
+hash, cursor values are compared as complete values rather than partial object
+or array prefixes, while route input keeps TanStack Query's normal partial
+matching. A custom `queryKeyHashFn` defines cursor identity just as it does for
+cache entries. `exact: true` uses the default `null` cursor when `initialCursor`
+is omitted.
 
 ### mutationKey()
 

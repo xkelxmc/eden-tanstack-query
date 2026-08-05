@@ -157,7 +157,7 @@ eden.route.get.infiniteQueryOptions(input, opts): InfiniteQueryOptions
 |-----------|------|-------------|
 | `input` | `TInput \| SkipToken` | Query params (excluding cursor) or `skipToken` |
 | `opts.getNextPageParam` | `(lastPage) => TCursor \| undefined` | **Required.** Returns next page cursor |
-| `opts.initialCursor` | `TCursor` | Initial cursor value. Defaults to `null` |
+| `opts.initialCursor` | `TCursor \| null` | Initial cursor value. Defaults to `null` |
 | `opts.getPreviousPageParam` | `(firstPage) => TCursor \| undefined` | For bi-directional pagination |
 | `opts.maxPages` | `number` | Max pages to keep in memory |
 
@@ -222,16 +222,30 @@ eden.users.post.mutationKey()
 Generates an infinite query key (separate from regular query cache).
 
 ```ts
-eden.route.get.infiniteQueryKey(input?): DataTag<EdenQueryKey>
+eden.route.get.infiniteQueryKey(
+  input?,
+  { initialCursor?: TCursor | null }?
+): DataTag<EdenQueryKey>
 ```
 
 ```ts
 eden.posts.get.infiniteQueryKey()
-// => [['posts', 'get'], { type: 'infinite' }]
+// => [['posts', 'get'], {
+//   type: 'infinite',
+//   infinite: { initialPageParam: null }
+// }]
 
 eden.posts.get.infiniteQueryKey({ category: 'tech' })
-// => [['posts', 'get'], { input: { category: 'tech' }, type: 'infinite' }]
+
+eden.posts.get.infiniteQueryKey(
+  { category: 'tech' },
+  { initialCursor: 'start' }
+)
 ```
+
+The initial cursor is part of the exact infinite-query key. Pass the same
+`initialCursor` used by `infiniteQueryOptions`; omitting it targets the default
+`null` cursor.
 
 ---
 
@@ -265,12 +279,30 @@ queryClient.invalidateQueries(
 Same as `queryFilter` but scoped to infinite queries.
 
 ```ts
-eden.route.get.infiniteQueryFilter(input?, filters?): QueryFilters
+eden.route.get.infiniteQueryFilter(
+  input?,
+  filters?: QueryFilters & { initialCursor?: TCursor | null }
+): QueryFilters
 ```
 
 ```tsx
 queryClient.invalidateQueries(eden.posts.get.infiniteQueryFilter())
+
+queryClient.invalidateQueries(
+  eden.posts.get.infiniteQueryFilter(
+    { category: 'tech' },
+    { initialCursor: 'start' }
+  )
+)
 ```
+
+The filter matches every initial-cursor variant for the selected route input by
+default. Pass `initialCursor` to target one cursor identity. With the default
+hash, object and array cursors are complete values rather than partial prefixes;
+a custom `queryKeyHashFn` defines identity exactly as it does for the cache.
+Route input still uses TanStack Query's normal partial matching. With
+`exact: true`, an omitted `initialCursor` defaults to `null`, matching
+`infiniteQueryKey(input)`.
 
 ---
 
@@ -330,7 +362,7 @@ Methods on query routes with cursor input:
 | Method | Type | Description |
 |--------|------|-------------|
 | `infiniteQueryOptions` | `(input, opts) => EdenInfiniteQueryOptions` | Options for useInfiniteQuery |
-| `infiniteQueryKey` | `(input?) => DataTag<EdenQueryKey>` | Infinite query key |
+| `infiniteQueryKey` | `(input?, keyOpts?) => DataTag<EdenQueryKey>` | Infinite query key |
 | `infiniteQueryFilter` | `(input?, filters?) => QueryFilters` | Filter for infinite queries |
 
 ### DecorateMutationProcedure
