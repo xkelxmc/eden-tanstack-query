@@ -75,7 +75,7 @@ export type App = typeof app
 ```ts title="lib/eden.ts"
 import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
 import { treaty } from '@elysiajs/eden'
-import type { App } from './server'
+import type { App } from '../server'
 
 export const { EdenProvider, useEden, useEdenClient } = createEdenTanStackQuery<App>()
 export const edenClient = treaty<App>('http://localhost:3000')

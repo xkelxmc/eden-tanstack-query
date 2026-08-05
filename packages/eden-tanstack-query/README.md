@@ -1,7 +1,7 @@
 # eden-tanstack-react-query
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://github.com/xkelxmc/eden-tanstack-query/actions/workflows/test.yml/badge.svg)](https://github.com/xkelxmc/eden-tanstack-query/actions/workflows/test.yml)
 
 Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, but for Elysia.
@@ -78,7 +78,7 @@ export type App = typeof app
 // lib/eden.ts
 import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
 import { treaty } from '@elysiajs/eden'
-import type { App } from './server'
+import type { App } from '../server'
 
 export const { EdenProvider, useEden, useEdenClient } = createEdenTanStackQuery<App>()
 export const edenClient = treaty<App>('http://localhost:3000')

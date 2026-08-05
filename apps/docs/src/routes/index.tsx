@@ -145,7 +145,7 @@ function HomePage() {
 							<span className="text-fd-muted-foreground select-none">$ </span>
 							<span className="text-fd-foreground">
 								npm i eden-tanstack-react-query @tanstack/react-query
-								@elysiajs/eden
+								@elysiajs/eden elysia
 							</span>
 						</div>
 					</div>
