@@ -9,27 +9,27 @@ Eden TanStack Query brings end-to-end type safety to your React applications usi
 
 ## Installation
 
-Install the package with its peer dependencies:
+Install the package, its peer dependencies, and the CORS plugin used in this guide:
 
 <Tabs items={["bun", "npm", "pnpm", "yarn"]}>
   <Tab value="bun">
 ```bash
-bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia @elysiajs/cors
 ```
   </Tab>
   <Tab value="npm">
 ```bash
-npm install eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+npm install eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia @elysiajs/cors
 ```
   </Tab>
   <Tab value="pnpm">
 ```bash
-pnpm add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+pnpm add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia @elysiajs/cors
 ```
   </Tab>
   <Tab value="yarn">
 ```bash
-yarn add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+yarn add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia @elysiajs/cors
 ```
   </Tab>
 </Tabs>
@@ -38,7 +38,7 @@ yarn add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
 The `elysia` package is only needed for its type definitions. You don't need to run Elysia on the client — just import the `typeof app` type from your server.
 </Callout>
 
-Ensure your `tsconfig.json` has `strict: true` and `moduleResolution` set to `"bundler"` (or `"node16"` / `"nodenext"`).
+Ensure your `tsconfig.json` has `strict: true` and `moduleResolution` set to `"bundler"`.
 
 ## Define Your Elysia Server
 

@@ -54,11 +54,12 @@ const features = [
 	},
 ]
 
-const codeExample = `import { useQuery, useMutation } from '@tanstack/react-query'
+const codeExample = `import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEden } from './lib/eden'
 
 function UserList() {
   const eden = useEden()
+  const queryClient = useQueryClient()
 
   // Fully typed query
   const { data: users } = useQuery(
@@ -227,7 +228,7 @@ function HomePage() {
 			{/* Footer */}
 			<footer className="px-6 py-8 border-t border-fd-border mt-auto">
 				<div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-fd-muted-foreground">
-					<p>MIT License</p>
+					<p>Apache-2.0 License</p>
 					<div className="flex items-center gap-6">
 						<a
 							href="https://github.com/xkelxmc/eden-tanstack-query"
