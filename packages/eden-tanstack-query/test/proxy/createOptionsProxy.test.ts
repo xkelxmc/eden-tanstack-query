@@ -490,6 +490,27 @@ describe("createEdenOptionsProxy", () => {
 					"initialPageParam",
 				),
 			).toBe(false)
+
+			const predicate = nullFilter.predicate
+			if (!predicate) throw new Error("Expected an initial-cursor predicate")
+
+			const malformedQueryClient = createTestQueryClient()
+			const missingMetaKey: QueryKey = [["cursor", "get"]]
+			const missingInfiniteKey: QueryKey = [
+				["cursor", "get"],
+				{ input: compositeCursorInput, type: "infinite" },
+			]
+			malformedQueryClient.setQueryData(missingMetaKey, {})
+			malformedQueryClient.setQueryData(missingInfiniteKey, {})
+			const [missingMetaQuery, missingInfiniteQuery] = malformedQueryClient
+				.getQueryCache()
+				.getAll()
+			if (!missingMetaQuery || !missingInfiniteQuery) {
+				throw new Error("Expected malformed cache entries")
+			}
+
+			expect(predicate(missingMetaQuery)).toBe(false)
+			expect(predicate(missingInfiniteQuery)).toBe(false)
 		})
 
 		test("cursor filters use each query's custom key hash", () => {
