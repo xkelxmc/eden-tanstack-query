@@ -502,20 +502,20 @@ describe("InferRouteError", () => {
 			| EdenFetchError<400, { message: string; code: string }>
 			| EdenFetchError<404, { message: string }>
 			| EdenFetchError<500, { error: string }>
-			| EdenFetchError<503, Error>
+			| EdenFetchError<503, unknown>
 
 		const exact: Equals<ErrorType, Expected> = true
 		expect(exact).toBe(true)
 	})
 
-	test("keeps declared and transport 503 errors distinct", () => {
+	test("keeps the declared 503 response alongside the transport error", () => {
 		type Error503 = Extract<
 			InferRouteError<RouteWithDeclared503>,
 			{ status: 503 }
 		>
 		type Expected =
 			| EdenFetchError<503, { retryAfter: number }>
-			| EdenFetchError<503, Error>
+			| EdenFetchError<503, unknown>
 
 		const exact: Equals<Error503, Expected> = true
 		expect(exact).toBe(true)
@@ -524,7 +524,9 @@ describe("InferRouteError", () => {
 	test("falls back to the wide error type when route has only success responses", () => {
 		type ErrorType = InferRouteError<RouteWithOnlySuccess>
 
-		type Expected = EdenFetchError<number, unknown> | EdenFetchError<503, Error>
+		type Expected =
+			| EdenFetchError<number, unknown>
+			| EdenFetchError<503, unknown>
 		const exactFallback: Equals<ErrorType, Expected> = true
 		expect(exactFallback).toBe(true)
 	})
@@ -532,7 +534,9 @@ describe("InferRouteError", () => {
 	test("error defaults to EdenFetchError<number, unknown> when no response defined", () => {
 		type ErrorType = InferRouteError<RouteWithNoResponse>
 
-		type Expected = EdenFetchError<number, unknown> | EdenFetchError<503, Error>
+		type Expected =
+			| EdenFetchError<number, unknown>
+			| EdenFetchError<503, unknown>
 		const exactFallback: Equals<ErrorType, Expected> = true
 		expect(exactFallback).toBe(true)
 	})
@@ -608,7 +612,7 @@ describe("InferRouteOutput status codes", () => {
 		type ErrorType = InferRouteError<RouteWithUncommonSuccess>
 		type ExpectedError =
 			| EdenFetchError<404, { message: string }>
-			| EdenFetchError<503, Error>
+			| EdenFetchError<503, unknown>
 
 		const exactOutput: Equals<Output, { ok: true }> = true
 		const exactError: Equals<ErrorType, ExpectedError> = true
@@ -666,7 +670,7 @@ describe("InferRouteError (real Elysia app)", () => {
 	test("includes Treaty's transport error", () => {
 		type Error503 = Extract<InferRouteError<ItemsRoute>, { status: 503 }>
 
-		const exact: Equals<Error503, EdenFetchError<503, Error>> = true
+		const exact: Equals<Error503, EdenFetchError<503, unknown>> = true
 		expect(exact).toBe(true)
 	})
 

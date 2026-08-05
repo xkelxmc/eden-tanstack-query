@@ -193,6 +193,23 @@ describe("real treaty client through the options proxy", () => {
 		).rejects.toMatchObject({ status: 503, value: offlineError })
 	})
 
+	test("transport failures preserve non-Error rejection values", async () => {
+		const offlineValue = "offline-string"
+		const offlineFetcher: typeof fetch = Object.assign(
+			() => Promise.reject(offlineValue),
+			{ preconnect: fetch.preconnect },
+		)
+		const offlineClient = treaty<App>("http://offline.invalid", {
+			fetcher: offlineFetcher,
+		})
+		const offlineEden = createEdenOptionsProxy<App>({ client: offlineClient })
+		const queryClient = createTestQueryClient()
+
+		await expect(
+			queryClient.fetchQuery(offlineEden.hello.get.queryOptions()),
+		).rejects.toMatchObject({ status: 503, value: offlineValue })
+	})
+
 	test("abortOnUnmount forwards the AbortSignal all the way into Eden's request", async () => {
 		const queryClient = createTestQueryClient()
 

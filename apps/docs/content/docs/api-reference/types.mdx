@@ -158,10 +158,12 @@ response schema.
 ### InferRouteError
 
 Extract the union of non-success response and transport error types from a route.
-The union also includes Treaty's `EdenFetchError<503, Error>` transport failure.
+The union also includes Treaty's `EdenFetchError<503, unknown>` transport failure
+because a custom fetcher can reject with any JavaScript value.
 Routes without a declared non-success response fall back to
-`EdenFetchError<number, unknown>`. If a route declares a `503` response, narrowing
-to `503` produces either its declared body or the transport `Error`.
+`EdenFetchError<number, unknown>`. A declared HTTP `503` response remains in the
+union, but narrowing only by status leaves `value` unknown because the same status
+can represent a transport failure.
 
 ### InferRouteBody
 

@@ -190,7 +190,7 @@ export interface EdenFetchError<
 	value: TValue
 }
 
-type TreatyTransportError = EdenFetchError<503, Error>
+type TreatyTransportError = EdenFetchError<503, unknown>
 
 /**
  * Helper type to extract error types from response record.
@@ -219,7 +219,7 @@ type InferRouteErrorMember<TRoute extends RouteSchema> =
  * // EdenFetchError<404, { message: string }> | EdenFetchError<500, { error: string }>
  *
  * If no error status codes are defined, returns EdenFetchError<number, unknown> as fallback.
- * All routes also include Treaty's 503 transport error.
+ * All routes also include Treaty's 503 transport error with its unknown rejection value.
  */
 export type InferRouteError<TRoute extends RouteSchema> =
 	TRoute extends RouteSchema
