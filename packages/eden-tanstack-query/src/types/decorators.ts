@@ -760,6 +760,41 @@ export type RouteParamsInput<T> = {
 // App Decoration
 // ============================================================================
 
+type ProcedureReservedPathSegment =
+	| "~types"
+	| "queryOptions"
+	| "queryKey"
+	| "queryFilter"
+	| "infiniteQueryOptions"
+	| "infiniteQueryKey"
+	| "infiniteQueryFilter"
+	| "mutationOptions"
+	| "mutationKey"
+	| "then"
+	| "toJSON"
+	| "$$typeof"
+	| "constructor"
+	| "__defineGetter__"
+	| "__defineSetter__"
+	| "hasOwnProperty"
+	| "__lookupGetter__"
+	| "__lookupSetter__"
+	| "isPrototypeOf"
+	| "propertyIsEnumerable"
+	| "toString"
+	| "valueOf"
+	| "__proto__"
+	| "toLocaleString"
+
+type DecoratePathNode<
+	TNode,
+	TKey extends PropertyKey,
+> = TNode extends RouteSchema
+	? DecorateRoute<TNode, TKey & string> & DecorateProcedurePathSegments<TNode>
+	: TNode extends Record<string, unknown>
+		? DecorateRoutes<TNode>
+		: never
+
 /**
  * Handle regular path segments (excluding path parameters).
  *
@@ -770,16 +805,20 @@ type DecoratePathSegments<
 	TRoutes extends Record<string, unknown>,
 	TRouteParams = ExtractRouteParams<TRoutes>,
 > = {
+	[K in Exclude<keyof TRoutes, keyof TRouteParams | "then">]: DecoratePathNode<
+		TRoutes[K],
+		K
+	>
+}
+
+type DecorateProcedurePathSegments<
+	TRoutes,
+	TRouteParams = ExtractRouteParams<TRoutes>,
+> = {
 	[K in Exclude<
 		keyof TRoutes,
-		keyof TRouteParams
-	>]: TRoutes[K] extends RouteSchema
-		? DecorateRoute<TRoutes[K], K & string>
-		: TRoutes[K] extends Record<string, unknown>
-			? TRoutes[K] extends Record<string, RouteSchema>
-				? DecoratedRouteMethods<TRoutes[K]>
-				: DecorateRoutes<TRoutes[K]>
-			: never
+		keyof RouteSchema | keyof TRouteParams | ProcedureReservedPathSegment
+	>]: DecoratePathNode<TRoutes[K], K>
 }
 
 /**
@@ -829,8 +868,8 @@ export type DecorateRoutes<TRoutes extends Record<string, unknown>> =
  * // Proxy.users({ id: '1' }).get.queryOptions(...)
  * // Proxy.users.post.mutationOptions(...)
  */
-export type EdenOptionsProxy<TApp extends AnyElysia> = Simplify<
-	DecorateRoutes<ExtractRoutes<TApp>>
+export type EdenOptionsProxy<TApp extends AnyElysia> = DecorateRoutes<
+	ExtractRoutes<TApp>
 >
 
 // ============================================================================

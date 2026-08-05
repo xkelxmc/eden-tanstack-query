@@ -1,5 +1,10 @@
 import { skipToken } from "@tanstack/react-query"
-import type { EdenMutationKey, EdenQueryKey, QueryType } from "./types"
+import type {
+	EdenMutationKey,
+	EdenQueryKey,
+	EdenQueryKeyPathParam,
+	QueryType,
+} from "./types"
 
 /**
  * Helper to check if value is a plain object
@@ -43,6 +48,8 @@ export interface GetQueryKeyOptions {
 	path: string[]
 	/** Optional input parameters */
 	input?: unknown
+	/** Ordered path-parameter applications */
+	pathParams?: EdenQueryKeyPathParam[]
 	/** Query type: 'query', 'infinite', or 'any' */
 	type?: QueryType
 }
@@ -69,19 +76,20 @@ export interface GetQueryKeyOptions {
  */
 export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 	const { path, type } = opts
-
-	// Handle skipToken - return key without input
-	if (opts.input === skipToken) {
-		return [path]
-	}
+	const pathParams = sanitizeInput(opts.pathParams)
+	const hasPathParams = Array.isArray(pathParams) && pathParams.length > 0
 
 	// No input and type is 'any' → just path
-	if (opts.input === undefined && (!type || type === "any")) {
+	if (
+		(opts.input === undefined || opts.input === skipToken) &&
+		!hasPathParams &&
+		(!type || type === "any")
+	) {
 		return [path]
 	}
 
 	// Sanitize input to prevent prototype pollution
-	let input = sanitizeInput(opts.input)
+	let input = opts.input === skipToken ? undefined : sanitizeInput(opts.input)
 
 	// The cursor is injected per page, while direction may be user input.
 	if (type === "infinite" && isPlainObject(input) && "cursor" in input) {
@@ -94,6 +102,9 @@ export function getQueryKey(opts: GetQueryKeyOptions): EdenQueryKey {
 
 	if (input !== undefined) {
 		meta.input = input
+	}
+	if (hasPathParams) {
+		meta.pathParams = pathParams
 	}
 
 	if (type && type !== "any") {

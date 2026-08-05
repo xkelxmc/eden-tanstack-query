@@ -23,7 +23,10 @@ eden.users.get.queryKey({ role: 'admin' })
 // => [['users', 'get'], { input: { role: 'admin' }, type: 'query' }]
 
 eden.users({ id: '1' }).get.queryKey()
-// => [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+// => [['users', 'get'], {
+//   pathParams: [{ pathIndex: 0, entries: [['id', '1']] }],
+//   type: 'query'
+// }]
 ```
 
 The `type` field differentiates regular queries from infinite queries:
@@ -34,6 +37,10 @@ eden.posts.get.infiniteQueryKey({ limit: 10 })
 ```
 
 ## Cache Identity
+
+### Path parameters
+
+Path parameters are stored separately from request input and retain their path position and application order. A query field cannot overwrite path identity, and sequential parameters with the same name remain distinct.
 
 ### Request headers
 

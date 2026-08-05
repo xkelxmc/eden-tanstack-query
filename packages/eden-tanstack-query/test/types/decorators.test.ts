@@ -87,6 +87,15 @@ const app = new Elysia()
 type App = typeof app
 type Routes = ExtractRoutes<App>
 
+const methodNamedApp = new Elysia()
+	.get("/then", () => "reserved")
+	.delete("/account", () => "deleted")
+	.post("/account/delete", () => "posted")
+	.post("/account/delete/:id", ({ params }) => params.id)
+	.post("/account/delete/toString", () => "reserved")
+
+type MethodNamedProxy = EdenOptionsProxy<typeof methodNamedApp>
+
 // ============================================================================
 // Query Key Types Tests
 // ============================================================================
@@ -860,6 +869,47 @@ describe("EdenOptionsProxy queryOptions return types", () => {
 
 		const acceptsRequestShape: AcceptsRequestShape = true
 		expect(acceptsRequestShape).toBe(true)
+	})
+})
+
+describe("EdenOptionsProxy method-named path segments", () => {
+	test("preserves a static route after a method-named segment", () => {
+		type NestedPost = MethodNamedProxy["account"]["delete"]["post"]
+		type HasMutationOptions = "mutationOptions" extends keyof NestedPost
+			? true
+			: false
+		const hasMutationOptions: HasMutationOptions = true
+
+		expect(hasMutationOptions).toBe(true)
+	})
+
+	test("does not promise callable params on a procedure object", () => {
+		type DeleteProcedure = MethodNamedProxy["account"]["delete"]
+		type IsCallable = DeleteProcedure extends (...args: never[]) => unknown
+			? true
+			: false
+		const isCallable: IsCallable = false
+
+		expect(isCallable).toBe(false)
+	})
+
+	test("does not expose reserved object members as nested routes", () => {
+		type DeleteProcedure = MethodNamedProxy["account"]["delete"]
+		type ToStringIsNestedRoute = DeleteProcedure["toString"] extends {
+			post: unknown
+		}
+			? true
+			: false
+		const toStringIsNestedRoute: ToStringIsNestedRoute = false
+
+		expect(toStringIsNestedRoute).toBe(false)
+	})
+
+	test("does not promise a then route on the non-thenable proxy", () => {
+		type HasThenRoute = "then" extends keyof MethodNamedProxy ? true : false
+		const hasThenRoute: HasThenRoute = false
+
+		expect(hasThenRoute).toBe(false)
 	})
 })
 

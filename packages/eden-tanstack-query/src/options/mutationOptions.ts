@@ -85,6 +85,8 @@ export interface EdenMutationOptionsArgs<TInput, TOutput, TError, TContext> {
  *   path: ['api', 'users', 'post'],
  *   mutate: async (input) => {
  *     const response = await edenClient.api.users.post(input)
+ *     // Eden does not throw on HTTP errors - rethrow so the mutation errors out
+ *     if (response.error) throw response.error
  *     return response.data
  *   },
  *   opts: {

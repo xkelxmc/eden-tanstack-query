@@ -725,7 +725,8 @@ describe("createEdenOptionsProxy", () => {
 			expect(options.queryKey[0]).toEqual(["api", "users", "get"])
 			// pathParams should be included in queryKey metadata
 			expect(options.queryKey[1]).toEqual({
-				input: { id: "123" },
+				input: {},
+				pathParams: [{ pathIndex: 1, entries: [["id", "123"]] }],
 				type: "query",
 			})
 		})
@@ -743,10 +744,13 @@ describe("createEdenOptionsProxy", () => {
 			// List has no input
 			expect(listKey).toEqual([["api", "users", "get"], { type: "query" }])
 
-			// Single has id in input
+			// Single has ordered path identity
 			expect(singleKey).toEqual([
 				["api", "users", "get"],
-				{ input: { id: "123" }, type: "query" },
+				{
+					pathParams: [{ pathIndex: 1, entries: [["id", "123"]] }],
+					type: "query",
+				},
 			])
 		})
 
@@ -758,10 +762,14 @@ describe("createEdenOptionsProxy", () => {
 				.users({ id: "123" })
 				.get.queryKey({ status: "active" })
 
-			// Should merge pathParams and input
+			// Path params and request input keep separate identities
 			expect(key).toEqual([
 				["api", "users", "get"],
-				{ input: { id: "123", status: "active" }, type: "query" },
+				{
+					input: { status: "active" },
+					pathParams: [{ pathIndex: 1, entries: [["id", "123"]] }],
+					type: "query",
+				},
 			])
 		})
 
@@ -772,7 +780,7 @@ describe("createEdenOptionsProxy", () => {
 
 			// type: "any" is omitted by getQueryKey when type is "any"
 			expect(filter.queryKey[1]).toEqual({
-				input: { id: "123" },
+				pathParams: [{ pathIndex: 1, entries: [["id", "123"]] }],
 			})
 		})
 
@@ -861,7 +869,10 @@ describe("createEdenOptionsProxy", () => {
 			expect(options.enabled).toBe(false)
 			expect(options.queryKey).toEqual([
 				["api", "users", "get"],
-				{ input: { id: "123" }, type: "query" },
+				{
+					pathParams: [{ pathIndex: 1, entries: [["id", "123"]] }],
+					type: "query",
+				},
 			])
 			expect(options.queryKey).toEqual(
 				eden.api.users({ id: "123" }).get.queryOptions().queryKey,
@@ -1014,8 +1025,14 @@ describe("createEdenOptionsProxy", () => {
 			const key2 = proxy.api.v1.users.address({ userId: "bbb" }).get.queryKey()
 
 			expect(key1).not.toEqual(key2)
-			expect(key1[1]).toEqual({ input: { userId: "aaa" }, type: "query" })
-			expect(key2[1]).toEqual({ input: { userId: "bbb" }, type: "query" })
+			expect(key1[1]).toEqual({
+				pathParams: [{ pathIndex: 3, entries: [["userId", "aaa"]] }],
+				type: "query",
+			})
+			expect(key2[1]).toEqual({
+				pathParams: [{ pathIndex: 3, entries: [["userId", "bbb"]] }],
+				type: "query",
+			})
 		})
 
 		test("multiple path params merge into queryKey correctly", () => {
@@ -1043,7 +1060,11 @@ describe("createEdenOptionsProxy", () => {
 				.members.get.queryKey({ role: "admin" })
 
 			expect(key[1]).toEqual({
-				input: { orgId: "o1", teamId: "t2", role: "admin" },
+				input: { role: "admin" },
+				pathParams: [
+					{ pathIndex: 1, entries: [["orgId", "o1"]] },
+					{ pathIndex: 2, entries: [["teamId", "t2"]] },
+				],
 				type: "query",
 			})
 		})
@@ -1077,7 +1098,10 @@ describe("createEdenOptionsProxy", () => {
 			expect(options.enabled).toBe(false)
 			expect(options.queryKey).toEqual([
 				["api", "comments", "get"],
-				{ input: { postId: "42" }, type: "infinite" },
+				{
+					pathParams: [{ pathIndex: 1, entries: [["postId", "42"]] }],
+					type: "infinite",
+				},
 			])
 		})
 	})

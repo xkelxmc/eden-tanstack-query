@@ -15,6 +15,46 @@ describe("getQueryKey", () => {
 		expect(key).toEqual([["api", "users", "get"], { input: { id: "1" } }])
 	})
 
+	test("keeps ordered path params separate from request input", () => {
+		const key = getQueryKey({
+			path: ["api", "users", "get"],
+			input: { id: "query" },
+			pathParams: [
+				{ pathIndex: 1, entries: [["id", "path-a"]] },
+				{ pathIndex: 1, entries: [["id", "path-b"]] },
+			],
+			type: "query",
+		})
+
+		expect(key).toEqual([
+			["api", "users", "get"],
+			{
+				input: { id: "query" },
+				pathParams: [
+					{ pathIndex: 1, entries: [["id", "path-a"]] },
+					{ pathIndex: 1, entries: [["id", "path-b"]] },
+				],
+				type: "query",
+			},
+		])
+	})
+
+	test("preserves __proto__ when it is a path parameter name", () => {
+		const first = getQueryKey({
+			path: ["api", "users", "get"],
+			pathParams: [{ pathIndex: 1, entries: [["__proto__", "first"]] }],
+		})
+		const second = getQueryKey({
+			path: ["api", "users", "get"],
+			pathParams: [{ pathIndex: 1, entries: [["__proto__", "second"]] }],
+		})
+
+		expect(first).not.toEqual(second)
+		expect(first[1]).toEqual({
+			pathParams: [{ pathIndex: 1, entries: [["__proto__", "first"]] }],
+		})
+	})
+
 	test("includes type for query", () => {
 		const key = getQueryKey({
 			path: ["api", "users", "get"],

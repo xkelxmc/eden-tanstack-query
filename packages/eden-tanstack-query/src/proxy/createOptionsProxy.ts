@@ -10,7 +10,11 @@ import { skipToken } from "@tanstack/react-query"
 import type { AnyElysia } from "elysia"
 
 import { getMutationKey, getQueryKey } from "../keys/queryKey"
-import type { EdenMutationKey, EdenQueryKey } from "../keys/types"
+import type {
+	EdenMutationKey,
+	EdenQueryKey,
+	EdenQueryKeyPathParam,
+} from "../keys/types"
 import { edenInfiniteQueryOptions } from "../options/infiniteQueryOptions"
 import { edenMutationOptions } from "../options/mutationOptions"
 import { edenQueryOptions } from "../options/queryOptions"
@@ -46,16 +50,8 @@ type WithRequired<TObj, TKey extends keyof TObj> = TObj & {
 	[P in TKey]-?: TObj[P]
 }
 
-/**
- * Path parameter with its associated path index.
- * Records which path segment the param was applied to.
- */
-export interface PositionedPathParam {
-	/** The index in the path array where this param should be applied */
-	pathIndex: number
-	/** The actual parameter values */
-	params: Record<string, unknown>
-}
+/** Captured path parameter shared by request routing and query keys. */
+export type PositionedPathParam = EdenQueryKeyPathParam
 
 interface ParsedQueryRequestInput {
 	query: unknown
@@ -91,42 +87,23 @@ function getMethod(paths: string[]): string {
 	return method
 }
 
-/**
- * Extract and normalize path params for cache keys.
- */
-function mergePathParams(
-	pathParams: PositionedPathParam[],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = Object.assign(
-		{},
-		...pathParams.map((path) => path.params),
-	)
-	for (const key of Object.keys(merged)) {
-		const value = merged[key]
-		if (typeof value === "number") {
-			merged[key] = String(value)
-		}
+function capturePathParam(
+	pathIndex: number,
+	params: Record<string, unknown>,
+): PositionedPathParam {
+	return {
+		pathIndex,
+		entries: Object.entries(params)
+			.map(([name, value]): [string, unknown] => [
+				name,
+				typeof value === "number" ? String(value) : value,
+			])
+			.sort(([left], [right]) => left.localeCompare(right)),
 	}
-	return merged
 }
 
-/**
- * Merge path params into input for cache-key generation.
- */
-function mergePathParamsIntoInputForKey(
-	input: unknown,
-	pathParams: PositionedPathParam[],
-): unknown {
-	if (pathParams.length === 0) return input
-
-	const mergedPathParams = mergePathParams(pathParams)
-	if (input === undefined || input === null || input === skipToken) {
-		return mergedPathParams
-	}
-
-	return typeof input === "object"
-		? { ...mergedPathParams, ...(input as object) }
-		: { ...mergedPathParams, input }
+function getPathParamInput({ entries }: PositionedPathParam) {
+	return Object.fromEntries(entries)
 }
 
 /**
@@ -208,10 +185,16 @@ function navigateToEdenPath(
 ): unknown {
 	let edenPath = client
 
-	// Build a Map for O(1) param lookup by index
-	const positionedParamsIndex = new Map(
-		pathParams.map((p) => [p.pathIndex, p.params]),
-	)
+	// Params recorded at index -1 were applied on the root proxy itself
+	// (a route like /:tenant/...) — apply them to the client before descending.
+	for (const pathParam of pathParams) {
+		const { pathIndex } = pathParam
+		if (pathIndex === -1 && typeof edenPath === "function") {
+			edenPath = (edenPath as (params: unknown) => unknown)(
+				getPathParamInput(pathParam),
+			)
+		}
+	}
 
 	for (let i = 0; i < pathSegments.length; i++) {
 		const segment = pathSegments[i]
@@ -238,12 +221,15 @@ function navigateToEdenPath(
 
 		edenPath = nextPath
 
-		// Apply path param if one was recorded at this index
-		// Skip if current segment is a query/mutation method
-		if (!isQueryMethod(segment) && !isMutationMethod(segment)) {
-			const params = positionedParamsIndex.get(i)
-			if (params && typeof edenPath === "function") {
-				edenPath = (edenPath as (params: unknown) => unknown)(params)
+		// Apply path param if one was recorded at this index. Every element of
+		// pathSegments is a genuine URL segment — the terminal HTTP method is
+		// never part of it — so method-named segments take params like any other.
+		for (const pathParam of pathParams) {
+			const { pathIndex } = pathParam
+			if (pathIndex === i && typeof edenPath === "function") {
+				edenPath = (edenPath as (params: unknown) => unknown)(
+					getPathParamInput(pathParam),
+				)
 			}
 		}
 	}
@@ -269,13 +255,10 @@ function createQueryProcedure(opts: ProcedureOptions) {
 
 	return {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			const inputIsSkipToken = input === skipToken
 			return edenQueryOptions({
 				path: paths,
-				input: inputIsSkipToken ? input : inputForKey,
-				inputForKey:
-					inputIsSkipToken && pathParams.length > 0 ? inputForKey : undefined,
+				input,
+				pathParams,
 				fetch: async (_inputForKey, signal) => {
 					const actualInput = input
 					const { query, headers } = parseQueryRequestInput(actualInput)
@@ -315,18 +298,26 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			if (input === skipToken) {
 				throw new TypeError("skipToken is only supported by queryOptions")
 			}
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			return getQueryKey({ path: paths, input: inputForKey, type: "query" })
+			return getQueryKey({
+				path: paths,
+				input,
+				pathParams,
+				type: "query",
+			})
 		},
 
 		queryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return {
 				...filters,
-				queryKey: getQueryKey({ path: paths, input: inputForKey, type: "any" }),
+				queryKey: getQueryKey({
+					path: paths,
+					input,
+					pathParams,
+					type: "any",
+				}),
 			}
 		},
 
@@ -339,18 +330,14 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			},
 		) => {
 			const { initialCursor = null, ...restOpts } = infiniteOpts
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			const inputIsSkipToken = input === skipToken
 
 			return edenInfiniteQueryOptions({
 				path: paths,
-				input: inputIsSkipToken ? input : inputForKey,
-				inputForKey:
-					inputIsSkipToken && pathParams.length > 0 ? inputForKey : undefined,
+				input,
+				pathParams,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
-					// inputWithCursor has pathParams merged + cursor
-					// Extract cursor and merge into parsed query input
+					// Extract the page cursor from the query input.
 					const { cursor, direction } = (inputWithCursor ?? {}) as {
 						cursor?: unknown
 						direction?: unknown
@@ -401,20 +388,24 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					"skipToken is only supported by infiniteQueryOptions",
 				)
 			}
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
-			return getQueryKey({ path: paths, input: inputForKey, type: "infinite" })
+			return getQueryKey({
+				path: paths,
+				input,
+				pathParams,
+				type: "infinite",
+			})
 		},
 
 		infiniteQueryFilter: (
 			input?: unknown,
 			filters?: QueryFilters,
 		): WithRequired<QueryFilters, "queryKey"> => {
-			const inputForKey = mergePathParamsIntoInputForKey(input, pathParams)
 			return {
 				...filters,
 				queryKey: getQueryKey({
 					path: paths,
-					input: inputForKey,
+					input,
+					pathParams,
 					type: "infinite",
 				}),
 			}
@@ -473,6 +464,122 @@ function createMutationProcedure(opts: ProcedureOptions) {
 // ============================================================================
 
 /**
+ * Names reserved for procedure members. On the wrong kind of procedure they
+ * resolve to undefined instead of becoming path segments, so introspection
+ * like `eden.users.get.mutationOptions === undefined` keeps working.
+ */
+const PROCEDURE_MEMBERS = new Set([
+	"queryOptions",
+	"queryKey",
+	"queryFilter",
+	"infiniteQueryOptions",
+	"infiniteQueryKey",
+	"infiniteQueryFilter",
+	"mutationOptions",
+	"mutationKey",
+	"~types",
+	"body",
+	"headers",
+	"query",
+	"params",
+	"cookie",
+	"response",
+])
+
+/**
+ * Properties the host environment probes on arbitrary values. On procedure
+ * objects they stay absent instead of becoming child routes.
+ */
+const HOST_PROBES = new Set(["toJSON", "$$typeof"])
+
+/**
+ * Resolve a child property of a path node: HTTP-method names become
+ * procedures (still usable as segments — see createProcedureProxy), everything
+ * else extends the path.
+ */
+function resolveChild<TApp extends AnyElysia>(
+	opts: CreateEdenOptionsProxyOptions<TApp>,
+	paths: string[],
+	pathParams: PositionedPathParam[],
+	prop: string,
+): unknown {
+	const { client } = opts
+
+	if (isQueryMethod(prop)) {
+		const nextPaths = [...paths, prop]
+		return createProcedureProxy(
+			createQueryProcedure({
+				client,
+				paths: nextPaths,
+				pathParams: [...pathParams],
+			}),
+			opts,
+			nextPaths,
+			[...pathParams],
+		)
+	}
+
+	if (isMutationMethod(prop)) {
+		const nextPaths = [...paths, prop]
+		return createProcedureProxy(
+			createMutationProcedure({
+				client,
+				paths: nextPaths,
+				pathParams: [...pathParams],
+			}),
+			opts,
+			nextPaths,
+			[...pathParams],
+		)
+	}
+
+	return createEdenOptionsProxy(opts, [...paths, prop], [...pathParams])
+}
+
+/**
+ * Wrap a procedure so a method-named property stays usable as a path segment.
+ * `eden.account.delete.mutationOptions()` is DELETE /account, while
+ * `eden.account.delete.post.mutationOptions()` is POST /account/delete —
+ * the two must never cross-fire into each other's verb or URL.
+ */
+function createProcedureProxy<TApp extends AnyElysia>(
+	procedure: Record<string, unknown>,
+	opts: CreateEdenOptionsProxyOptions<TApp>,
+	paths: string[],
+	pathParams: PositionedPathParam[],
+) {
+	// The procedure object is the proxy target, so enumeration, `in`, property
+	// descriptors and string coercion keep behaving like the plain object this
+	// used to be. Only unknown properties are redirected into the path.
+	return new Proxy(procedure, {
+		get: (target, prop, receiver) => {
+			if (Object.hasOwn(target, prop)) {
+				return Reflect.get(target, prop, receiver)
+			}
+
+			if (typeof prop === "symbol" || prop === "then") {
+				return undefined
+			}
+
+			// Members of the other procedure kind stay absent; inherited
+			// Object.prototype members (toString, valueOf, …) and host probes
+			// must not turn into path segments.
+			if (
+				PROCEDURE_MEMBERS.has(prop) ||
+				HOST_PROBES.has(prop) ||
+				prop in Object.prototype
+			) {
+				return Reflect.get(target, prop, receiver)
+			}
+
+			// A method-named element that is really a path segment: keep
+			// resolving children from it.
+			return resolveChild(opts, paths, pathParams, prop)
+		},
+	})
+}
+
+/**
  * Creates a recursive proxy that decorates Eden routes with TanStack Query options.
  *
  * @example
@@ -500,8 +607,6 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 	paths: string[] = [],
 	pathParams: PositionedPathParam[] = [],
 ): EdenOptionsProxy<TApp> {
-	const { client } = opts
-
 	// Using function as proxy target to support both property access and function calls.
 	// This enables: eden.api.users({ id }).get.queryOptions()
 	const proxy = new Proxy(function edenProxy() {}, {
@@ -512,26 +617,9 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 				return undefined
 			}
 
-			// Check if it's a query method (GET, OPTIONS, HEAD)
-			if (isQueryMethod(prop)) {
-				return createQueryProcedure({
-					client,
-					paths: [...paths, prop],
-					pathParams: [...pathParams],
-				})
-			}
-
-			// Check if it's a mutation method (POST, PUT, PATCH, DELETE)
-			if (isMutationMethod(prop)) {
-				return createMutationProcedure({
-					client,
-					paths: [...paths, prop],
-					pathParams: [...pathParams],
-				})
-			}
-
-			// Otherwise, continue building path (immutable spread to prevent race conditions)
-			return createEdenOptionsProxy(opts, [...paths, prop], [...pathParams])
+			// HTTP-method names become procedures, everything else extends the
+			// path (immutable spread to prevent race conditions).
+			return resolveChild(opts, paths, pathParams, prop)
 		},
 
 		apply: (_target, _thisArg, args) => {
@@ -542,10 +630,7 @@ export function createEdenOptionsProxy<TApp extends AnyElysia>(
 				args && args.length > 0 && args[0] !== undefined
 					? (args[0] as Record<string, unknown>)
 					: {}
-			const positionedPathParam: PositionedPathParam = {
-				pathIndex: paths.length - 1,
-				params,
-			}
+			const positionedPathParam = capturePathParam(paths.length - 1, params)
 			return createEdenOptionsProxy(
 				opts,
 				[...paths],
