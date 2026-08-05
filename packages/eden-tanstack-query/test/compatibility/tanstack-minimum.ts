@@ -5,6 +5,8 @@ import {
 	skipToken,
 } from "@tanstack/react-query"
 import {
+	type DecorateInfiniteQueryProcedure,
+	type DecorateQueryProcedure,
 	type EdenQueryKey,
 	edenInfiniteQueryOptions,
 	edenQueryOptions,
@@ -41,6 +43,33 @@ const skipped = edenQueryOptions({
 })
 
 const taggedKey: DataTag<EdenQueryKey, User, Error> = enabled.queryKey
+
+const selectedQuery = edenQueryOptions({
+	path: ["users", "get"],
+	input: { id: "1" },
+	fetch: fetchUser,
+	opts: { select: (user) => user.id },
+})
+
+const selectedQueryDefined = edenQueryOptions({
+	path: ["users", "get"],
+	input: { id: "1" },
+	fetch: fetchUser,
+	opts: {
+		initialData: { id: "cached" },
+		select: (user) => user.id,
+	},
+})
+
+const selectedQuerySkipped = edenQueryOptions({
+	path: ["users", "get"],
+	input: skipToken,
+	fetch: fetchUser,
+	opts: { select: (user) => user.id },
+})
+
+type SelectedQueryData = ReturnType<NonNullable<typeof selectedQuery.select>>
+const selectedQueryData: SelectedQueryData = "1"
 
 interface FeedPage {
 	items: User[]
@@ -90,11 +119,75 @@ const infiniteSkipped = edenInfiniteQueryOptions({
 })
 
 declare const queryClient: QueryClient
+const selectedQueryCached: User | undefined = queryClient.getQueryData(
+	selectedQuery.queryKey,
+)
+queryClient.setQueryData(selectedQuery.queryKey, { id: "cached" })
 const infiniteCached: InfiniteData<FeedPage, number> | undefined =
 	queryClient.getQueryData(infinite.queryKey)
 queryClient.setQueryData(infinite.queryKey, {
 	pages: [{ items: [], next: null }],
 	pageParams: [0],
+})
+
+interface UnionQueryDef {
+	input: Record<never, never>
+	output: { kind: "a"; value: string } | { kind: "b"; value: number }
+	error: Error
+}
+
+interface UnionInfiniteDef {
+	input: { cursor?: number }
+	output: UnionQueryDef["output"]
+	error: Error
+}
+
+declare const queryProcedure: DecorateQueryProcedure<UnionQueryDef>
+declare const infiniteProcedure: DecorateInfiniteQueryProcedure<UnionInfiniteDef>
+
+const unionQuery = queryProcedure.queryOptions(undefined, {
+	placeholderData: { kind: "a", value: "cached" },
+})
+queryClient.setQueryData(unionQuery.queryKey, { kind: "b", value: 1 })
+
+const unionInfinite = infiniteProcedure.infiniteQueryOptions(
+	{},
+	{
+		getNextPageParam: () => undefined,
+		placeholderData: {
+			pages: [{ kind: "a", value: "cached" }],
+			pageParams: [null],
+		},
+	},
+)
+queryClient.setQueryData(unionInfinite.queryKey, {
+	pages: [{ kind: "b", value: 1 }],
+	pageParams: [null],
+})
+
+const undefinedCursor = infiniteProcedure.infiniteQueryOptions(
+	{},
+	{
+		initialCursor: undefined,
+		getNextPageParam: () => 1,
+	},
+)
+queryClient.setQueryData(undefinedCursor.queryKey, {
+	pages: [{ kind: "a", value: "cached" }],
+	pageParams: [null],
+})
+
+declare const optionalCursor: number | undefined
+const optionalCursorOptions = infiniteProcedure.infiniteQueryOptions(
+	{},
+	{
+		initialCursor: optionalCursor,
+		getNextPageParam: () => 1,
+	},
+)
+queryClient.setQueryData(optionalCursorOptions.queryKey, {
+	pages: [{ kind: "a", value: "cached" }],
+	pageParams: [null],
 })
 
 type InfiniteSelected = ReturnType<NonNullable<typeof infinite.select>>
@@ -109,6 +202,14 @@ void [
 	infiniteDefined,
 	infiniteSkipped,
 	invalidKey,
+	optionalCursorOptions,
 	selected,
+	selectedQueryCached,
+	selectedQueryData,
+	selectedQueryDefined,
+	selectedQuerySkipped,
 	taggedKey,
+	undefinedCursor,
+	unionInfinite,
+	unionQuery,
 ]

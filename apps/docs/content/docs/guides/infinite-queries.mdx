@@ -76,9 +76,9 @@ function PostList() {
 }
 ```
 
-## Required Options
+## Pagination Options
 
-Two options are required when using `infiniteQueryOptions()`:
+`getNextPageParam` is required when using `infiniteQueryOptions()`:
 
 **getNextPageParam** -- determines the cursor for the next page. Return `undefined` to indicate there are no more pages:
 
@@ -88,7 +88,7 @@ Two options are required when using `infiniteQueryOptions()`:
 }
 ```
 
-**initialCursor** -- the cursor value for the first page:
+`initialCursor` sets the cursor value for the first page and defaults to `null`:
 
 ```tsx
 {

@@ -15,11 +15,17 @@ import {
 	type QueryClient,
 	skipToken,
 	useInfiniteQuery,
+	useQuery,
 } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 
 import { edenInfiniteQueryOptions } from "../../src/options/infiniteQueryOptions"
-import type { EdenOptionsProxy } from "../../src/types/decorators"
+import { edenQueryOptions } from "../../src/options/queryOptions"
+import type {
+	DecorateInfiniteQueryProcedure,
+	DecorateQueryProcedure,
+	EdenOptionsProxy,
+} from "../../src/types/decorators"
 import type { Equals } from "../../test-utils/type-assert"
 
 const app = new Elysia()
@@ -43,6 +49,8 @@ type FeedPage = {
 
 type ErrorOfTag<TKey> =
 	TKey extends DataTag<infer _TKey, infer _TData, infer TError> ? TError : never
+
+type UnionOutput = { kind: "a"; value: string } | { kind: "b"; value: number }
 
 export function querySelectProbe(qc: QueryClient, eden: EdenOptionsProxy<App>) {
 	const opts = eden.user.get.queryOptions(undefined, {
@@ -139,6 +147,32 @@ export function useInfiniteSelectProbe(
 		typeof explicitCursor.initialPageParam,
 		number
 	> = true
+	const undefinedCursor = eden.feed.get.infiniteQueryOptions(
+		{},
+		{
+			initialCursor: undefined,
+			getNextPageParam: () => 1,
+		},
+	)
+	const undefinedCursorCached = qc.getQueryData(undefinedCursor.queryKey)
+	const undefinedCursorExact: Equals<
+		typeof undefinedCursorCached,
+		InfiniteData<FeedPage, number | null> | undefined
+	> = true
+
+	const maybeCursor: number | undefined = Math.random() > 0.5 ? 0 : undefined
+	const maybeCursorOptions = eden.feed.get.infiniteQueryOptions(
+		{},
+		{
+			initialCursor: maybeCursor,
+			getNextPageParam: () => 1,
+		},
+	)
+	const maybeCursorCached = qc.getQueryData(maybeCursorOptions.queryKey)
+	const maybeCursorExact: Equals<
+		typeof maybeCursorCached,
+		InfiniteData<FeedPage, number | null> | undefined
+	> = true
 
 	const manualKey = eden.feed.get.infiniteQueryKey({})
 	const manualCached = qc.getQueryData(manualKey)
@@ -169,11 +203,133 @@ export function useInfiniteSelectProbe(
 		explicitInitialExact,
 		manualCachedExact,
 		manualErrorExact,
+		maybeCursorExact,
 		pagesExact,
 		selectedExact,
 		selectedResultExact,
 		skippedCachedExact,
+		undefinedCursorExact,
 	}
+}
+
+export function unionPlaceholderProbe(
+	qc: QueryClient,
+	query: DecorateQueryProcedure<{
+		input: Record<never, never>
+		output: UnionOutput
+		error: Error
+	}>,
+	infinite: DecorateInfiniteQueryProcedure<{
+		input: { cursor?: number }
+		output: UnionOutput
+		error: Error
+	}>,
+) {
+	const placeholder = { kind: "a", value: "cached" } as const
+	const queryOptions = query.queryOptions(undefined, {
+		placeholderData: placeholder,
+	})
+	const queryCached = qc.getQueryData(queryOptions.queryKey)
+	const queryExact: Equals<typeof queryCached, UnionOutput | undefined> = true
+
+	const queryWithInitial = query.queryOptions(undefined, {
+		initialData: placeholder,
+	})
+	const queryInitialCached = qc.getQueryData(queryWithInitial.queryKey)
+	const queryInitialExact: Equals<
+		typeof queryInitialCached,
+		UnionOutput | undefined
+	> = true
+
+	const infiniteOptions = infinite.infiniteQueryOptions(
+		{},
+		{
+			getNextPageParam: () => undefined,
+			placeholderData: {
+				pages: [placeholder],
+				pageParams: [null],
+			},
+		},
+	)
+	const infiniteCached = qc.getQueryData(infiniteOptions.queryKey)
+	type InfiniteCached = Exclude<typeof infiniteCached, undefined>
+	const infinitePageExact: Equals<
+		InfiniteCached["pages"][number],
+		UnionOutput
+	> = true
+	const infinitePageParamExact: Equals<
+		InfiniteCached["pageParams"][number],
+		number | null
+	> = true
+	const infiniteExact: Equals<
+		typeof infiniteCached,
+		InfiniteData<UnionOutput, number | null> | undefined
+	> = true
+
+	return {
+		infiniteExact,
+		infinitePageExact,
+		infinitePageParamExact,
+		queryExact,
+		queryInitialExact,
+	}
+}
+
+export function useStandaloneQuerySelectProbe(qc: QueryClient) {
+	const fetchUser = async (input: { id: string }) => ({
+		id: input.id,
+		name: "Ada",
+	})
+
+	const selected = edenQueryOptions({
+		path: ["user", "get"],
+		input: { id: "1" },
+		fetch: fetchUser,
+		opts: { select: (user) => user.name },
+	})
+	const selectedResult = useQuery(selected)
+	const selectedExact: Equals<typeof selectedResult.data, string | undefined> =
+		true
+	const cached = qc.getQueryData(selected.queryKey)
+	const cachedExact: Equals<
+		typeof cached,
+		{ id: string; name: string } | undefined
+	> = true
+
+	const plain = edenQueryOptions({
+		path: ["user", "get"],
+		input: { id: "1" },
+		fetch: fetchUser,
+	})
+	const plainResult = useQuery(plain)
+	const plainExact: Equals<
+		typeof plainResult.data,
+		{ id: string; name: string } | undefined
+	> = true
+
+	const defined = edenQueryOptions({
+		path: ["user", "get"],
+		input: { id: "1" },
+		fetch: fetchUser,
+		opts: {
+			initialData: { id: "cached", name: "Grace" },
+			select: (user) => user.name,
+		},
+	})
+	const definedResult = useQuery(defined)
+	const definedExact: Equals<typeof definedResult.data, string> = true
+
+	const skipped = edenQueryOptions({
+		path: ["user", "get"],
+		input: skipToken,
+		fetch: fetchUser,
+		opts: { select: (user) => user.name },
+	})
+	const skippedResult = useQuery(skipped)
+	const skippedExact: Equals<typeof skippedResult.data, string | undefined> =
+		true
+
+	return { cachedExact, definedExact, plainExact, selectedExact, skippedExact }
 }
 
 export function useStandaloneInfiniteSelectProbe(qc: QueryClient) {
@@ -239,7 +395,29 @@ export function useStandaloneInfiniteSelectProbe(qc: QueryClient) {
 		InfiniteData<FeedPage, number> | undefined
 	> = true
 
-	return { cachedExact, definedExact, selectedExact, skippedExact }
+	const undefinedInitialData = edenInfiniteQueryOptions({
+		path: ["feed", "get"],
+		input: { limit: 10 },
+		initialPageParam: 0,
+		fetch: fetchFeed,
+		opts: {
+			getNextPageParam: (last) => last.next,
+			initialData: undefined,
+		},
+	})
+	const undefinedInitialResult = useInfiniteQuery(undefinedInitialData)
+	const undefinedInitialExact: Equals<
+		typeof undefinedInitialResult.data,
+		InfiniteData<FeedPage, number> | undefined
+	> = true
+
+	return {
+		cachedExact,
+		definedExact,
+		selectedExact,
+		skippedExact,
+		undefinedInitialExact,
+	}
 }
 
 describe("select soundness (compile-time probes)", () => {
@@ -253,5 +431,13 @@ describe("select soundness (compile-time probes)", () => {
 
 	test("standalone infinite select probe compiles", () => {
 		expect(typeof useStandaloneInfiniteSelectProbe).toBe("function")
+	})
+
+	test("standalone query select probe compiles", () => {
+		expect(typeof useStandaloneQuerySelectProbe).toBe("function")
+	})
+
+	test("union placeholder probe compiles", () => {
+		expect(typeof unionPlaceholderProbe).toBe("function")
 	})
 })

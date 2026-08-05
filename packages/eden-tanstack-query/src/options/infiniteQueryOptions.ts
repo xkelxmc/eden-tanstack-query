@@ -79,11 +79,11 @@ interface UndefinedEdenInfiniteQueryOptionsIn<
 	TPageParam,
 > extends Omit<
 			UndefinedInitialDataInfiniteOptions<
-				TQueryFnData,
+				NoInfer<TQueryFnData>,
 				TError,
 				TData,
 				EdenQueryKey,
-				TPageParam
+				NoInfer<TPageParam>
 			>,
 			ReservedOptions
 		>,
@@ -100,11 +100,15 @@ interface DefinedEdenInfiniteQueryOptionsIn<
 				TError,
 				TData,
 				EdenQueryKey,
-				TPageParam
+				NoInfer<TPageParam>
 			>,
-			ReservedOptions
+			ReservedOptions | "initialData"
 		>,
-		EdenInfiniteQueryBaseOptions {}
+		EdenInfiniteQueryBaseOptions {
+	initialData:
+		| InfiniteData<NoInfer<TQueryFnData>, NoInfer<TPageParam>>
+		| (() => InfiniteData<NoInfer<TQueryFnData>, NoInfer<TPageParam>>)
+}
 
 interface UnusedSkipTokenEdenInfiniteQueryOptionsIn<
 	TQueryFnData,
@@ -113,11 +117,11 @@ interface UnusedSkipTokenEdenInfiniteQueryOptionsIn<
 	TPageParam,
 > extends Omit<
 			UnusedSkipTokenInfiniteOptions<
-				TQueryFnData,
+				NoInfer<TQueryFnData>,
 				TError,
 				TData,
 				EdenQueryKey,
-				TPageParam
+				NoInfer<TPageParam>
 			>,
 			ReservedOptions
 		>,
@@ -165,6 +169,9 @@ interface DefinedEdenInfiniteQueryOptionsOut<
 		InfiniteData<TQueryFnData, TPageParam>,
 		TError
 	>
+	initialData:
+		| InfiniteData<TQueryFnData, TPageParam>
+		| (() => InfiniteData<TQueryFnData, TPageParam>)
 }
 
 interface UnusedSkipTokenEdenInfiniteQueryOptionsOut<
