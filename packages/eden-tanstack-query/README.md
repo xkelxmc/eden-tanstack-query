@@ -63,8 +63,8 @@ const app = new Elysia()
     return { items, nextCursor }
   }, {
     query: t.Object({
-      cursor: t.Optional(t.Numeric()),
-      limit: t.Optional(t.Numeric())
+      cursor: t.Optional(t.Numeric({ minimum: 0, multipleOf: 1 })),
+      limit: t.Optional(t.Numeric({ minimum: 1, multipleOf: 1 }))
     })
   })
   .listen(3000)
