@@ -108,8 +108,57 @@ type App = typeof app
 const client = treaty(app)
 const eden = createEdenOptionsProxy<App>({ client })
 
+interface AllCaptured {
+	method?: string
+	query?: Record<string, unknown>
+	body?: unknown
+	path?: string
+}
+
+let allCaptured: AllCaptured = {}
+
+const allRuntimeApp = new Elysia()
+	.all(
+		"/safe",
+		({ request, query, body }) => {
+			allCaptured = {
+				method: request.method,
+				query,
+				body,
+				path: new URL(request.url).pathname,
+			}
+			return { method: request.method }
+		},
+		{
+			query: t.Object({ q: t.Optional(t.String()) }),
+			body: t.Optional(t.Object({ name: t.String() })),
+		},
+	)
+	.all("/:id", ({ request, params }) => {
+		allCaptured = {
+			method: request.method,
+			path: new URL(request.url).pathname,
+		}
+		return { id: params.id, method: request.method }
+	})
+
+const allRuntimeEden = createEdenOptionsProxy<typeof allRuntimeApp>({
+	client: treaty(allRuntimeApp),
+})
+
+const reservedPathClient = treaty(
+	new Elysia()
+		.get("/api/get/query", () => "query")
+		.get("/api/get/body", () => "body")
+		.get("/api/get/params", () => "params")
+		.get("/api/get/headers", () => "headers")
+		.get("/api/get/cookie", () => "cookie")
+		.get("/api/get/response", () => "response"),
+)
+
 beforeEach(() => {
 	captured = {}
+	allCaptured = {}
 })
 
 async function until(predicate: () => boolean, timeoutMs = 1000) {
@@ -127,6 +176,73 @@ async function until(predicate: () => boolean, timeoutMs = 1000) {
 // ============================================================================
 
 describe("real treaty client through the options proxy", () => {
+	test("Treaty reaches reserved paths hidden by procedure proxies", async () => {
+		const results: unknown[] = await Promise.all([
+			// @ts-expect-error Treaty types share the method-name collision.
+			reservedPathClient.api.get.query.get(),
+			// @ts-expect-error Treaty types share the method-name collision.
+			reservedPathClient.api.get.body.get(),
+			// @ts-expect-error Treaty types share the method-name collision.
+			reservedPathClient.api.get.params.get(),
+			// @ts-expect-error Treaty types share the method-name collision.
+			reservedPathClient.api.get.headers.get(),
+			// @ts-expect-error Treaty types share the method-name collision.
+			reservedPathClient.api.get.cookie.get(),
+			// @ts-expect-error Treaty types share the method-name collision.
+			reservedPathClient.api.get.response.get(),
+		])
+
+		expect(results).toMatchObject([
+			{ data: "query" },
+			{ data: "body" },
+			{ data: "params" },
+			{ data: "headers" },
+			{ data: "cookie" },
+			{ data: "response" },
+		])
+	})
+
+	test("standalone all GET sends query input", async () => {
+		const queryClient = createTestQueryClient()
+
+		const data = await queryClient.fetchQuery(
+			allRuntimeEden.safe.get.queryOptions({ q: "search" }),
+		)
+
+		expect(data).toEqual({ method: "GET" })
+		expect(allCaptured).toEqual({
+			method: "GET",
+			query: { q: "search" },
+			body: undefined,
+			path: "/safe",
+		})
+	})
+
+	test("standalone all POST sends mutation body", async () => {
+		const options = allRuntimeEden.safe.post.mutationOptions()
+
+		const data = await options.mutationFn({ name: "Ada" })
+
+		expect(data).toEqual({ method: "POST" })
+		expect(allCaptured).toEqual({
+			method: "POST",
+			query: {},
+			body: { name: "Ada" },
+			path: "/safe",
+		})
+	})
+
+	test("dynamic all GET remains callable", async () => {
+		const queryClient = createTestQueryClient()
+
+		const data = await queryClient.fetchQuery(
+			allRuntimeEden({ id: "42" }).get.queryOptions(),
+		)
+
+		expect(data).toEqual({ id: "42", method: "GET" })
+		expect(allCaptured).toEqual({ method: "GET", path: "/42" })
+	})
+
 	test("plain GET resolves with the handler's data", async () => {
 		const queryClient = createTestQueryClient()
 
