@@ -140,7 +140,7 @@ function HomePage() {
 			{/* Install Command */}
 			<section className="px-6 pb-16">
 				<div className="max-w-3xl mx-auto">
-					<div className="relative group">
+					<div className="relative group w-fit max-w-full mx-auto">
 						<div className="absolute -inset-0.5 bg-gradient-to-r from-fd-primary/20 to-fd-primary/5 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-500" />
 						<div className="relative bg-fd-card border border-fd-border rounded-lg p-4 font-mono text-sm">
 							<span className="text-fd-muted-foreground select-none">$ </span>
