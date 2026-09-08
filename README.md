@@ -9,6 +9,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/xkelxmc/eden-tanstack-query)](https://github.com/xkelxmc/eden-tanstack-query/stargazers)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-blue.svg)](https://www.typescriptlang.org/)
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/xkelxmc/eden-tanstack-query?utm_source=oss&utm_medium=github&utm_campaign=xkelxmc%2Feden-tanstack-query&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, but for Elysia.
 
