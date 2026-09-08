@@ -94,46 +94,53 @@ function CreatePost() {
 
 	const mutation = useMutation({
 		...eden.posts.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.posts.get.queryKey() }),
+		onSuccess: () => {
+			setTitle("")
+			setContent("")
+			return qc.invalidateQueries({ queryKey: eden.posts.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!title.trim()) return
 		mutation.mutate({ title, content: content || undefined, authorId })
-		setTitle("")
-		setContent("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-2">
-			<div className="flex gap-2">
-				<Input
-					value={title}
-					onChange={(e) => setTitle(e.target.value)}
-					placeholder="Post title"
-					className="flex-1"
-				/>
-				<Input
-					value={authorId}
-					onChange={(e) => setAuthorId(e.target.value)}
-					placeholder="Author ID"
-					className="w-32"
-				/>
-			</div>
-			<div className="flex gap-2">
-				<Input
-					value={content}
-					onChange={(e) => setContent(e.target.value)}
-					placeholder="Content (optional)"
-					className="flex-1"
-				/>
-				<Button type="submit" disabled={mutation.isPending}>
-					{mutation.isPending ? "Creating..." : "Create Post"}
-				</Button>
-			</div>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-2">
+				<div className="flex gap-2">
+					<Input
+						disabled={mutation.isPending}
+						value={title}
+						onChange={(e) => setTitle(e.target.value)}
+						placeholder="Post title"
+						className="flex-1"
+					/>
+					<Input
+						disabled={mutation.isPending}
+						value={authorId}
+						onChange={(e) => setAuthorId(e.target.value)}
+						placeholder="Author ID"
+						className="w-32"
+					/>
+				</div>
+				<div className="flex gap-2">
+					<Input
+						disabled={mutation.isPending}
+						value={content}
+						onChange={(e) => setContent(e.target.value)}
+						placeholder="Content (optional)"
+						className="flex-1"
+					/>
+					<Button type="submit" disabled={mutation.isPending}>
+						{mutation.isPending ? "Creating..." : "Create Post"}
+					</Button>
+				</div>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 
@@ -173,37 +180,43 @@ function CreateComment({ postId }: { postId: string }) {
 
 	const mutation = useMutation({
 		...eden.comments.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({
+		onSuccess: () => {
+			setText("")
+			return qc.invalidateQueries({
 				queryKey: eden.posts({ id: postId }).comments.get.queryKey(),
-			}),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!text.trim()) return
 		mutation.mutate({ text, postId, authorId })
-		setText("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={text}
-				onChange={(e) => setText(e.target.value)}
-				placeholder="Write a comment..."
-				className="flex-1"
-			/>
-			<Input
-				value={authorId}
-				onChange={(e) => setAuthorId(e.target.value)}
-				placeholder="Author ID"
-				className="w-32"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Adding..." : "Comment"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					placeholder="Write a comment..."
+					className="flex-1"
+				/>
+				<Input
+					disabled={mutation.isPending}
+					value={authorId}
+					onChange={(e) => setAuthorId(e.target.value)}
+					placeholder="Author ID"
+					className="w-32"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Adding..." : "Comment"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 

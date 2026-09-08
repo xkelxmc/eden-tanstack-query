@@ -49,36 +49,42 @@ function CreateCategory() {
 
 	const mutation = useMutation({
 		...eden.categories.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.categories.get.queryKey() }),
+		onSuccess: () => {
+			setName("")
+			setSlug("")
+			return qc.invalidateQueries({ queryKey: eden.categories.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!name.trim() || !slug.trim()) return
 		mutation.mutate({ name, slug })
-		setName("")
-		setSlug("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				placeholder="Category name"
-				className="flex-1"
-			/>
-			<Input
-				value={slug}
-				onChange={(e) => setSlug(e.target.value)}
-				placeholder="slug"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Creating..." : "Create Category"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="Category name"
+					className="flex-1"
+				/>
+				<Input
+					disabled={mutation.isPending}
+					value={slug}
+					onChange={(e) => setSlug(e.target.value)}
+					placeholder="slug"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Creating..." : "Create Category"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 
@@ -113,36 +119,42 @@ function CreateTag() {
 
 	const mutation = useMutation({
 		...eden.tags.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.tags.get.queryKey() }),
+		onSuccess: () => {
+			setName("")
+			setSlug("")
+			return qc.invalidateQueries({ queryKey: eden.tags.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!name.trim() || !slug.trim()) return
 		mutation.mutate({ name, slug })
-		setName("")
-		setSlug("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				placeholder="Tag name"
-				className="flex-1"
-			/>
-			<Input
-				value={slug}
-				onChange={(e) => setSlug(e.target.value)}
-				placeholder="slug"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Creating..." : "Create Tag"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="Tag name"
+					className="flex-1"
+				/>
+				<Input
+					disabled={mutation.isPending}
+					value={slug}
+					onChange={(e) => setSlug(e.target.value)}
+					placeholder="slug"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Creating..." : "Create Tag"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 

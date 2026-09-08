@@ -68,57 +68,67 @@ function CreateAuditLog() {
 
 	const mutation = useMutation({
 		...eden["audit-logs"].post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden["audit-logs"].get.queryKey() }),
+		onSuccess: () => {
+			setAction("")
+			setEntity("")
+			setEntityId("")
+			return qc.invalidateQueries({
+				queryKey: eden["audit-logs"].get.queryKey(),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!action.trim() || !entity.trim() || !entityId.trim()) return
 		mutation.mutate({ action, entity, entityId, userId })
-		setAction("")
-		setEntity("")
-		setEntityId("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-2">
-			<div className="flex gap-2">
-				<select
-					value={action}
-					onChange={(e) => setAction(e.target.value)}
-					className="rounded-md border px-3 py-2 text-sm"
-				>
-					<option value="">Select action</option>
-					<option value="create">Create</option>
-					<option value="update">Update</option>
-					<option value="delete">Delete</option>
-				</select>
-				<Input
-					value={entity}
-					onChange={(e) => setEntity(e.target.value)}
-					placeholder="Entity (user, post, etc)"
-					className="flex-1"
-				/>
-			</div>
-			<div className="flex gap-2">
-				<Input
-					value={entityId}
-					onChange={(e) => setEntityId(e.target.value)}
-					placeholder="Entity ID"
-					className="flex-1"
-				/>
-				<Input
-					value={userId}
-					onChange={(e) => setUserId(e.target.value)}
-					placeholder="User ID"
-					className="w-32"
-				/>
-				<Button type="submit" disabled={mutation.isPending}>
-					{mutation.isPending ? "Logging..." : "Add Log"}
-				</Button>
-			</div>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-2">
+				<div className="flex gap-2">
+					<select
+						disabled={mutation.isPending}
+						value={action}
+						onChange={(e) => setAction(e.target.value)}
+						className="rounded-md border px-3 py-2 text-sm"
+					>
+						<option value="">Select action</option>
+						<option value="create">Create</option>
+						<option value="update">Update</option>
+						<option value="delete">Delete</option>
+					</select>
+					<Input
+						disabled={mutation.isPending}
+						value={entity}
+						onChange={(e) => setEntity(e.target.value)}
+						placeholder="Entity (user, post, etc)"
+						className="flex-1"
+					/>
+				</div>
+				<div className="flex gap-2">
+					<Input
+						disabled={mutation.isPending}
+						value={entityId}
+						onChange={(e) => setEntityId(e.target.value)}
+						placeholder="Entity ID"
+						className="flex-1"
+					/>
+					<Input
+						disabled={mutation.isPending}
+						value={userId}
+						onChange={(e) => setUserId(e.target.value)}
+						placeholder="User ID"
+						className="w-32"
+					/>
+					<Button type="submit" disabled={mutation.isPending}>
+						{mutation.isPending ? "Logging..." : "Add Log"}
+					</Button>
+				</div>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 
