@@ -105,7 +105,7 @@ function createMockClient() {
 // Test Wrapper
 // ============================================================================
 
-function createWrapper() {
+function createWrapper(client = createMockClient()) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {
@@ -113,18 +113,15 @@ function createWrapper() {
 			},
 		},
 	})
-	const client = createMockClient()
 
-	return {
-		queryClient,
-		client,
-		Wrapper: ({ children }: { children: ReactNode }) => (
+	return function Wrapper({ children }: { children: ReactNode }) {
+		return (
 			<QueryClientProvider client={queryClient}>
 				<EdenProvider client={client} queryClient={queryClient}>
 					{children}
 				</EdenProvider>
 			</QueryClientProvider>
-		),
+		)
 	}
 }
 
@@ -135,7 +132,7 @@ function createWrapper() {
 describe("useQuery integration", () => {
 	describe("basic query flow", () => {
 		test("useQuery with eden.hello.get.queryOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -162,7 +159,7 @@ describe("useQuery integration", () => {
 		})
 
 		test("useQuery with eden.users.get.queryOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -192,8 +189,8 @@ describe("useQuery integration", () => {
 	})
 
 	describe("queryOptions structure", () => {
-		test("queryOptions has correct queryKey", () => {
-			const { Wrapper } = createWrapper()
+		test("queryOptions exposes its key, metadata and function", () => {
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -204,40 +201,14 @@ describe("useQuery integration", () => {
 			)
 
 			expect(result.current.queryKey[0]).toEqual(["hello", "get"])
-		})
-
-		test("queryOptions has eden metadata", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.hello.get.queryOptions()
-				},
-				{ wrapper: Wrapper },
-			)
-
 			expect(result.current.eden.path).toBe("hello.get")
-		})
-
-		test("queryOptions has queryFn", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.hello.get.queryOptions()
-				},
-				{ wrapper: Wrapper },
-			)
-
 			expect(typeof result.current.queryFn).toBe("function")
 		})
 	})
 
 	describe("path params", () => {
 		test("useQuery with path params: eden.users({ id }).get.queryOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -285,49 +256,8 @@ describe("useQuery integration", () => {
 			return mockClient as unknown as ReturnType<typeof treaty<App>>
 		}
 
-		function createErrorWrapper() {
-			const queryClient = new QueryClient({
-				defaultOptions: {
-					queries: {
-						retry: false,
-					},
-				},
-			})
-			const client = createErrorMockClient()
-
-			return {
-				queryClient,
-				client,
-				Wrapper: ({ children }: { children: ReactNode }) => (
-					<QueryClientProvider client={queryClient}>
-						<EdenProvider client={client} queryClient={queryClient}>
-							{children}
-						</EdenProvider>
-					</QueryClientProvider>
-				),
-			}
-		}
-
-		test("useQuery handles error state", async () => {
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useQuery(eden.hello.get.queryOptions())
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
-			expect(result.current.error).toBeDefined()
-		})
-
-		test("error type has status and value properties", async () => {
-			const { Wrapper } = createErrorWrapper()
+		test("useQuery preserves error state and undeclared error details", async () => {
+			const Wrapper = createWrapper(createErrorMockClient())
 
 			const { result } = renderHook(
 				() => {
@@ -343,6 +273,15 @@ describe("useQuery integration", () => {
 						const _hasValue: HasValue = true
 						void _hasStatus
 						void _hasValue
+
+						type ValueType = ErrorType["value"]
+
+						type IsNotNever = [ValueType] extends [never] ? false : true
+						const _isNotNever: IsNotNever = true
+						void _isNotNever
+
+						const _value: unknown = query.error.value
+						void _value
 					}
 
 					return query
@@ -354,34 +293,18 @@ describe("useQuery integration", () => {
 				expect(result.current.isError).toBe(true)
 			})
 
-			// Runtime check - error should have status and value
 			expect(result.current.error).toHaveProperty("status")
 			expect(result.current.error).toHaveProperty("value")
-		})
-
-		test("error.value contains error details", async () => {
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useQuery(eden.hello.get.queryOptions())
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
+			expect(result.current.error).toBeDefined()
 			expect(result.current.error?.status).toBe(500)
 			expect(result.current.error?.value).toEqual({
 				message: "Internal Server Error",
 			})
+			expect(result.current.error?.value).toBeDefined()
 		})
 
 		test("error with path params contains correct error", async () => {
-			const { Wrapper } = createErrorWrapper()
+			const Wrapper = createWrapper(createErrorMockClient())
 
 			const { result } = renderHook(
 				() => {
@@ -399,46 +322,6 @@ describe("useQuery integration", () => {
 			expect(result.current.error?.value).toEqual({
 				message: "User 999 not found",
 			})
-		})
-
-		test("error.value is NOT never when route has no defined error responses", async () => {
-			// CRITICAL: This test verifies the InferRouteError fix
-			// When a route only has success responses (200), error.value should be 'unknown', not 'never'
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useQuery(eden.hello.get.queryOptions())
-
-					// CRITICAL: Compile-time type check
-					// error.value should be accessible (not never)
-					// If InferRouteError returns never, this would fail to compile
-					if (query.error) {
-						type ErrorType = typeof query.error
-						type ValueType = ErrorType["value"]
-
-						// value should NOT be never - it should be unknown (the fallback)
-						type IsNotNever = [ValueType] extends [never] ? false : true
-						const _isNotNever: IsNotNever = true
-						void _isNotNever
-
-						// We should be able to access value without TS error
-						const _value: unknown = query.error.value
-						void _value
-					}
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
-			// Runtime check - value should be accessible
-			expect(result.current.error?.value).toBeDefined()
 		})
 	})
 })
