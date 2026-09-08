@@ -52,6 +52,31 @@ type ErrorOfTag<TKey> =
 
 type UnionOutput = { kind: "a"; value: string } | { kind: "b"; value: number }
 
+export function customQueryHashProbe(eden: EdenOptionsProxy<App>) {
+	const queryKeyHashFn = (key: readonly unknown[]) => JSON.stringify(key)
+	eden.user.get.queryOptions(undefined, { queryKeyHashFn })
+	eden.feed.get.infiniteQueryOptions(
+		{},
+		{
+			queryKeyHashFn,
+			getNextPageParam: (page) => page.next,
+		},
+	)
+	edenQueryOptions({
+		path: ["user", "get"],
+		input: undefined,
+		fetch: async () => ({ id: "1", name: "Ada" }),
+		opts: { queryKeyHashFn },
+	})
+	edenInfiniteQueryOptions({
+		path: ["feed", "get"],
+		input: {},
+		initialPageParam: 0,
+		fetch: async () => ({ items: [], next: 1 }),
+		opts: { queryKeyHashFn, getNextPageParam: (page) => page.next },
+	})
+}
+
 export function querySelectProbe(qc: QueryClient, eden: EdenOptionsProxy<App>) {
 	const opts = eden.user.get.queryOptions(undefined, {
 		select: (data) => data.name,

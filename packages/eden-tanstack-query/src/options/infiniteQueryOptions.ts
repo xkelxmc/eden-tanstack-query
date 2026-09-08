@@ -21,12 +21,7 @@ import type { EdenQueryKey, EdenQueryKeyPathParam } from "../keys/types"
 // ============================================================================
 
 /** Reserved options that are set by the library */
-type ReservedOptions =
-	| "queryKey"
-	| "queryFn"
-	| "queryHashFn"
-	| "queryHash"
-	| "initialPageParam"
+type ReservedOptions = "queryKey" | "queryFn" | "queryHash" | "initialPageParam"
 
 /** Base options for Eden requests */
 interface EdenInfiniteQueryBaseOptions {

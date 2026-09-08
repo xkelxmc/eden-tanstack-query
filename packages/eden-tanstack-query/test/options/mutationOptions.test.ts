@@ -1,6 +1,48 @@
 import type { EdenMutationKey } from "../../src/keys/types"
 import { edenMutationOptions } from "../../src/options/mutationOptions"
+import type { DecorateMutationProcedure } from "../../src/types/decorators"
 import { createTestQueryClient } from "../../test-utils"
+import { assertType, type Equals } from "../../test-utils/type-assert"
+
+export function unsupportedMutationOptionsProbe(
+	procedure: DecorateMutationProcedure<{
+		input: { name: string }
+		output: { id: string }
+		error: Error
+	}>,
+) {
+	edenMutationOptions({
+		path: ["users", "post"],
+		mutate: async () => ({ id: "1" }),
+		opts: {
+			// @ts-expect-error mutations do not consume Eden request context
+			eden: { context: { token: "test" } },
+		},
+	})
+	edenMutationOptions({
+		path: ["users", "post"],
+		mutate: async () => ({ id: "1" }),
+		opts: {
+			// @ts-expect-error mutations do not support abortOnUnmount
+			eden: { abortOnUnmount: true },
+		},
+	})
+	procedure.mutationOptions({
+		// @ts-expect-error mutations do not consume Eden request context
+		eden: { context: { token: "test" } },
+	})
+	procedure.mutationOptions({
+		// @ts-expect-error mutations do not support abortOnUnmount
+		eden: { abortOnUnmount: true },
+	})
+
+	procedure.mutationOptions({
+		onMutate: (variables) => ({ previousName: variables.name }),
+		onError: (_error, _variables, context) => {
+			assertType<Equals<typeof context, { previousName: string } | undefined>>()
+		},
+	})
+}
 
 // ============================================================================
 // Type Tests - Compile-time verification
@@ -94,11 +136,7 @@ describe("edenMutationOptions type inference", () => {
 			opts: {
 				onMutate: () => ({ previousData: [] }),
 				onError: (_error, _variables, context) => {
-					// Context should be Context | undefined
-					if (context) {
-						const _typeCheck: TestOutput[] = context.previousData
-						void _typeCheck
-					}
+					assertType<Equals<typeof context, Context | undefined>>()
 				},
 			},
 		})
