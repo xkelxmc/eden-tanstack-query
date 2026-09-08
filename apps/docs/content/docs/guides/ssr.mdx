@@ -41,6 +41,8 @@ export const { EdenProvider, useEden } = createEdenTanStackQuery<App>()
 export const edenClient = treaty<App>(process.env.NEXT_PUBLIC_API_URL!)
 ```
 
+For cookie authentication with a cross-origin API, pass `{ fetch: { credentials: 'include' } }` as the second argument to `treaty`. Configure the API's CORS to allow credentials and the Next.js application's exact origin. Same-origin requests and APIs without cookie authentication can keep the default configuration.
+
 Define the server factory separately. Install `server-only` with `bun add server-only` so Next.js rejects imports of this module from client code.
 
 ```ts title="lib/eden-server.ts"
