@@ -1,23 +1,13 @@
-import { act, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, expect, test, vi } from "vitest"
 import { LLMCopyButton } from "./page-actions"
-
-const copyAction = vi.hoisted(() => ({ current: async () => {} }))
-
-// The upstream hook leaves callback rejections unhandled.
-vi.mock("fumadocs-ui/utils/use-copy-button", () => ({
-	useCopyButton: (callback: () => Promise<void>) => {
-		copyAction.current = callback
-		return [false, callback]
-	},
-}))
 
 afterEach(() => {
 	vi.restoreAllMocks()
 	vi.unstubAllGlobals()
 })
 
-test("rejects failed Markdown responses, then retries and caches successful content", async () => {
+test("handles failed Markdown responses, then retries and caches successful content", async () => {
 	const failedResponse = new Response("Internal Server Error", { status: 500 })
 	const readFailedBody = vi.spyOn(failedResponse, "text")
 	const fetchMarkdown = vi
@@ -40,25 +30,28 @@ test("rejects failed Markdown responses, then retries and caches successful cont
 
 	render(<LLMCopyButton markdownUrl="/docs/retry-copy.mdx" />)
 
-	await act(async () => {
-		const pendingCopy = copyAction.current()
-		expect(write).toHaveBeenCalledTimes(1)
-		await expect(pendingCopy).rejects.toThrow("HTTP 500")
-	})
+	fireEvent.click(screen.getByRole("button", { name: "Copy Markdown" }))
+	await screen.findByRole("button", { name: "Copy failed. Try again." })
+	expect(write).toHaveBeenCalledTimes(1)
 	expect(readFailedBody).not.toHaveBeenCalled()
 	expect(copied).toEqual([])
 	expect(writeText).not.toHaveBeenCalled()
-	expect(screen.getByRole("button", { name: "Copy Markdown" })).toHaveProperty(
-		"disabled",
-		false,
-	)
+	expect(
+		screen.getByRole("button", { name: "Copy failed. Try again." }),
+	).toHaveProperty("disabled", false)
 
-	await act(() => copyAction.current())
+	fireEvent.click(
+		screen.getByRole("button", { name: "Copy failed. Try again." }),
+	)
+	await waitFor(() => expect(copied).toEqual(["# Documentation"]))
 	expect(fetchMarkdown).toHaveBeenCalledTimes(2)
 	expect(fetchMarkdown).toHaveBeenLastCalledWith("/docs/retry-copy.mdx")
 	expect(copied).toEqual(["# Documentation"])
 
-	await act(() => copyAction.current())
+	fireEvent.click(screen.getByRole("button", { name: "Copy Markdown" }))
+	await waitFor(() =>
+		expect(writeText).toHaveBeenCalledExactlyOnceWith("# Documentation"),
+	)
 	expect(fetchMarkdown).toHaveBeenCalledTimes(2)
 	expect(write).toHaveBeenCalledTimes(2)
 	expect(writeText).toHaveBeenCalledExactlyOnceWith("# Documentation")
