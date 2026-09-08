@@ -1,4 +1,4 @@
-import { existsSync, statSync } from "node:fs"
+import { statSync } from "node:fs"
 import { join } from "node:path"
 import { gzipSync } from "node:zlib"
 
@@ -17,10 +17,6 @@ function formatBytes(bytes: number): string {
 async function getFileSize(
 	filePath: string,
 ): Promise<{ raw: number; gzipped: number }> {
-	if (!existsSync(filePath)) {
-		return { raw: 0, gzipped: 0 }
-	}
-
 	const file = Bun.file(filePath)
 	const content = await file.text()
 	const raw = statSync(filePath).size
