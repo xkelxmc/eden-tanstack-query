@@ -80,12 +80,12 @@ export interface EdenQueryOptionsResult {
 type EdenRequestHeaders = Record<string, string | undefined>
 
 /**
- * Request-style query input with optional headers.
- * Supports: { query: {...}, headers: {...} }
+ * Request-style query input requires a headers key to distinguish it from a
+ * query parameter named "query". Use headers: undefined when no headers are needed.
  */
 type EdenQueryRequestInput<TInput> = Simplify<
 	({} extends TInput ? { query?: TInput } : { query: TInput }) & {
-		headers?: EdenRequestHeaders
+		headers: EdenRequestHeaders | undefined
 	}
 >
 
