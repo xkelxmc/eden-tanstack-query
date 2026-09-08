@@ -24,6 +24,38 @@ await queryClient.prefetchQuery(eden.users.get.queryOptions())
 
 ## Next.js App Router
 
+### Eden clients
+
+These examples import your Elysia app's `App` type from `@/lib/server`. Set `NEXT_PUBLIC_API_URL` to the API URL reachable by the browser and `INTERNAL_API_URL` to the same API's URL reachable by the Next.js server.
+
+Keep the React context in a client module:
+
+```ts title="lib/eden.ts"
+'use client'
+
+import { treaty } from '@elysiajs/eden'
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import type { App } from '@/lib/server'
+
+export const { EdenProvider, useEden } = createEdenTanStackQuery<App>()
+export const edenClient = treaty<App>(process.env.NEXT_PUBLIC_API_URL!)
+```
+
+Define the server factory separately. Install `server-only` with `bun add server-only` so Next.js rejects imports of this module from client code.
+
+```ts title="lib/eden-server.ts"
+import 'server-only'
+
+import { treaty } from '@elysiajs/eden'
+import type { App } from '@/lib/server'
+
+export function getServerEdenClient() {
+  return treaty<App>(process.env.INTERNAL_API_URL!)
+}
+```
+
+This factory makes unauthenticated requests. If your API requires authentication, pass the current request's credentials through your server-side Treaty configuration.
+
 ### Layout and Providers
 
 ```tsx title="app/layout.tsx"
@@ -63,6 +95,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 ### QueryClient Factory
 
+Create a fresh QueryClient on the server for each request. In the browser, reuse one instance across renders.
+
 ```ts title="lib/query-client.ts"
 import { QueryClient } from '@tanstack/react-query'
 
@@ -95,7 +129,7 @@ export function getQueryClient() {
 import { HydrationBoundary, dehydrate } from '@tanstack/react-query'
 import { createEdenOptionsProxy } from 'eden-tanstack-react-query'
 import { getQueryClient } from '@/lib/query-client'
-import { getServerEdenClient } from '@/lib/eden'
+import { getServerEdenClient } from '@/lib/eden-server'
 import type { App } from '@/lib/server'
 import { UserList } from './user-list'
 
