@@ -54,6 +54,17 @@ function UserProfile({ userId }: { userId: string }) {
 
 The parameter name (`id`) in the object must match the route parameter name (`:id`). TypeScript will enforce this at compile time.
 
+## Optional path parameters
+
+For `/users/:id?`, use `id` without the `?` suffix when supplying a value. To omit the parameter, access the route directly:
+
+```ts
+eden.users({ id: '123' }).get.queryOptions()
+eden.users.get.queryOptions()
+```
+
+The callable form still requires a value. Use the direct branch instead of passing `{}` or `undefined`. `ExtractPathParams<'/users/:id?'>` produces `'id'`, and `PathParamsToObject<'/users/:id?'>` produces `{ id?: string }`.
+
 ## Multiple Path Parameters
 
 Routes with multiple parameters at the same level work the same way:

@@ -957,9 +957,11 @@ export type ExtractRouteParams<T> = {
  * // { id: string | number; slug: string | number }
  */
 export type RouteParamsInput<T> = {
-	[K in keyof T as K extends `:${infer TParam}` ? TParam : never]:
-		| string
-		| number
+	[K in keyof T as K extends `:${infer TParam}?`
+		? TParam
+		: K extends `:${infer TParam}`
+			? TParam
+			: never]: string | number
 }
 
 // ============================================================================
@@ -1042,27 +1044,116 @@ type DecorateProcedurePathSegments<
 	>]: DecoratePathNode<TRoutes[K], K>
 }
 
+type SuppliedPathParams<TRoutes> = {
+	[K in keyof RouteParamsInput<TRoutes> &
+		string as `:${K}`]: `:${K}` extends keyof TRoutes
+		? `:${K}?` extends keyof TRoutes
+			? MergeRouteNodes<TRoutes[`:${K}`], TRoutes[`:${K}?`], never>
+			: TRoutes[`:${K}`]
+		: `:${K}?` extends keyof TRoutes
+			? TRoutes[`:${K}?`]
+			: never
+}
+
 /**
- * Handle path parameters by creating a callable function.
+ * Handle sibling path parameters with separate call signatures.
  *
  * @template TRoutes - Current level of routes being processed
  * @template TRouteParams - Keys that are path parameters
  */
 type DecoratePathParams<
 	TRoutes extends Record<string, unknown>,
-	TRouteParams = ExtractRouteParams<TRoutes>,
+	TRouteParams = SuppliedPathParams<TRoutes>,
 	// biome-ignore lint/complexity/noBannedTypes: {} check is standard pattern for empty object
 > = {} extends TRouteParams
 	? // biome-ignore lint/complexity/noBannedTypes: Returns empty intersection when no path params
 		{}
-	: (
-			params: RouteParamsInput<TRouteParams>,
-		) => TRoutes[Extract<keyof TRouteParams, keyof TRoutes>] extends Record<
-			string,
-			unknown
-		>
-			? DecorateRoutes<TRoutes[Extract<keyof TRouteParams, keyof TRoutes>]>
+	: {
+				[K in keyof TRouteParams]: (
+					call: (
+						params: RouteParamsInput<Pick<TRouteParams, K>>,
+					) => DecoratePathGroup<TRouteParams[K]>,
+				) => void
+			}[keyof TRouteParams] extends (call: infer TCall) => void
+		? TCall
+		: never
+
+type MergeRouteNodes<TDirect, TOmitted, TKey> =
+	TDirect extends Record<string, unknown>
+		? TOmitted extends Record<string, unknown>
+			? MergeRouteTrees<TDirect, TOmitted, TKey>
+			: TDirect
+		: TDirect
+
+// Keep the direct procedure schema, but merge distinct child paths.
+type MergeRouteTrees<
+	TDirect extends Record<string, unknown>,
+	TOmitted extends Record<string, unknown>,
+	TKey = never,
+	TSchemaKeys = TKey extends HttpMethod
+		? "response" extends keyof TDirect
+			? keyof RouteSchema
 			: never
+		: never,
+> = {
+	[K in keyof TDirect | keyof TOmitted]: K extends keyof TDirect
+		? K extends TSchemaKeys
+			? TDirect[K]
+			: K extends keyof TOmitted
+				? MergeRouteNodes<TDirect[K], TOmitted[K], K>
+				: TDirect[K]
+		: K extends keyof TOmitted
+			? TOmitted[K]
+			: never
+}
+
+type OptionalRouteKeys<TRoutes> = Extract<keyof TRoutes, `:${string}?`>
+
+type OmittedRouteTrees<TRoutes extends Record<string, unknown>> = {
+	[K in OptionalRouteKeys<TRoutes>]: TRoutes[K] extends Record<string, unknown>
+		? (routes: RoutesWithOmissions<TRoutes[K]>) => void
+		: never
+}[OptionalRouteKeys<TRoutes>] extends (routes: infer TOmitted) => void
+	? TOmitted
+	: never
+
+type RoutesWithOmissions<TRoutes extends Record<string, unknown>> = [
+	OptionalRouteKeys<TRoutes>,
+] extends [never]
+	? TRoutes
+	: OmittedRouteTrees<TRoutes> extends infer TOmitted extends Record<
+				string,
+				unknown
+			>
+		? MergeRouteTrees<TRoutes, TOmitted>
+		: TRoutes
+
+type DecorateOptionalPathCalls<TRoutes extends Record<string, unknown>> = [
+	OptionalRouteKeys<TRoutes>,
+] extends [never]
+	? unknown
+	: {
+				[K in OptionalRouteKeys<TRoutes>]: TRoutes[K] extends Record<
+					string,
+					unknown
+				>
+					? (
+							calls: DecoratePathParams<TRoutes[K]> &
+								DecorateOptionalPathCalls<TRoutes[K]>,
+						) => void
+					: never
+			}[OptionalRouteKeys<TRoutes>] extends (calls: infer TCalls) => void
+		? TCalls
+		: never
+
+type DecorateRouteProperties<TRoutes extends Record<string, unknown>> =
+	string extends keyof TRoutes
+		? TRoutes[string] extends RouteSchema
+			? "response" extends keyof TRoutes[string]
+				? DecorateAllMethods<TRoutes>
+				: DecoratePathSegments<TRoutes>
+			: DecoratePathSegments<TRoutes>
+		: DecoratePathSegments<TRoutes>
 
 /**
  * Recursively decorate all routes in an app's route tree.
@@ -1073,13 +1164,9 @@ type DecoratePathParams<
  * - HTTP methods → decorated procedures
  */
 export type DecorateRoutes<TRoutes extends Record<string, unknown>> =
-	string extends keyof TRoutes
-		? TRoutes[string] extends RouteSchema
-			? "response" extends keyof TRoutes[string]
-				? DecorateAllMethods<TRoutes>
-				: DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
-			: DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
-		: DecoratePathSegments<TRoutes> & DecoratePathParams<TRoutes>
+	DecorateRouteProperties<RoutesWithOmissions<TRoutes>> &
+		DecoratePathParams<TRoutes> &
+		DecorateOptionalPathCalls<TRoutes>
 
 /**
  * Full decorated options proxy type for an Elysia app.
