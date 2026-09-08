@@ -45,13 +45,23 @@ function PostList() {
 
 function PostDetail({ id }: { id: string }) {
 	const eden = useEden()
-	const { data, isLoading } = useQuery(eden.posts({ id }).get.queryOptions())
+	const { data, isLoading, error } = useQuery(
+		eden.posts({ id }).get.queryOptions(),
+	)
 
 	if (isLoading) return <LoadingState />
-	if (!data) return <EmptyState message="Post not found" />
+	if (error && data === undefined) return <ErrorState error={error} />
+	if (!data)
+		return (
+			<>
+				{error && <ErrorState error={error} />}
+				<EmptyState message="Post not found" />
+			</>
+		)
 
 	return (
 		<div className="space-y-4">
+			{error && <ErrorState error={error} />}
 			<div>
 				<h3 className="font-semibold">{data.title}</h3>
 				<p className="text-muted-foreground text-sm">by {data.author?.email}</p>
