@@ -71,36 +71,44 @@ function CreateOrganization() {
 
 	const mutation = useMutation({
 		...eden.organizations.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.organizations.get.queryKey() }),
+		onSuccess: () => {
+			setName("")
+			setSlug("")
+			return qc.invalidateQueries({
+				queryKey: eden.organizations.get.queryKey(),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!name.trim() || !slug.trim()) return
 		mutation.mutate({ name, slug })
-		setName("")
-		setSlug("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				placeholder="Organization name"
-				className="flex-1"
-			/>
-			<Input
-				value={slug}
-				onChange={(e) => setSlug(e.target.value)}
-				placeholder="slug"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Creating..." : "Create Org"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="Organization name"
+					className="flex-1"
+				/>
+				<Input
+					disabled={mutation.isPending}
+					value={slug}
+					onChange={(e) => setSlug(e.target.value)}
+					placeholder="slug"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Creating..." : "Create Org"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 
@@ -141,40 +149,46 @@ function CreateMember({ orgId }: { orgId: string }) {
 
 	const mutation = useMutation({
 		...eden.members.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({
+		onSuccess: () => {
+			setUserId("")
+			return qc.invalidateQueries({
 				queryKey: eden.organizations({ id: orgId }).members.get.queryKey(),
-			}),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!userId.trim()) return
 		mutation.mutate({ userId, organizationId: orgId, role })
-		setUserId("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={userId}
-				onChange={(e) => setUserId(e.target.value)}
-				placeholder="User ID"
-				className="flex-1"
-			/>
-			<select
-				value={role}
-				onChange={(e) => setRole(e.target.value)}
-				className="rounded-md border px-3 py-2 text-sm"
-			>
-				<option value="member">Member</option>
-				<option value="admin">Admin</option>
-				<option value="owner">Owner</option>
-			</select>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Adding..." : "Add Member"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={userId}
+					onChange={(e) => setUserId(e.target.value)}
+					placeholder="User ID"
+					className="flex-1"
+				/>
+				<select
+					disabled={mutation.isPending}
+					value={role}
+					onChange={(e) => setRole(e.target.value)}
+					className="rounded-md border px-3 py-2 text-sm"
+				>
+					<option value="member">Member</option>
+					<option value="admin">Admin</option>
+					<option value="owner">Owner</option>
+				</select>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Adding..." : "Add Member"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 
@@ -381,10 +395,13 @@ function CreateInvoice({ orgId }: { orgId: string }) {
 
 	const mutation = useMutation({
 		...eden.invoices.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({
+		onSuccess: () => {
+			setNumber("")
+			setAmount("")
+			return qc.invalidateQueries({
 				queryKey: eden.organizations({ id: orgId }).invoices.get.queryKey(),
-			}),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -398,29 +415,32 @@ function CreateInvoice({ orgId }: { orgId: string }) {
 			organizationId: orgId,
 			dueDate,
 		})
-		setNumber("")
-		setAmount("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={number}
-				onChange={(e) => setNumber(e.target.value)}
-				placeholder="Invoice #"
-				className="flex-1"
-			/>
-			<Input
-				value={amount}
-				onChange={(e) => setAmount(e.target.value)}
-				placeholder="Amount"
-				type="number"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Creating..." : "Create Invoice"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={number}
+					onChange={(e) => setNumber(e.target.value)}
+					placeholder="Invoice #"
+					className="flex-1"
+				/>
+				<Input
+					disabled={mutation.isPending}
+					value={amount}
+					onChange={(e) => setAmount(e.target.value)}
+					placeholder="Amount"
+					type="number"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Creating..." : "Create Invoice"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 

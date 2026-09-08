@@ -70,37 +70,43 @@ function CreateUser() {
 
 	const mutation = useMutation({
 		...eden.users.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.users.get.queryKey() }),
+		onSuccess: () => {
+			setEmail("")
+			setName("")
+			return qc.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!email.trim()) return
 		mutation.mutate({ email, name: name || undefined })
-		setEmail("")
-		setName("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={email}
-				onChange={(e) => setEmail(e.target.value)}
-				placeholder="user@example.com"
-				type="email"
-				className="flex-1"
-			/>
-			<Input
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				placeholder="Name (optional)"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Creating..." : "Add User"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={email}
+					onChange={(e) => setEmail(e.target.value)}
+					placeholder="user@example.com"
+					type="email"
+					className="flex-1"
+				/>
+				<Input
+					disabled={mutation.isPending}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="Name (optional)"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Creating..." : "Add User"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 
@@ -321,10 +327,12 @@ function CreateApiKey({ userId }: { userId: string }) {
 
 	const mutation = useMutation({
 		...eden["api-keys"].post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({
+		onSuccess: () => {
+			setName("")
+			return qc.invalidateQueries({
 				queryKey: eden.users({ id: userId })["api-keys"].get.queryKey(),
-			}),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -335,21 +343,24 @@ function CreateApiKey({ userId }: { userId: string }) {
 			key: `sk_${crypto.randomUUID()}`,
 			userId,
 		})
-		setName("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				placeholder="Key name"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={mutation.isPending}>
-				{mutation.isPending ? "Creating..." : "Create API Key"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={mutation.isPending}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="Key name"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={mutation.isPending}>
+					{mutation.isPending ? "Creating..." : "Create API Key"}
+				</Button>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 

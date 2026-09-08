@@ -60,8 +60,11 @@ function CreateFile() {
 
 	const mutation = useMutation({
 		...eden.files.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.files.get.queryKey() }),
+		onSuccess: () => {
+			setName("")
+			setUrl("")
+			return qc.invalidateQueries({ queryKey: eden.files.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -74,51 +77,57 @@ function CreateFile() {
 			size: Number.parseInt(size, 10),
 			userId,
 		})
-		setName("")
-		setUrl("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-2">
-			<div className="flex gap-2">
-				<Input
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder="File name"
-					className="flex-1"
-				/>
-				<Input
-					value={url}
-					onChange={(e) => setUrl(e.target.value)}
-					placeholder="URL"
-					className="flex-1"
-				/>
-			</div>
-			<div className="flex gap-2">
-				<Input
-					value={mimeType}
-					onChange={(e) => setMimeType(e.target.value)}
-					placeholder="MIME type"
-					className="flex-1"
-				/>
-				<Input
-					value={size}
-					onChange={(e) => setSize(e.target.value)}
-					placeholder="Size (bytes)"
-					type="number"
-					className="w-32"
-				/>
-				<Input
-					value={userId}
-					onChange={(e) => setUserId(e.target.value)}
-					placeholder="User ID"
-					className="w-32"
-				/>
-				<Button type="submit" disabled={mutation.isPending}>
-					{mutation.isPending ? "Uploading..." : "Add File"}
-				</Button>
-			</div>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-2">
+				<div className="flex gap-2">
+					<Input
+						disabled={mutation.isPending}
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder="File name"
+						className="flex-1"
+					/>
+					<Input
+						disabled={mutation.isPending}
+						value={url}
+						onChange={(e) => setUrl(e.target.value)}
+						placeholder="URL"
+						className="flex-1"
+					/>
+				</div>
+				<div className="flex gap-2">
+					<Input
+						disabled={mutation.isPending}
+						value={mimeType}
+						onChange={(e) => setMimeType(e.target.value)}
+						placeholder="MIME type"
+						className="flex-1"
+					/>
+					<Input
+						disabled={mutation.isPending}
+						value={size}
+						onChange={(e) => setSize(e.target.value)}
+						placeholder="Size (bytes)"
+						type="number"
+						className="w-32"
+					/>
+					<Input
+						disabled={mutation.isPending}
+						value={userId}
+						onChange={(e) => setUserId(e.target.value)}
+						placeholder="User ID"
+						className="w-32"
+					/>
+					<Button type="submit" disabled={mutation.isPending}>
+						{mutation.isPending ? "Uploading..." : "Add File"}
+					</Button>
+				</div>
+			</form>
+			{mutation.error && <ErrorState error={mutation.error} />}
+		</>
 	)
 }
 

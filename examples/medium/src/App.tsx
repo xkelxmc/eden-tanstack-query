@@ -77,30 +77,35 @@ function CreateUser() {
 
 	const createMutation = useMutation({
 		...eden.users.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.users.get.queryKey() }),
+		onSuccess: () => {
+			setEmail("")
+			return qc.invalidateQueries({ queryKey: eden.users.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!email.trim()) return
 		createMutation.mutate({ email })
-		setEmail("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={email}
-				onChange={(e) => setEmail(e.target.value)}
-				placeholder="user@example.com"
-				type="email"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={createMutation.isPending}>
-				{createMutation.isPending ? "Creating..." : "Add User"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={createMutation.isPending}
+					value={email}
+					onChange={(e) => setEmail(e.target.value)}
+					placeholder="user@example.com"
+					type="email"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={createMutation.isPending}>
+					{createMutation.isPending ? "Creating..." : "Add User"}
+				</Button>
+			</form>
+			{createMutation.error && <ErrorState error={createMutation.error} />}
+		</>
 	)
 }
 
@@ -172,29 +177,34 @@ function CreatePost() {
 
 	const createMutation = useMutation({
 		...eden.posts.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: eden.posts.get.queryKey() }),
+		onSuccess: () => {
+			setTitle("")
+			return qc.invalidateQueries({ queryKey: eden.posts.get.queryKey() })
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!title.trim()) return
 		createMutation.mutate({ title, authorId: "user-1" })
-		setTitle("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={title}
-				onChange={(e) => setTitle(e.target.value)}
-				placeholder="Post title"
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={createMutation.isPending}>
-				{createMutation.isPending ? "Creating..." : "Add Post"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={createMutation.isPending}
+					value={title}
+					onChange={(e) => setTitle(e.target.value)}
+					placeholder="Post title"
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={createMutation.isPending}>
+					{createMutation.isPending ? "Creating..." : "Add Post"}
+				</Button>
+			</form>
+			{createMutation.error && <ErrorState error={createMutation.error} />}
+		</>
 	)
 }
 
@@ -233,31 +243,36 @@ function CreateComment({ postId }: { postId: string }) {
 
 	const createMutation = useMutation({
 		...eden.comments.post.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({
+		onSuccess: () => {
+			setText("")
+			return qc.invalidateQueries({
 				queryKey: eden.posts({ id: postId }).comments.get.queryKey(),
-			}),
+			})
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!text.trim()) return
 		createMutation.mutate({ text, postId, authorId: "user-1" })
-		setText("")
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex gap-2">
-			<Input
-				value={text}
-				onChange={(e) => setText(e.target.value)}
-				placeholder="Write a comment..."
-				className="flex-1"
-			/>
-			<Button type="submit" disabled={createMutation.isPending}>
-				{createMutation.isPending ? "Adding..." : "Comment"}
-			</Button>
-		</form>
+		<>
+			<form onSubmit={handleSubmit} className="flex gap-2">
+				<Input
+					disabled={createMutation.isPending}
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					placeholder="Write a comment..."
+					className="flex-1"
+				/>
+				<Button type="submit" disabled={createMutation.isPending}>
+					{createMutation.isPending ? "Adding..." : "Comment"}
+				</Button>
+			</form>
+			{createMutation.error && <ErrorState error={createMutation.error} />}
+		</>
 	)
 }
 
