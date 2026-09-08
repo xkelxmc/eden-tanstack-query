@@ -31,18 +31,6 @@ export type DeepPartial<T> = T extends object
 	: T
 
 /**
- * Get keys that have non-never values
- */
-export type NonNeverKeys<T> = {
-	[K in keyof T]: IsNever<T[K]> extends true ? never : K
-}[keyof T]
-
-/**
- * Remove never values from object type
- */
-export type OmitNever<T> = Pick<T, NonNeverKeys<T>>
-
-/**
  * Converts an empty object or undefined to void, making function arguments optional.
  *
  * @example

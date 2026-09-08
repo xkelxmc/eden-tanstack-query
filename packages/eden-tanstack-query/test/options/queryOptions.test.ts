@@ -3,6 +3,7 @@ import { skipToken } from "@tanstack/react-query"
 import type { EdenQueryKey } from "../../src/keys/types"
 import { edenQueryOptions } from "../../src/options/queryOptions"
 import { createTestQueryClient } from "../../test-utils"
+import { assertType, type Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Type Tests - Compile-time verification
@@ -27,9 +28,7 @@ describe("edenQueryOptions type inference", () => {
 				? TData
 				: never
 
-		// This assignment will fail at compile time if types don't match
-		const _typeCheck: ExtractedData = {} as TestOutput
-		expect(_typeCheck).toBeDefined()
+		assertType<Equals<ExtractedData, TestOutput>>()
 	})
 
 	test("data type is correctly inferred when used with fetchQuery", async () => {

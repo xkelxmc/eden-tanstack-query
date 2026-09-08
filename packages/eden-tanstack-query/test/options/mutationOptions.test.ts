@@ -97,9 +97,7 @@ describe("edenMutationOptions type inference", () => {
 			}),
 			opts: {
 				onSuccess: (data) => {
-					// Type assertion - data should be TestOutput
-					const _typeCheck: TestOutput = data
-					void _typeCheck
+					assertType<Equals<typeof data, TestOutput>>()
 				},
 			},
 		})
@@ -116,9 +114,7 @@ describe("edenMutationOptions type inference", () => {
 			}),
 			opts: {
 				onMutate: (variables) => {
-					// Type assertion - variables should be TestInput
-					const _typeCheck: TestInput = variables
-					void _typeCheck
+					assertType<Equals<typeof variables, TestInput>>()
 					return { previousData: [] }
 				},
 			},

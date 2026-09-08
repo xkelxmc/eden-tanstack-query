@@ -9,10 +9,9 @@ import type {
 	IsAny,
 	IsNever,
 	IsUnknown,
-	NonNeverKeys,
-	OmitNever,
 	Simplify,
 } from "../../src/utils/types"
+import { assertType, type Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // IsAny Tests
@@ -191,38 +190,32 @@ describe("DeepPartial", () => {
 		type Input = { name: string; age: number }
 		type Result = DeepPartial<Input>
 
-		// All properties should be optional
-		type Check = Result extends { name?: string; age?: number } ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
+		assertType<Equals<Result, { name?: string; age?: number }>>()
 	})
 
 	test("makes nested properties optional", () => {
 		type Input = { user: { name: string; email: string } }
 		type Result = DeepPartial<Input>
 
-		// Nested object should also have optional properties
-		type Check = Result extends { user?: { name?: string; email?: string } }
-			? true
-			: false
-		const check: Check = true
-		expect(check).toBe(true)
+		assertType<Equals<Result, { user?: { name?: string; email?: string } }>>()
 	})
 
 	test("handles primitive types", () => {
 		type Result = DeepPartial<string>
-		type Check = Result extends string ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
+		assertType<Equals<Result, string>>()
 	})
 
 	test("handles arrays", () => {
 		type Input = { items: string[] }
 		type Result = DeepPartial<Input>
 
-		type HasItems = "items" extends keyof Result ? true : false
-		const hasItems: HasItems = true
-		expect(hasItems).toBe(true)
+		assertType<Equals<Result, { items?: (string | undefined)[] }>>()
+		assertType<
+			Equals<
+				DeepPartial<{ items: { name: string }[] }>,
+				{ items?: ({ name?: string } | undefined)[] }
+			>
+		>()
 	})
 
 	test("handles deeply nested objects", () => {
@@ -235,6 +228,10 @@ describe("DeepPartial", () => {
 		}
 		type Result = DeepPartial<Input>
 
+		assertType<
+			Equals<Result, { level1?: { level2?: { level3?: { value?: string } } } }>
+		>()
+
 		// Should be deeply optional
 		const valid: Result = {}
 		const alsoValid: Result = { level1: {} }
@@ -243,91 +240,6 @@ describe("DeepPartial", () => {
 		expect(valid).toEqual({})
 		expect(alsoValid).toEqual({ level1: {} })
 		expect(deepValid).toEqual({ level1: { level2: { level3: {} } } })
-	})
-})
-
-// ============================================================================
-// NonNeverKeys Tests
-// ============================================================================
-
-describe("NonNeverKeys", () => {
-	test("extracts keys with non-never values", () => {
-		type Input = { a: string; b: never; c: number }
-		type Result = NonNeverKeys<Input>
-
-		// Result should be "a" | "c"
-		type HasA = "a" extends Result ? true : false
-		type HasC = "c" extends Result ? true : false
-		type HasB = "b" extends Result ? true : false
-
-		const hasA: HasA = true
-		const hasC: HasC = true
-		const hasB: HasB = false
-
-		expect(hasA).toBe(true)
-		expect(hasC).toBe(true)
-		expect(hasB).toBe(false)
-	})
-
-	test("returns never when all keys are never", () => {
-		type Input = { a: never; b: never }
-		type Result = NonNeverKeys<Input>
-
-		type Check = IsNever<Result>
-		const check: Check = true
-		expect(check).toBe(true)
-	})
-
-	test("returns all keys when no never values", () => {
-		type Input = { a: string; b: number; c: boolean }
-		type Result = NonNeverKeys<Input>
-
-		type HasAll = "a" | "b" | "c" extends Result ? true : false
-		const hasAll: HasAll = true
-		expect(hasAll).toBe(true)
-	})
-})
-
-// ============================================================================
-// OmitNever Tests
-// ============================================================================
-
-describe("OmitNever", () => {
-	test("removes properties with never type", () => {
-		type Input = { a: string; b: never; c: number }
-		type Result = OmitNever<Input>
-
-		// Result should only have "a" and "c"
-		type HasA = "a" extends keyof Result ? true : false
-		type HasC = "c" extends keyof Result ? true : false
-		type HasB = "b" extends keyof Result ? true : false
-
-		const hasA: HasA = true
-		const hasC: HasC = true
-		const hasB: HasB = false
-
-		expect(hasA).toBe(true)
-		expect(hasC).toBe(true)
-		expect(hasB).toBe(false)
-	})
-
-	test("preserves object when no never values", () => {
-		type Input = { a: string; b: number }
-		type Result = OmitNever<Input>
-
-		type Check = Result extends { a: string; b: number } ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
-	})
-
-	test("returns empty object when all never", () => {
-		type Input = { a: never; b: never }
-		type Result = OmitNever<Input>
-
-		// biome-ignore lint/complexity/noBannedTypes: Testing empty object result
-		type Check = {} extends Result ? true : false
-		const check: Check = true
-		expect(check).toBe(true)
 	})
 })
 
@@ -388,8 +300,10 @@ describe("EmptyToVoid", () => {
 
 		// Function with EmptyInput can be called without args
 		const fnEmpty = (_input: EmptyInput) => "ok"
-		// @ts-expect-error - Function with RequiredInput cannot be called without args
-		const _fnRequired = (_input: RequiredInput) => "ok"
+		const fnRequired = (_input: RequiredInput) => "ok"
+		// @ts-expect-error required input cannot be omitted
+		fnRequired()
+		expect(fnRequired({ id: "1" })).toBe("ok")
 
 		// Both work
 		expect(fnEmpty()).toBe("ok")

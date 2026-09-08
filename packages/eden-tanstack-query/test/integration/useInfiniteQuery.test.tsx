@@ -7,6 +7,7 @@
 
 import type { treaty } from "@elysiajs/eden"
 import {
+	type InfiniteData,
 	QueryClient,
 	QueryClientProvider,
 	useInfiniteQuery,
@@ -16,6 +17,7 @@ import { Elysia, t } from "elysia"
 import type { ReactNode } from "react"
 
 import { createEdenTanStackQuery } from "../../src"
+import { assertType, type Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
@@ -165,15 +167,39 @@ describe("useInfiniteQuery integration", () => {
 			const { result } = renderHook(
 				() => {
 					const eden = useEden()
-					return useInfiniteQuery(
+					const query = useInfiniteQuery(
 						eden.posts.get.infiniteQueryOptions(
 							{ limit: 10 },
 							{
-								getNextPageParam: (lastPage) =>
-									lastPage.nextCursor ?? undefined,
+								getNextPageParam: (lastPage) => {
+									assertType<
+										Equals<
+											typeof lastPage,
+											{
+												items: { id: string; title: string }[]
+												nextCursor: string | null
+											}
+										>
+									>()
+									return lastPage.nextCursor ?? undefined
+								},
 							},
 						),
 					)
+					assertType<
+						Equals<
+							typeof query.data,
+							| InfiniteData<
+									{
+										items: { id: string; title: string }[]
+										nextCursor: string | null
+									},
+									string | null
+							  >
+							| undefined
+						>
+					>()
+					return query
 				},
 				{ wrapper: Wrapper },
 			)
@@ -187,9 +213,11 @@ describe("useInfiniteQuery integration", () => {
 			})
 
 			// Check first page data
+			expect(Array.isArray(result.current.data?.pages)).toBe(true)
 			expect(result.current.data?.pages).toHaveLength(1)
 			expect(result.current.data?.pages[0]?.items).toHaveLength(2)
 			expect(result.current.data?.pages[0]?.items[0]?.id).toBe("post-1")
+			expect(result.current.data?.pages[0]?.items[0]?.title).toBe("Post 1")
 		})
 
 		test("fetchNextPage loads more data", async () => {
@@ -254,123 +282,6 @@ describe("useInfiniteQuery integration", () => {
 			})
 
 			expect(result.current.data?.pages[0]?.items[0]?.postId).toBe("42")
-		})
-	})
-
-	describe("type inference", () => {
-		test("data type is correctly inferred for infinite query", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useInfiniteQuery(
-						eden.posts.get.infiniteQueryOptions(
-							{ limit: 10 },
-							{
-								getNextPageParam: (lastPage) =>
-									lastPage.nextCursor ?? undefined,
-							},
-						),
-					)
-
-					// CRITICAL: Compile-time type check
-					// pages should be array of { items: [...], nextCursor: ... }
-					if (query.data) {
-						const _typeCheck: Array<{
-							items: Array<{ id: string; title: string }>
-							nextCursor: string | null
-						}> = query.data.pages
-						void _typeCheck
-					}
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			// Runtime check
-			expect(result.current.data?.pages[0]?.items[0]?.title).toBe("Post 1")
-		})
-
-		test("getNextPageParam receives correct page type", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useInfiniteQuery(
-						eden.posts.get.infiniteQueryOptions(
-							{ limit: 10 },
-							{
-								getNextPageParam: (lastPage) => {
-									// CRITICAL: Compile-time type check
-									// lastPage should have items and nextCursor
-									const _typeCheck: {
-										items: Array<{ id: string; title: string }>
-										nextCursor: string | null
-									} = lastPage
-									void _typeCheck
-
-									return lastPage.nextCursor ?? undefined
-								},
-							},
-						),
-					)
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-		})
-
-		test("data type is not a function (catches () => never bug)", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useInfiniteQuery(
-						eden.posts.get.infiniteQueryOptions(
-							{ limit: 10 },
-							{
-								getNextPageParam: (lastPage) =>
-									lastPage.nextCursor ?? undefined,
-							},
-						),
-					)
-
-					// Type-level assertion: pages should NOT be a function
-					if (query.data) {
-						type PagesType = typeof query.data.pages
-						type IsNotFunction = PagesType extends (
-							...args: unknown[]
-						) => unknown
-							? false
-							: true
-
-						const _isNotFunction: IsNotFunction = true
-						void _isNotFunction
-					}
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			// Runtime verification
-			expect(typeof result.current.data?.pages).not.toBe("function")
-			expect(Array.isArray(result.current.data?.pages)).toBe(true)
 		})
 	})
 

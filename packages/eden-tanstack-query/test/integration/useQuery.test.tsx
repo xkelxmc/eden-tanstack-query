@@ -16,6 +16,7 @@ import { Elysia, t } from "elysia"
 import type { ReactNode } from "react"
 
 import { createEdenTanStackQuery } from "../../src"
+import { assertType, type Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup (similar to example/basic server)
@@ -139,7 +140,11 @@ describe("useQuery integration", () => {
 			const { result } = renderHook(
 				() => {
 					const eden = useEden()
-					return useQuery(eden.hello.get.queryOptions())
+					const query = useQuery(eden.hello.get.queryOptions())
+					assertType<
+						Equals<typeof query.data, { message: string } | undefined>
+					>()
+					return query
 				},
 				{ wrapper: Wrapper },
 			)
@@ -162,7 +167,14 @@ describe("useQuery integration", () => {
 			const { result } = renderHook(
 				() => {
 					const eden = useEden()
-					return useQuery(eden.users.get.queryOptions())
+					const query = useQuery(eden.users.get.queryOptions())
+					assertType<
+						Equals<
+							typeof query.data,
+							{ id: string; name: string }[] | undefined
+						>
+					>()
+					return query
 				},
 				{ wrapper: Wrapper },
 			)
@@ -171,100 +183,11 @@ describe("useQuery integration", () => {
 				expect(result.current.isSuccess).toBe(true)
 			})
 
+			expect(Array.isArray(result.current.data)).toBe(true)
 			expect(result.current.data).toEqual([
 				{ id: "1", name: "Alice" },
 				{ id: "2", name: "Bob" },
 			])
-		})
-	})
-
-	describe("type inference", () => {
-		test("data type is correctly inferred for hello endpoint", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useQuery(eden.hello.get.queryOptions())
-
-					// CRITICAL: Compile-time type check
-					// If this fails, data would be () => never instead of { message: string }
-					if (query.data) {
-						const _typeCheck: { message: string } = query.data
-						void _typeCheck
-					}
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			// Runtime check that data has correct shape
-			expect(result.current.data?.message).toBe("Hello from Elysia!")
-		})
-
-		test("data type is correctly inferred for users list endpoint", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useQuery(eden.users.get.queryOptions())
-
-					// CRITICAL: Compile-time type check
-					// data should be array of users, not () => never
-					if (query.data) {
-						const _typeCheck: Array<{ id: string; name: string }> = query.data
-						void _typeCheck
-					}
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			// Runtime check
-			expect(Array.isArray(result.current.data)).toBe(true)
-			expect(result.current.data?.[0]?.id).toBe("1")
-		})
-
-		test("data type is not a function (catches () => never bug)", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useQuery(eden.hello.get.queryOptions())
-
-					// Type-level assertion: data should NOT be a function
-					type DataType = typeof query.data
-					type IsNotFunction = DataType extends (...args: unknown[]) => unknown
-						? false
-						: true
-
-					const _isNotFunction: IsNotFunction = true
-					void _isNotFunction
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			// Runtime verification that data is not a function
-			expect(typeof result.current.data).not.toBe("function")
-			expect(typeof result.current.data).toBe("object")
 		})
 	})
 

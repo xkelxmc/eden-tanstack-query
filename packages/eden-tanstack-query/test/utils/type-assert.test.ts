@@ -19,8 +19,6 @@ describe("Equals", () => {
 		assertType<Equals<any, any>>()
 		assertType<Equals<{ a: 1 }, { a: 1 }>>()
 		assertType<Equals<string | number, number | string>>()
-
-		expect(true).toBe(true)
 	})
 
 	test("distinguishes any, unknown and never", () => {
@@ -29,20 +27,16 @@ describe("Equals", () => {
 		assertType<Equals<Equals<never, any>, false>>()
 		assertType<Equals<Equals<never, unknown>, false>>()
 		assertType<Equals<Equals<any, string>, false>>()
-
-		expect(true).toBe(true)
 	})
 
 	test("rejects near-misses that pass one-directional extends checks", () => {
-		// `any extends X` is bidirectionally assignable — Equals must still say no
+		// Assignability does not distinguish any from unknown.
 		// @ts-expect-error any is not equal to unknown
 		assertType<Equals<any, unknown>>()
 		// @ts-expect-error subtype is not equality
 		assertType<Equals<{ a: 1; b: 2 }, { a: 1 }>>()
 		// @ts-expect-error optionality matters
 		assertType<Equals<{ a?: 1 }, { a: 1 }>>()
-
-		expect(true).toBe(true)
 	})
 })
 
@@ -60,7 +54,5 @@ describe("IsAny / IsNever / IsUnknown", () => {
 		assertType<Equals<IsUnknown<any>, false>>()
 		assertType<Equals<IsUnknown<never>, false>>()
 		assertType<Equals<IsUnknown<{ a: 1 }>, false>>()
-
-		expect(true).toBe(true)
 	})
 })
