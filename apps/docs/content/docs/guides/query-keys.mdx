@@ -81,7 +81,7 @@ eden.users.get.queryFilter(undefined, { exact: true, stale: true })
 ```
 
 <Callout type="info">
-`queryKey()` generates keys with `type: "query"`, which only matches regular queries. `queryFilter()` uses `type: "any"`, which matches both regular and infinite queries — making it better suited for broad cache invalidation.
+`queryKey()` generates keys with `type: "query"`, which only matches regular queries. By default, `queryFilter()` uses `type: "any"` to match both regular and infinite queries. With `exact: true`, it generates the same key as `queryKey(input)` and matches only that regular query. Use `infiniteQueryFilter` for exact infinite-query matching.
 </Callout>
 
 ### infiniteQueryKey()

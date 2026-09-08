@@ -342,7 +342,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					path: paths,
 					input,
 					pathParams,
-					type: "any",
+					type: filters?.exact === true ? "query" : "any",
 				}),
 			}
 		},

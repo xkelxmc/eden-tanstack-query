@@ -260,6 +260,8 @@ non-null value.
 
 Creates a query filter for bulk cache operations like `invalidateQueries`, `cancelQueries`, `removeQueries`.
 
+By default, the filter matches both regular and infinite queries. With `exact: true`, it matches the regular query with the same input and path parameters. Use `infiniteQueryFilter` for exact infinite-query matching.
+
 ```ts
 eden.route.get.queryFilter(input?, filters?): QueryFilters
 ```
