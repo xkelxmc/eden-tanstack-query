@@ -84,22 +84,43 @@ type EdenRequestHeaders = Record<string, string | undefined>
  * query parameter named "query". Use headers: undefined when no headers are needed.
  */
 type EdenQueryRequestInput<TInput> = Simplify<
-	({} extends TInput ? { query?: TInput } : { query: TInput }) & {
+	(true extends HasAmbiguousQueryHeaders<TInput>
+		? { query: TInput }
+		: {} extends TInput
+			? { query?: TInput }
+			: { query: TInput }) & {
 		headers: EdenRequestHeaders | undefined
 	}
 >
 
-/**
- * Query input accepted by query methods.
- * Supports:
- * - direct query object: { role: "admin" }
- * - direct query + headers: { role: "admin", headers: {...} }
- * - request shape: { query: { role: "admin" }, headers: {...} }
- */
+type HasAmbiguousQueryHeaders<TInput> = TInput extends unknown
+	? "headers" extends keyof TInput
+		? object extends TInput["headers"]
+			? true
+			: [Extract<TInput["headers"], object>] extends [never]
+				? false
+				: true
+		: false
+	: never
+
+type EdenDirectQueryInput<
+	TInput,
+	THasAmbiguousHeaders = HasAmbiguousQueryHeaders<TInput>,
+> = TInput extends unknown
+	? HasAmbiguousQueryHeaders<TInput> extends true
+		? never
+		: true extends THasAmbiguousHeaders
+			? "headers" extends keyof TInput
+				? TInput
+				: Simplify<TInput & { headers?: never }>
+			: TInput | Simplify<TInput & { headers?: EdenRequestHeaders }>
+	: never
+
+/** Object-valued query headers need a wrapper to avoid transport parsing. */
 type EdenQueryProcedureInput<TInput> =
-	| TInput
-	| Simplify<TInput & { headers?: EdenRequestHeaders }>
-	| EdenQueryRequestInput<TInput>
+	IsAny<TInput> extends true
+		? TInput
+		: EdenDirectQueryInput<TInput> | EdenQueryRequestInput<TInput>
 
 /**
  * Infinite query input without cursor.
@@ -112,13 +133,9 @@ type EdenInfiniteQueryBaseInput<TInput> = TInput extends unknown
  * Input accepted by infinite query methods.
  */
 type EdenInfiniteQueryProcedureInput<TInput> =
-	| EdenInfiniteQueryBaseInput<TInput>
-	| Simplify<
-			EdenInfiniteQueryBaseInput<TInput> & {
-				headers?: EdenRequestHeaders
-			}
-	  >
-	| EdenQueryRequestInput<EdenInfiniteQueryBaseInput<TInput>>
+	IsAny<TInput> extends true
+		? TInput
+		: EdenQueryProcedureInput<EdenInfiniteQueryBaseInput<TInput>>
 
 /**
  * Input options for undefined initial data queries.
