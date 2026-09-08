@@ -126,26 +126,20 @@ export type InferRouteInput<
 // ============================================================================
 
 // Treaty can resolve a generator's return value before a stream starts.
+type NormalizeGeneratorReturn<T> = T extends void ? "" : T
+
 type NormalizeResponseTransport<T> =
 	IsNever<T> extends true
 		? T
-		: T extends Generator<infer Y, infer R, infer N>
-			? void extends R
-				? AsyncGenerator<Y, R, N>
-				: IsNever<Y> extends true
-					? R
-					: AsyncGenerator<Y, R, N> | R
-			: T extends AsyncGenerator<infer Y, infer R, infer N>
-				? IsNever<Y> extends true
-					? void extends R
-						? AsyncGenerator<Y, R, N> | R
-						: R
-					: void extends R
-						? AsyncGenerator<Y, R, N>
-						: AsyncGenerator<Y, R, N> | R
-				: T extends ReadableStream<infer Y>
-					? AsyncGenerator<Y, void, unknown>
-					: T
+		: T extends
+					| Generator<infer Y, infer R, unknown>
+					| AsyncGenerator<infer Y, infer R, unknown>
+			? IsNever<Y> extends true
+				? NormalizeGeneratorReturn<R>
+				: AsyncGenerator<Y, void, unknown> | NormalizeGeneratorReturn<R>
+			: T extends ReadableStream<infer Y>
+				? AsyncGenerator<Y, void, unknown>
+				: T
 
 type UnwrapFormResponse<T> = T extends { [ELYSIA_FORM_DATA]: infer Data }
 	? Data

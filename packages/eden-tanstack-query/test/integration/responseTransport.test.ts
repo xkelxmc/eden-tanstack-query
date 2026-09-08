@@ -50,6 +50,22 @@ const app = new Elysia()
 		yield "hello"
 		return "finished"
 	})
+	.get("/sync-empty", function* ({ query }) {
+		if (query.early) return
+		yield "hello"
+	})
+	.get("/async-empty", async function* ({ query }) {
+		if (query.early) return
+		yield "hello"
+	})
+	// biome-ignore lint/correctness/useYield: exercises an empty response before streaming starts.
+	.get("/sync-empty-return", function* () {
+		return
+	})
+	// biome-ignore lint/correctness/useYield: exercises an empty response before streaming starts.
+	.get("/async-empty-return", async function* () {
+		return
+	})
 
 type Routes = ExtractRoutes<typeof app>
 const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
@@ -142,13 +158,13 @@ describe("response transport normalization", () => {
 		assertType<
 			Equals<
 				InferRouteOutput<Routes["sync-mixed"]["get"]>,
-				AsyncGenerator<string, string, unknown> | string
+				AsyncGenerator<string, void, unknown> | string
 			>
 		>()
 		assertType<
 			Equals<
 				InferRouteOutput<Routes["async-mixed"]["get"]>,
-				AsyncGenerator<string, string, unknown> | string
+				AsyncGenerator<string, void, unknown> | string
 			>
 		>()
 		const queryClient = createTestQueryClient()
@@ -156,6 +172,44 @@ describe("response transport normalization", () => {
 			expect(
 				await queryClient.fetchQuery(route.get.queryOptions({ early: "yes" })),
 			).toBe("finished")
+			const stream = await queryClient.fetchQuery(route.get.queryOptions())
+			if (typeof stream === "string")
+				throw new Error("Expected streamed response")
+			expect(await stream.next()).toEqual({ done: false, value: "hello" })
+			expect(await stream.next()).toEqual({ done: true, value: undefined })
+		}
+	})
+
+	test("empty generator returns decode to an empty string", async () => {
+		assertType<
+			Equals<InferRouteOutput<Routes["sync-empty-return"]["get"]>, "">
+		>()
+		assertType<
+			Equals<InferRouteOutput<Routes["async-empty-return"]["get"]>, "">
+		>()
+		assertType<
+			Equals<
+				InferRouteOutput<Routes["sync-empty"]["get"]>,
+				AsyncGenerator<string, void, unknown> | ""
+			>
+		>()
+		assertType<
+			Equals<
+				InferRouteOutput<Routes["async-empty"]["get"]>,
+				AsyncGenerator<string, void, unknown> | ""
+			>
+		>()
+		const queryClient = createTestQueryClient()
+		for (const route of [
+			eden["sync-empty-return"],
+			eden["async-empty-return"],
+		]) {
+			expect(await queryClient.fetchQuery(route.get.queryOptions())).toBe("")
+		}
+		for (const route of [eden["sync-empty"], eden["async-empty"]]) {
+			expect(
+				await queryClient.fetchQuery(route.get.queryOptions({ early: "yes" })),
+			).toBe("")
 			const stream = await queryClient.fetchQuery(route.get.queryOptions())
 			if (typeof stream === "string")
 				throw new Error("Expected streamed response")
