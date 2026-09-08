@@ -20,16 +20,19 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 ## 📦 Installation
 
 ```bash
-bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia
+bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia @elysiajs/cors
 ```
 
 ## 🚀 Quick Start
 
 ### 1. Define your Elysia server
 
+Enable CORS so a browser frontend on another origin can call the server.
+
 ```typescript
 // server.ts
 import { Elysia, t } from 'elysia'
+import { cors } from '@elysiajs/cors'
 
 const posts = [
   { id: 1, title: 'First post' },
@@ -38,6 +41,7 @@ const posts = [
 ]
 
 const app = new Elysia()
+  .use(cors())
   .get('/users', () => [
     { id: '1', name: 'Alice' },
     { id: '2', name: 'Bob' }
