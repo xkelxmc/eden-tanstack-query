@@ -455,3 +455,99 @@ describe("proxy hygiene against the real client", () => {
 		expect(awaited).toBeDefined()
 	})
 })
+
+describe("query request forwarding through real Treaty", () => {
+	test.each(["get", "head", "options"] as const)(
+		"%s forwards regular query parameters, headers, and cancellation",
+		async (method) => {
+			const { eden, requests, release } = createRequestForwardingFixture()
+			const queryClient = createTestQueryClient()
+			const options = eden.transport[method].queryOptions(
+				{ query: { q: "hello world" }, headers: { "x-request-id": "regular" } },
+				{ eden: { abortOnUnmount: true } },
+			)
+			const pending = queryClient
+				.fetchQuery(options)
+				.catch((error: unknown) => error)
+
+			try {
+				await until(() => requests.length === 1)
+				const request = requests[0]!
+				expect(request.method).toBe(method.toUpperCase())
+				expect(new URL(request.url).searchParams.get("q")).toBe("hello world")
+				expect(request.headers.get("x-request-id")).toBe("regular")
+				expect(request.signal.aborted).toBe(false)
+
+				await queryClient.cancelQueries({ queryKey: options.queryKey })
+
+				expect(request.signal.aborted).toBe(true)
+			} finally {
+				release()
+				await pending
+				queryClient.clear()
+			}
+		},
+	)
+
+	test.each(["get", "head", "options"] as const)(
+		"%s forwards infinite query parameters, cursor, headers, and cancellation",
+		async (method) => {
+			const { eden, requests, release } = createRequestForwardingFixture()
+			const queryClient = createTestQueryClient()
+			const options = eden.transport[method].infiniteQueryOptions(
+				{ query: { q: "next page" }, headers: { "x-request-id": "infinite" } },
+				{
+					initialCursor: "page-2",
+					getNextPageParam: () => undefined,
+					eden: { abortOnUnmount: true },
+				},
+			)
+			const pending = queryClient
+				.fetchInfiniteQuery(options)
+				.catch((error: unknown) => error)
+
+			try {
+				await until(() => requests.length === 1)
+				const request = requests[0]!
+				expect(request.method).toBe(method.toUpperCase())
+				expect(Object.fromEntries(new URL(request.url).searchParams)).toEqual({
+					q: "next page",
+					cursor: "page-2",
+				})
+				expect(request.headers.get("x-request-id")).toBe("infinite")
+				expect(request.signal.aborted).toBe(false)
+
+				await queryClient.cancelQueries({ queryKey: options.queryKey })
+
+				expect(request.signal.aborted).toBe(true)
+			} finally {
+				release()
+				await pending
+				queryClient.clear()
+			}
+		},
+	)
+})
+
+function createRequestForwardingFixture() {
+	const requests: Request[] = []
+	const { promise, resolve: release } = Promise.withResolvers<void>()
+	const handle = async (request: Request) => {
+		requests.push(request)
+		await promise
+		return "complete"
+	}
+	const schema = {
+		query: t.Object({
+			q: t.Optional(t.String()),
+			cursor: t.Optional(t.String()),
+		}),
+	}
+	const app = new Elysia()
+		.get("/transport", ({ request }) => handle(request), schema)
+		.head("/transport", ({ request }) => handle(request), schema)
+		.options("/transport", ({ request }) => handle(request), schema)
+	const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+
+	return { eden, requests, release }
+}

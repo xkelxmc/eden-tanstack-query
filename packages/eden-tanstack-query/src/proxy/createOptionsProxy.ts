@@ -293,7 +293,13 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					// Call the method
 					const methodFn = (edenEndpoint as Record<string, unknown>)[
 						method
-					] as (opts: unknown) => Promise<{ data: unknown; error: unknown }>
+					] as (
+						input: unknown,
+						opts?: unknown,
+					) => Promise<{
+						data: unknown
+						error: unknown
+					}>
 
 					const requestInput: Record<string, unknown> = {
 						fetch: { signal },
@@ -302,7 +308,10 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					if (query !== undefined) requestInput.query = query
 					if (headers !== undefined) requestInput.headers = headers
 
-					const result = await methodFn(requestInput)
+					const result =
+						method === "options"
+							? await methodFn(undefined, requestInput)
+							: await methodFn(requestInput)
 
 					if (result.error) throw result.error
 					return result.data
@@ -379,7 +388,13 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					// Call the method with cursor included in query
 					const methodFn = (edenEndpoint as Record<string, unknown>)[
 						method
-					] as (opts: unknown) => Promise<{ data: unknown; error: unknown }>
+					] as (
+						input: unknown,
+						opts?: unknown,
+					) => Promise<{
+						data: unknown
+						error: unknown
+					}>
 
 					const requestInput: Record<string, unknown> = {
 						fetch: { signal },
@@ -388,7 +403,10 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					if (fullInput !== undefined) requestInput.query = fullInput
 					if (headers !== undefined) requestInput.headers = headers
 
-					const result = await methodFn(requestInput)
+					const result =
+						method === "options"
+							? await methodFn(undefined, requestInput)
+							: await methodFn(requestInput)
 
 					if (result.error) throw result.error
 					return result.data
