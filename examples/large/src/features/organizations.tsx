@@ -309,20 +309,40 @@ function SubscriptionForm({ orgId }: { orgId: string }) {
 // Invoices
 // ============================================================================
 
-function InvoiceList({ orgId }: { orgId: string }) {
+function MarkInvoicePaidButton({
+	invoiceId,
+	orgId,
+}: {
+	invoiceId: string
+	orgId: string
+}) {
 	const eden = useEden()
 	const qc = useQueryClient()
-	const { data, isLoading, error } = useQuery(
-		eden.organizations({ id: orgId }).invoices.get.queryOptions(),
-	)
-
 	const markPaid = useMutation({
-		...eden.invoices({ id: "" }).paid.put.mutationOptions(),
+		...eden.invoices({ id: invoiceId }).paid.put.mutationOptions(),
 		onSuccess: () =>
 			qc.invalidateQueries({
 				queryKey: eden.organizations({ id: orgId }).invoices.get.queryKey(),
 			}),
 	})
+
+	return (
+		<Button
+			size="sm"
+			variant="outline"
+			onClick={() => markPaid.mutate(undefined)}
+			disabled={markPaid.isPending}
+		>
+			Mark Paid
+		</Button>
+	)
+}
+
+function InvoiceList({ orgId }: { orgId: string }) {
+	const eden = useEden()
+	const { data, isLoading, error } = useQuery(
+		eden.organizations({ id: orgId }).invoices.get.queryOptions(),
+	)
 
 	if (isLoading) return <LoadingState />
 	if (error) return <ErrorState error={error} />
@@ -344,14 +364,7 @@ function InvoiceList({ orgId }: { orgId: string }) {
 							{inv.status}
 						</Badge>
 						{inv.status !== "paid" && (
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => markPaid.mutate(undefined)}
-								disabled={markPaid.isPending}
-							>
-								Mark Paid
-							</Button>
+							<MarkInvoicePaidButton invoiceId={inv.id} orgId={orgId} />
 						)}
 					</div>
 				</li>
