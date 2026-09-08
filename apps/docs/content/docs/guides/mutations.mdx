@@ -41,6 +41,23 @@ function CreateUserForm() {
 }
 ```
 
+## Required and optional bodies
+
+A declared object body is required even when every field is optional. For a schema such as `t.Object({ name: t.Optional(t.String()) })`, pass an object:
+
+```tsx
+const updateUser = useMutation(eden.users.patch.mutationOptions())
+
+updateUser.mutate({})
+updateUser.mutate({ name: 'Ada' })
+```
+
+If older code called `mutate()` or `mutateAsync()` for this schema, replace it with `mutate({})` or `mutateAsync({})`. Omitting the body now fails type checking; it previously sent `undefined`, which the server could reject with a validation error.
+
+Routes without a body and optional object bodies, such as `t.Optional(t.Object({ name: t.String() }))`, still allow omitted variables. Their lifecycle callbacks must handle missing variables before reading body fields. The standalone `edenMutationOptions` factory allows omission when its input type includes `undefined`.
+
+Some Elysia versions encode optional object bodies as `Partial<Body> | null`. The proxy also allows omission for this shape. A declared required nullable object with all optional fields has the same type, so the proxy cannot distinguish it from an optional body. Pass an object explicitly for that schema; server handling of an omitted body depends on Elysia. Optional primitive bodies can share their type with required nullable primitives; pass variables explicitly for those schemas.
+
 ## Cache Invalidation
 
 Invalidate related queries after a successful mutation using `queryKey()` or `queryFilter()`:
