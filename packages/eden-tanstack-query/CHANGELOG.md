@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-09
+
+### Breaking Changes
+
+- Wrapped query inputs with `headers: undefined` now use the same cache key as wrappers with `headers: {}`, separating them from direct query parameters named `query`. Discard old persisted entries for affected route/input combinations, including direct-looking entries that shared the old keys, or reset the persisted cache. Regenerate manually stored keys with the helpers. Other direct-input keys and wrappers with header values are unchanged ([#37](https://github.com/xkelxmc/eden-tanstack-query/pull/37)).
+- Required mutation object bodies remain required when all their fields are optional. Replace `mutate()` or `mutateAsync()` with `mutate({})` or `mutateAsync({})` for these schemas. No-body and optional-object routes still allow omission; their lifecycle callbacks must handle missing variables ([#38](https://github.com/xkelxmc/eden-tanstack-query/pull/38)).
+- Query schemas with an object-valued field named `headers` require explicit wrapped input, such as `{ query: input, headers: undefined }`. For unions containing such a member, use wrappers for HTTP headers on all members. The restriction also covers arrays and other object types; scalar-only fields and noncolliding schemas retain direct input ([#43](https://github.com/xkelxmc/eden-tanstack-query/pull/43)).
+- Required query unions without shared keys now reject missing or invalid input instead of accepting it as an empty schema. Supply a valid union member ([#36](https://github.com/xkelxmc/eden-tanstack-query/pull/36)).
+- Response types now describe decoded form payloads, async generators for readable streams, and early generator return values. Read form fields directly and narrow generator responses before iteration. A streamed generator completes with `void`; an early void return decodes to `""`. Declared error values use the same conversions ([#39](https://github.com/xkelxmc/eden-tanstack-query/pull/39)).
+- Optional path parameter names no longer include `?`. Use `{ id: value }` for `/:id?`, or omit the call to omit the segment. `PathParamsToObject` now marks optional parameters as optional properties ([#44](https://github.com/xkelxmc/eden-tanstack-query/pull/44)).
+
+### Fixed
+
+- Forward OPTIONS query parameters, request headers, and cancellation signals through the correct Treaty argument for regular and infinite queries ([#34](https://github.com/xkelxmc/eden-tanstack-query/pull/34)).
+- Match regular cached queries with `queryFilter(input, { exact: true })`. Broad filters still include regular and infinite queries; use `infiniteQueryFilter` for exact infinite-query matching ([#35](https://github.com/xkelxmc/eden-tanstack-query/pull/35)).
+- Expose omitted optional path branches while preserving explicit route precedence, shared child paths, and matching supplied parameter branches ([#44](https://github.com/xkelxmc/eden-tanstack-query/pull/44)).
+
+### Documentation
+
+- Show separate QueryClients for multiple backends with overlapping route keys ([#40](https://github.com/xkelxmc/eden-tanstack-query/pull/40)).
+- Separate server and client Eden modules in the App Router guide and clarify authentication and cross-site cookie requirements ([#41](https://github.com/xkelxmc/eden-tanstack-query/pull/41)).
+- Add CORS setup to the package README's browser quick start ([#42](https://github.com/xkelxmc/eden-tanstack-query/pull/42)).
+
+Peer dependency requirements are unchanged from 0.3.0.
+
 ## [0.3.0] - 2026-09-08
 
 ### Breaking Changes
