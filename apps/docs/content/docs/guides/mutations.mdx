@@ -56,7 +56,7 @@ If older code called `mutate()` or `mutateAsync()` for this schema, replace it w
 
 Routes without a body and optional object bodies, such as `t.Optional(t.Object({ name: t.String() }))`, still allow omitted variables. Their lifecycle callbacks must handle missing variables before reading body fields. The standalone `edenMutationOptions` factory allows omission when its input type includes `undefined`.
 
-Some Elysia versions encode optional object bodies as `Partial<Body> | null`. The proxy also allows omission for this shape. A required nullable object with all optional fields has the same type, so it also permits omission even though the server requires a body. Optional primitive bodies can share their type with required nullable primitives; pass variables explicitly for those schemas.
+Some Elysia versions encode optional object bodies as `Partial<Body> | null`. The proxy also allows omission for this shape. A declared required nullable object with all optional fields has the same type, so the proxy cannot distinguish it from an optional body. Pass an object explicitly for that schema; server handling of an omitted body depends on Elysia. Optional primitive bodies can share their type with required nullable primitives; pass variables explicitly for those schemas.
 
 ## Cache Invalidation
 

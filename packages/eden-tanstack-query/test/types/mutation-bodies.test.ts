@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query"
 import { Elysia, t } from "elysia"
 
 import { createEdenOptionsProxy, edenMutationOptions } from "../../src"
+import type { ExtractRoutes } from "../../src/types/infer"
 import { createTestQueryClient } from "../../test-utils"
 import { assertType, type Equals } from "../../test-utils/type-assert"
 
@@ -15,6 +16,9 @@ const app = new Elysia()
 	})
 	.post("/nullable", ({ body }) => body, {
 		body: t.Nullable(t.Object({ name: t.String() })),
+	})
+	.post("/nullable-optional-fields", ({ body }) => body, {
+		body: t.Nullable(t.Object({ name: t.Optional(t.String()) })),
 	})
 	.post("/null-only", ({ body }) => body, { body: t.Null() })
 	.post("/empty", () => ({ ok: true }))
@@ -171,6 +175,19 @@ export function mutationFunctionBodyProbe() {
 }
 
 describe("mutation body contracts", () => {
+	test("Elysia exposes the same body type for optional and nullable objects", async () => {
+		type Routes = ExtractRoutes<typeof app>
+		assertType<
+			Equals<
+				Routes["optional"]["post"]["body"],
+				Routes["nullable-optional-fields"]["post"]["body"]
+			>
+		>()
+		await expect(
+			eden["nullable-optional-fields"].post.mutationOptions().mutationFn(),
+		).resolves.toEqual({})
+	})
+
 	test("Treaty accepts an empty required object and omitted optional bodies", async () => {
 		await expect(
 			eden.required.post.mutationOptions().mutationFn({}),
