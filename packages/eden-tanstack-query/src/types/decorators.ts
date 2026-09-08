@@ -1067,10 +1067,10 @@ type DecoratePathParams<
 		? TCall
 		: never
 
-type MergeRouteNodes<TDirect, TOmitted> =
+type MergeRouteNodes<TDirect, TOmitted, TKey> =
 	TDirect extends Record<string, unknown>
 		? TOmitted extends Record<string, unknown>
-			? MergeRouteTrees<TDirect, TOmitted>
+			? MergeRouteTrees<TDirect, TOmitted, TKey>
 			: TDirect
 		: TDirect
 
@@ -1078,13 +1078,18 @@ type MergeRouteNodes<TDirect, TOmitted> =
 type MergeRouteTrees<
 	TDirect extends Record<string, unknown>,
 	TOmitted extends Record<string, unknown>,
-	TSchemaKeys = "response" extends keyof TDirect ? keyof RouteSchema : never,
+	TKey = never,
+	TSchemaKeys = TKey extends HttpMethod
+		? "response" extends keyof TDirect
+			? keyof RouteSchema
+			: never
+		: never,
 > = {
 	[K in keyof TDirect | keyof TOmitted]: K extends keyof TDirect
 		? K extends TSchemaKeys
 			? TDirect[K]
 			: K extends keyof TOmitted
-				? MergeRouteNodes<TDirect[K], TOmitted[K]>
+				? MergeRouteNodes<TDirect[K], TOmitted[K], K>
 				: TDirect[K]
 		: K extends keyof TOmitted
 			? TOmitted[K]
@@ -1093,27 +1098,42 @@ type MergeRouteTrees<
 
 type OptionalRouteKeys<TRoutes> = Extract<keyof TRoutes, `:${string}?`>
 
+type OmittedRouteTrees<TRoutes extends Record<string, unknown>> = {
+	[K in OptionalRouteKeys<TRoutes>]: TRoutes[K] extends Record<string, unknown>
+		? (routes: RoutesWithOmissions<TRoutes[K]>) => void
+		: never
+}[OptionalRouteKeys<TRoutes>] extends (routes: infer TOmitted) => void
+	? TOmitted
+	: never
+
 type RoutesWithOmissions<TRoutes extends Record<string, unknown>> = [
 	OptionalRouteKeys<TRoutes>,
 ] extends [never]
 	? TRoutes
-	: TRoutes[OptionalRouteKeys<TRoutes>] extends infer TOmitted extends Record<
+	: OmittedRouteTrees<TRoutes> extends infer TOmitted extends Record<
 				string,
 				unknown
 			>
-		? MergeRouteTrees<TRoutes, RoutesWithOmissions<TOmitted>>
+		? MergeRouteTrees<TRoutes, TOmitted>
 		: TRoutes
 
 type DecorateOptionalPathCalls<TRoutes extends Record<string, unknown>> = [
 	OptionalRouteKeys<TRoutes>,
 ] extends [never]
 	? unknown
-	: TRoutes[OptionalRouteKeys<TRoutes>] extends infer TOmitted extends Record<
-				string,
-				unknown
-			>
-		? DecoratePathParams<TOmitted> & DecorateOptionalPathCalls<TOmitted>
-		: unknown
+	: {
+				[K in OptionalRouteKeys<TRoutes>]: TRoutes[K] extends Record<
+					string,
+					unknown
+				>
+					? (
+							calls: DecoratePathParams<TRoutes[K]> &
+								DecorateOptionalPathCalls<TRoutes[K]>,
+						) => void
+					: never
+			}[OptionalRouteKeys<TRoutes>] extends (calls: infer TCalls) => void
+		? TCalls
+		: never
 
 type DecorateRouteProperties<TRoutes extends Record<string, unknown>> =
 	string extends keyof TRoutes

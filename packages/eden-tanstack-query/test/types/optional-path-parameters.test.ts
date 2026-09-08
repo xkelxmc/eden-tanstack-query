@@ -47,7 +47,38 @@ const siblingParamsApp = new Elysia()
 		bar: params.bar,
 	}))
 
+const responsePathApp = new Elysia()
+	.get("/prefix/response/foo", () => ({ foo: true }))
+	.get("/prefix/:id?/response/bar", () => ({ bar: true }))
+
+const optionalSiblingsApp = new Elysia()
+	.get("/foo/:a?/bar/baz", () => ({ baz: true }))
+	.get("/foo/:b?/bar/qux", () => ({ qux: true }))
+	.get("/calls/:a?/:first/detail", ({ params }) => ({ first: params.first }))
+	.get("/calls/:b?/:second/other", ({ params }) => ({ second: params.second }))
+
 type Proxy = EdenOptionsProxy<typeof app>
+
+export function optionalSiblingCalls(
+	eden: EdenOptionsProxy<typeof optionalSiblingsApp>,
+) {
+	assertType<
+		Equals<inferOutput<typeof eden.foo.bar.baz.get>, { baz: boolean }>
+	>()
+	assertType<
+		Equals<inferOutput<typeof eden.foo.bar.qux.get>, { qux: boolean }>
+	>()
+	const first = eden.calls({ first: "first" }).detail
+	const second = eden.calls({ second: "second" }).other
+	assertType<Equals<inferOutput<typeof first.get>, { first: string }>>()
+	assertType<Equals<inferOutput<typeof second.get>, { second: string }>>()
+	eden.foo({ a: "selected" }).bar.baz.get.queryOptions()
+	eden.foo({ b: "selected" }).bar.qux.get.queryOptions()
+	// @ts-expect-error Each omitted call retains its own descendants.
+	eden.calls({ first: "first" }).other
+	// @ts-expect-error Each supplied call retains its own descendants.
+	eden.foo({ a: "selected" }).bar.qux
+}
 
 export function siblingPathCalls(
 	eden: EdenOptionsProxy<typeof siblingParamsApp>,
@@ -90,6 +121,38 @@ export function optionalPathCalls(eden: Proxy) {
 }
 
 describe("optional path parameters", () => {
+	test("merges omitted descendants under literal response paths", async () => {
+		const response = createEdenOptionsProxy<typeof responsePathApp>({
+			client: treaty(responsePathApp),
+		})
+		assertType<
+			Equals<
+				inferOutput<typeof response.prefix.response.foo.get>,
+				{ foo: boolean }
+			>
+		>()
+		assertType<
+			Equals<
+				inferOutput<typeof response.prefix.response.bar.get>,
+				{ bar: boolean }
+			>
+		>()
+		const queryClient = createTestQueryClient()
+		try {
+			expect(
+				await queryClient.fetchQuery(
+					response.prefix.response.foo.get.queryOptions(),
+				),
+			).toEqual({ foo: true })
+			expect(
+				await queryClient.fetchQuery(
+					response.prefix.response.bar.get.queryOptions(),
+				),
+			).toEqual({ bar: true })
+		} finally {
+			queryClient.clear()
+		}
+	})
 	test("exposes exact call inputs and matching omitted procedures", () => {
 		assertType<Equals<Parameters<Proxy>[0], { id: string | number }>>()
 		assertType<Equals<Parameters<Proxy["users"]>[0], { id: string | number }>>()
