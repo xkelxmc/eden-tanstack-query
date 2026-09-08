@@ -17,6 +17,8 @@ bun add -D vitest @testing-library/react @testing-library/jest-dom @testing-libr
 
 ### Vitest Config
 
+The examples assume Vitest resolves `@/` to your application's `src` directory. Configure that alias or adjust the imports to match your project.
+
 ```ts title="vitest.config.ts"
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
@@ -48,7 +50,7 @@ afterEach(() => {
 
 ### Test QueryClient
 
-```ts title="test/utils.ts"
+```ts title="test/query-client.ts"
 import { QueryClient } from '@tanstack/react-query'
 
 export function createTestQueryClient() {
@@ -63,15 +65,16 @@ export function createTestQueryClient() {
 
 ### Test Wrapper
 
-```tsx title="test/utils.tsx"
-import { ReactNode } from 'react'
+Import `EdenProvider` from the same application module as `useEden`. Each call to `createEdenTanStackQuery` creates separate React contexts, so a new factory in the test wrapper cannot provide the context used by the application's hook.
+
+```tsx title="test/wrapper.tsx"
+import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
-import type { App } from '@/lib/server'
+import { EdenProvider } from '@/lib/eden'
+import { createTestQueryClient } from './query-client'
 
 export function createTestWrapper(mockClient: any) {
   const queryClient = createTestQueryClient()
-  const { EdenProvider } = createEdenTanStackQuery<App>()
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -88,6 +91,8 @@ export function createTestWrapper(mockClient: any) {
 ```
 
 ### Mock Eden Client
+
+This mock implements a subset of the application's routes. The wrapper's `any` parameter allows this partial test double; it does not verify that the mock matches the full Eden client type. Adjust the mock to match the routes and response data your components use.
 
 ```ts title="test/mocks/eden-client.ts"
 import { vi } from 'vitest'
@@ -126,7 +131,8 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { useQuery } from '@tanstack/react-query'
 import { useEden } from '@/lib/eden'
-import { createTestWrapper, createMockEdenClient } from '../utils'
+import { createTestWrapper } from '../wrapper'
+import { createMockEdenClient } from '../mocks/eden-client'
 
 function UserList() {
   const eden = useEden()
@@ -160,12 +166,13 @@ describe('UserList', () => {
 ## Testing a Mutation
 
 ```tsx title="test/components/create-user.test.tsx"
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMutation } from '@tanstack/react-query'
 import { useEden } from '@/lib/eden'
-import { createTestWrapper, createMockEdenClient } from '../utils'
+import { createTestWrapper } from '../wrapper'
+import { createMockEdenClient } from '../mocks/eden-client'
 
 function CreateUserForm() {
   const eden = useEden()
