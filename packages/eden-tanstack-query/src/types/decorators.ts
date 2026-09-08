@@ -5,19 +5,25 @@
 import type {
 	DataTag,
 	DefinedInitialDataInfiniteOptions,
-	DefinedInitialDataOptions,
 	InfiniteData,
 	QueryFilters,
 	SkipToken,
 	UndefinedInitialDataInfiniteOptions,
-	UndefinedInitialDataOptions,
 	UnusedSkipTokenInfiniteOptions,
-	UnusedSkipTokenOptions,
 	UseMutationOptions,
 } from "@tanstack/react-query"
 import type { AnyElysia, RouteSchema } from "elysia"
 
 import type { EdenMutationKey, EdenQueryKey } from "../keys/types"
+import type { EdenMutationOptionsIn as MutationOptionsIn } from "../options/mutationOptions"
+import type {
+	DefinedEdenQueryOptionsIn as DefinedQueryOptionsIn,
+	DefinedEdenQueryOptionsOut as DefinedQueryOptionsOut,
+	UndefinedEdenQueryOptionsIn as UndefinedQueryOptionsIn,
+	UndefinedEdenQueryOptionsOut as UndefinedQueryOptionsOut,
+	UnusedSkipTokenEdenQueryOptionsIn as UnusedSkipTokenQueryOptionsIn,
+	UnusedSkipTokenEdenQueryOptionsOut as UnusedSkipTokenQueryOptionsOut,
+} from "../options/queryOptions"
 import type {
 	DeepPartial,
 	EmptyToVoid,
@@ -47,12 +53,6 @@ export type {
 // ============================================================================
 // Query Options Types
 // ============================================================================
-
-/** Reserved options that are set by the library, not the user */
-type ReservedQueryOptions = "queryKey" | "queryFn" | "queryHashFn" | "queryHash"
-
-/** Reserved mutation options that are set by the library */
-type ReservedMutationOptions = "mutationKey" | "mutationFn"
 
 /** Base options for Eden requests */
 export interface EdenQueryBaseOptions {
@@ -125,15 +125,7 @@ type EdenInfiniteQueryProcedureInput<TInput> =
  * Used when no initialData is provided.
  */
 interface UndefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
-	extends Omit<
-			UndefinedInitialDataOptions<
-				NoInfer<TQueryFnData>,
-				TError,
-				TData,
-				EdenQueryKey
-			>,
-			ReservedQueryOptions
-		>,
+	extends UndefinedQueryOptionsIn<TQueryFnData, TData, TError>,
 		EdenQueryBaseOptions {}
 
 /**
@@ -141,30 +133,15 @@ interface UndefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
  * Passes TQueryFnData and TData separately for proper type inference with select().
  */
 interface UndefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
-	extends UndefinedInitialDataOptions<
-			TQueryFnData,
-			TError,
-			TData,
-			EdenQueryKey
-		>,
-		EdenQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
-}
+	extends UndefinedQueryOptionsOut<TQueryFnData, TData, TError>,
+		EdenQueryOptionsResult {}
 
 /**
  * Input options for defined initial data queries.
  * Used when initialData is provided.
  */
 interface DefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
-	extends Omit<
-			DefinedInitialDataOptions<
-				NoInfer<TQueryFnData>,
-				TError,
-				TData,
-				EdenQueryKey
-			>,
-			ReservedQueryOptions
-		>,
+	extends DefinedQueryOptionsIn<TQueryFnData, TData, TError>,
 		EdenQueryBaseOptions {}
 
 /**
@@ -172,24 +149,14 @@ interface DefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
  * Passes TQueryFnData and TData separately for proper type inference with select().
  */
 interface DefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
-	extends DefinedInitialDataOptions<TQueryFnData, TError, TData, EdenQueryKey>,
-		EdenQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
-}
+	extends DefinedQueryOptionsOut<TQueryFnData, TData, TError>,
+		EdenQueryOptionsResult {}
 
 /**
  * Input options when skipToken is not used.
  */
 interface UnusedSkipTokenEdenQueryOptionsIn<TQueryFnData, TData, TError>
-	extends Omit<
-			UnusedSkipTokenOptions<
-				NoInfer<TQueryFnData>,
-				TError,
-				TData,
-				EdenQueryKey
-			>,
-			ReservedQueryOptions
-		>,
+	extends UnusedSkipTokenQueryOptionsIn<TQueryFnData, TData, TError>,
 		EdenQueryBaseOptions {}
 
 /**
@@ -197,10 +164,8 @@ interface UnusedSkipTokenEdenQueryOptionsIn<TQueryFnData, TData, TError>
  * Passes TQueryFnData and TData separately for proper type inference with select().
  */
 interface UnusedSkipTokenEdenQueryOptionsOut<TQueryFnData, TData, TError>
-	extends UnusedSkipTokenOptions<TQueryFnData, TError, TData, EdenQueryKey>,
-		EdenQueryOptionsResult {
-	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
-}
+	extends UnusedSkipTokenQueryOptionsOut<TQueryFnData, TData, TError>,
+		EdenQueryOptionsResult {}
 
 type EdenQueryOptionsArgs<TInput, TOpts> =
 	void extends EmptyToVoid<TInput>
@@ -270,11 +235,8 @@ export type EdenMutationFunction<TOutput, TInput> = (
 /**
  * Input options for mutations.
  */
-type EdenMutationOptionsIn<TInput, TError, TOutput, TContext> = Omit<
-	UseMutationOptions<TOutput, TError, TInput, TContext>,
-	ReservedMutationOptions
-> &
-	EdenQueryBaseOptions
+type EdenMutationOptionsIn<TInput, TError, TOutput, TContext> =
+	MutationOptionsIn<TOutput, TError, TInput, TContext>
 
 /**
  * Output options for mutations.
@@ -384,7 +346,6 @@ type ValidRequiredInfiniteRoute<TDef extends RouteDefinition> =
 type ReservedInfiniteQueryOptions =
 	| "queryKey"
 	| "queryFn"
-	| "queryHashFn"
 	| "queryHash"
 	| "initialPageParam"
 

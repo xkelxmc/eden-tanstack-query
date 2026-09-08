@@ -20,7 +20,7 @@ import type { EdenQueryKey, EdenQueryKeyPathParam } from "../keys/types"
 // ============================================================================
 
 /** Reserved options that are set by the library */
-type ReservedOptions = "queryKey" | "queryFn" | "queryHashFn" | "queryHash"
+type ReservedOptions = "queryKey" | "queryFn" | "queryHash"
 
 /** Base options for Eden requests */
 interface EdenQueryBaseOptions {
@@ -57,7 +57,7 @@ export interface EdenQueryOptionsArgs<TInput, TOutput> {
 // Input Option Types
 // ============================================================================
 
-interface UndefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
+export interface UndefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
 	extends Omit<
 			UndefinedInitialDataOptions<
 				NoInfer<TQueryFnData>,
@@ -69,7 +69,7 @@ interface UndefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
 		>,
 		EdenQueryBaseOptions {}
 
-interface DefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
+export interface DefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
 	extends Omit<
 			DefinedInitialDataOptions<
 				NoInfer<TQueryFnData>,
@@ -81,7 +81,7 @@ interface DefinedEdenQueryOptionsIn<TQueryFnData, TData, TError>
 		>,
 		EdenQueryBaseOptions {}
 
-interface UnusedSkipTokenEdenQueryOptionsIn<TQueryFnData, TData, TError>
+export interface UnusedSkipTokenEdenQueryOptionsIn<TQueryFnData, TData, TError>
 	extends Omit<
 			UnusedSkipTokenOptions<
 				NoInfer<TQueryFnData>,
@@ -97,7 +97,7 @@ interface UnusedSkipTokenEdenQueryOptionsIn<TQueryFnData, TData, TError>
 // Output Option Types
 // ============================================================================
 
-interface UndefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
+export interface UndefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
 	extends UndefinedInitialDataOptions<
 			TQueryFnData,
 			TError,
@@ -108,13 +108,13 @@ interface UndefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
 	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
 }
 
-interface DefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
+export interface DefinedEdenQueryOptionsOut<TQueryFnData, TData, TError>
 	extends DefinedInitialDataOptions<TQueryFnData, TError, TData, EdenQueryKey>,
 		EdenQueryOptionsResult {
 	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>
 }
 
-interface UnusedSkipTokenEdenQueryOptionsOut<TQueryFnData, TData, TError>
+export interface UnusedSkipTokenEdenQueryOptionsOut<TQueryFnData, TData, TError>
 	extends UnusedSkipTokenOptions<TQueryFnData, TError, TData, EdenQueryKey>,
 		EdenQueryOptionsResult {
 	queryKey: DataTag<EdenQueryKey, TQueryFnData, TError>

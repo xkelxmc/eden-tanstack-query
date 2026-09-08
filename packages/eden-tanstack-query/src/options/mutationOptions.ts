@@ -18,14 +18,6 @@ import type { EmptyToVoid } from "../utils/types"
 /** Reserved options that are set by the library */
 type ReservedOptions = "mutationKey" | "mutationFn"
 
-/** Base options for Eden requests */
-interface EdenMutationBaseOptions {
-	eden?: {
-		/** Custom context for the mutation */
-		context?: Record<string, unknown>
-	}
-}
-
 /** Result metadata added to mutation options */
 export interface EdenMutationOptionsResult {
 	eden: {
@@ -44,8 +36,7 @@ export interface EdenMutationOptionsResult {
 export type EdenMutationOptionsIn<TOutput, TError, TInput, TContext> = Omit<
 	UseMutationOptions<TOutput, TError, TInput, TContext>,
 	ReservedOptions
-> &
-	EdenMutationBaseOptions
+>
 
 /**
  * Output options returned by edenMutationOptions.

@@ -60,7 +60,7 @@ eden.route.get.queryOptions(input, opts?): QueryOptions
 
 ### Reserved Options
 
-Automatically set and cannot be overridden: `queryKey`, `queryFn`, `queryHash`, `queryHashFn`.
+Automatically set and cannot be overridden: `queryKey`, `queryFn`, `queryHash`. You can configure `queryKeyHashFn`.
 
 ### Eden-specific Options
 
@@ -124,6 +124,8 @@ eden.route.post.mutationOptions(opts?): MutationOptions
 ### Reserved Options
 
 Automatically set: `mutationKey`, `mutationFn`.
+
+Mutation inputs do not accept `eden.context` or `eden.abortOnUnmount`. Earlier types accepted these settings, but neither had any effect. Remove them from existing calls. TanStack Query lifecycle callbacks, the context returned by `onMutate`, and `meta` remain supported. The returned `eden` property contains route metadata.
 
 ### Example
 
