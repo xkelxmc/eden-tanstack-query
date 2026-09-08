@@ -49,9 +49,16 @@ export type InferRouteParams<TRoute extends RouteSchema> =
  * type Query = InferRouteQuery<RouteSchema> // { search?: string; limit?: number }
  */
 export type InferRouteQuery<TRoute extends RouteSchema> =
-	IsNever<keyof TRoute["query"]> extends true
+	IsNever<QueryKeys<TRoute["query"]>> extends true
 		? Record<never, never>
 		: TRoute["query"]
+
+type QueryKeys<TQuery> =
+	IsNever<TQuery> extends true
+		? keyof TQuery
+		: TQuery extends unknown
+			? keyof TQuery
+			: never
 
 /**
  * Extract headers from a RouteSchema.
@@ -79,7 +86,7 @@ export type InferRouteOptions<TRoute extends RouteSchema> = Simplify<
 	(IsNever<keyof TRoute["params"]> extends true
 		? { params?: Record<never, never> }
 		: { params: TRoute["params"] }) &
-		(IsNever<keyof TRoute["query"]> extends true
+		(IsNever<QueryKeys<TRoute["query"]>> extends true
 			? { query?: Record<never, never> }
 			: { query: TRoute["query"] }) &
 		(undefined extends TRoute["headers"]
