@@ -565,17 +565,17 @@ describe("EdenMutationFunction", () => {
 		expect(inputRequired).toBe(true)
 	})
 
-	test("allows optional input when empty", () => {
+	test("requires an empty object when undefined is not accepted", () => {
 		type MutFn = import("../../src/types/decorators").EdenMutationFunction<
 			{ result: string },
 			// biome-ignore lint/complexity/noBannedTypes: Testing empty input
 			{}
 		>
 
-		// Should allow void (no args) due to EmptyToVoid
+		// An empty object body is still required.
 		type AllowsVoid = void extends Parameters<MutFn>[0] ? true : false
-		const allowsVoid: AllowsVoid = true
-		expect(allowsVoid).toBe(true)
+		const allowsVoid: AllowsVoid = false
+		expect(allowsVoid).toBe(false)
 	})
 
 	test("returns Promise of output", () => {

@@ -29,6 +29,7 @@ import type {
 	EmptyToVoid,
 	IsAny,
 	IsNever,
+	MutationInput,
 	Simplify,
 } from "../utils/types"
 import type {
@@ -242,11 +243,10 @@ export interface EdenQueryOptions<TDef extends RouteDefinition> {
 // ============================================================================
 
 /**
- * Eden mutation function that supports optional input when empty.
- * Uses EmptyToVoid to allow calling without arguments when input is void/empty.
+ * Eden mutation function that allows omission when the body accepts undefined.
  */
 export type EdenMutationFunction<TOutput, TInput> = (
-	input: EmptyToVoid<TInput>,
+	input: MutationInput<TInput>,
 ) => Promise<TOutput>
 
 /**
@@ -258,10 +258,10 @@ type EdenMutationOptionsIn<TInput, TError, TOutput, TContext> =
 /**
  * Output options for mutations.
  * mutationFn is guaranteed to be defined.
- * Uses EmptyToVoid<TInput> so mutate() can be called without args when input is empty.
+ * Allows mutate() without arguments only when the input accepts undefined.
  */
 interface EdenMutationOptionsOut<TInput, TError, TOutput, TContext>
-	extends UseMutationOptions<TOutput, TError, EmptyToVoid<TInput>, TContext>,
+	extends UseMutationOptions<TOutput, TError, MutationInput<TInput>, TContext>,
 		EdenQueryOptionsResult {
 	mutationKey: EdenMutationKey
 	mutationFn: EdenMutationFunction<TOutput, TInput>

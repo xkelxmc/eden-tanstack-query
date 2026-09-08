@@ -70,13 +70,20 @@ export type InferRouteHeaders<TRoute extends RouteSchema> =
 
 /**
  * Extract body from a RouteSchema.
+ * Elysia also encodes optional object bodies as Partial<Body> | null.
  *
  * @example
  * // Route with body: t.Object({ name: t.String() })
  * type Body = InferRouteBody<RouteSchema> // { name: string }
  */
 export type InferRouteBody<TRoute extends RouteSchema> =
-	IsUnknown<TRoute["body"]> extends true ? undefined : TRoute["body"]
+	IsUnknown<TRoute["body"]> extends true
+		? undefined
+		: null extends TRoute["body"]
+			? {} extends NonNullable<TRoute["body"]>
+				? TRoute["body"] | undefined
+				: TRoute["body"]
+			: TRoute["body"]
 
 /**
  * Combined route options (params + query + headers).

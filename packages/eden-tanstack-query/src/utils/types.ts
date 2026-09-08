@@ -30,6 +30,9 @@ export type DeepPartial<T> = T extends object
 	? { [P in keyof T]?: DeepPartial<T[P]> }
 	: T
 
+/** Allow omitted mutation variables only when the body accepts undefined. */
+export type MutationInput<T> = undefined extends T ? T | void : T
+
 /**
  * Converts an empty object or undefined to void, making function arguments optional.
  *

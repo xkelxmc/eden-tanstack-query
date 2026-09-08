@@ -9,7 +9,7 @@ import type {
 
 import { getMutationKey } from "../keys/queryKey"
 import type { EdenMutationKey } from "../keys/types"
-import type { EmptyToVoid } from "../utils/types"
+import type { MutationInput } from "../utils/types"
 
 // ============================================================================
 // Input Types
@@ -34,7 +34,7 @@ export interface EdenMutationOptionsResult {
  * Omits reserved options that are set by the library.
  */
 export type EdenMutationOptionsIn<TOutput, TError, TInput, TContext> = Omit<
-	UseMutationOptions<TOutput, TError, TInput, TContext>,
+	UseMutationOptions<TOutput, TError, MutationInput<TInput>, TContext>,
 	ReservedOptions
 >
 
@@ -42,13 +42,13 @@ export type EdenMutationOptionsIn<TOutput, TError, TInput, TContext> = Omit<
  * Output options returned by edenMutationOptions.
  * Includes the mutation key and eden metadata.
  * mutationFn is guaranteed to be defined.
- * Uses EmptyToVoid<TInput> so mutate() can be called without args when input is empty.
+ * Allows mutate() without arguments only when the input accepts undefined.
  */
 export interface EdenMutationOptionsOut<TOutput, TError, TInput, TContext>
-	extends UseMutationOptions<TOutput, TError, EmptyToVoid<TInput>, TContext>,
+	extends UseMutationOptions<TOutput, TError, MutationInput<TInput>, TContext>,
 		EdenMutationOptionsResult {
 	mutationKey: EdenMutationKey
-	mutationFn: MutationFunction<TOutput, EmptyToVoid<TInput>>
+	mutationFn: MutationFunction<TOutput, MutationInput<TInput>>
 }
 
 /**
@@ -115,21 +115,15 @@ export function edenMutationOptions<
 
 	const mutationKey = getMutationKey({ path })
 
-	const mutationFn: MutationFunction<TOutput, EmptyToVoid<TInput>> = async (
+	const mutationFn: MutationFunction<TOutput, MutationInput<TInput>> = async (
 		input,
 		_context,
 	) => {
 		return await mutate(input as TInput)
 	}
 
-	// Cast opts to match EmptyToVoid<TInput> for variables type
-	const outputOpts = opts as unknown as Omit<
-		UseMutationOptions<TOutput, TError, EmptyToVoid<TInput>, TContext>,
-		ReservedOptions
-	>
-
 	return {
-		...outputOpts,
+		...opts,
 		mutationKey,
 		mutationFn,
 		eden: {
