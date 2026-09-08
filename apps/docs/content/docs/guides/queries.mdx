@@ -66,6 +66,28 @@ request wrapper. These rules also apply to `infiniteQueryOptions()`.
 If an existing wrapper variable declares `headers?`, pass
 `{ ...input, headers: input.headers }` to make the property explicit.
 
+If your query schema declares an object-valued field named `headers`, wrap the
+query. Direct input would send that field as HTTP headers instead of a query
+parameter. Migrate existing calls by adding `query` and `headers: undefined`:
+
+```tsx
+eden.items.get.queryOptions({
+  query: { headers: { mode: 'compact' } },
+  headers: undefined,
+})
+```
+
+This restriction also covers optional fields and fields that allow both object
+and scalar values. Array and other object types require a wrapper too, even when
+the runtime would accept them directly.
+
+For a query union, members without an object-valued `headers` field still accept
+direct input. If any member has the collision, use a wrapper for HTTP headers on
+all members. This prevents a variable with ambiguous `headers` from matching a
+member that does not declare that field. Schemas without a collision continue to
+accept flattened HTTP headers, such as `{ role: 'admin', headers: { authorization:
+'Bearer token' } }`. The same input rules apply to infinite queries.
+
 Pass additional TanStack Query options as the second argument:
 
 ```tsx
