@@ -845,7 +845,7 @@ describe("EdenOptionsProxy queryOptions return types", () => {
 
 		type AcceptsRequestShape = {
 			query?: { search?: string }
-			headers?: Record<string, string | undefined>
+			headers: Record<string, string | undefined> | undefined
 		} extends QueryInput
 			? true
 			: false

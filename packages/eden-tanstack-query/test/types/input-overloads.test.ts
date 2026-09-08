@@ -26,6 +26,12 @@ const app = new Elysia()
 		}),
 	})
 	.get("/plain", () => ({ hello: "world" }))
+	.get("/search", ({ query }) => query.query, {
+		query: t.Object({
+			query: t.String(),
+			cursor: t.Optional(t.Number()),
+		}),
+	})
 	.get(
 		"/paged",
 		({ query }) => ({
@@ -126,6 +132,40 @@ export function optionalInputProbe(eden: EdenOptionsProxy<App>) {
 	eden["any-query"].get.infiniteQueryKey
 	// @ts-expect-error an untyped query schema does not expose infinite filters
 	eden["any-query"].get.infiniteQueryFilter
+}
+
+export function wrappedInputProbe(eden: EdenOptionsProxy<App>) {
+	const requiredQuery = { query: { role: "admin", limit: 10 } }
+	// @ts-expect-error wrapped input requires an explicit headers key
+	eden.required.get.queryOptions(requiredQuery)
+	eden.required.get.queryOptions({ ...requiredQuery, headers: undefined })
+
+	// @ts-expect-error optional query fields do not make wrapped headers optional
+	eden.optionalq.get.queryOptions({ query: { role: "admin" } })
+	eden.optionalq.get.queryOptions({
+		query: { role: "admin" },
+		headers: undefined,
+	})
+
+	eden.search.get.queryOptions({ query: "term" })
+	eden.search.get.queryOptions({
+		query: { query: "term" },
+		headers: undefined,
+	})
+
+	const options = { getNextPageParam: () => undefined }
+	const wrappedSearch = { query: { query: "term" } }
+	// @ts-expect-error infinite wrapped input requires an explicit headers key too
+	eden.search.get.infiniteQueryOptions(wrappedSearch, options)
+	eden.search.get.infiniteQueryOptions({ query: "term" }, options)
+	eden.search.get.infiniteQueryOptions(
+		{ ...wrappedSearch, headers: undefined },
+		options,
+	)
+	eden.search.get.infiniteQueryOptions(
+		{ ...wrappedSearch, headers: { authorization: "Bearer token" } },
+		options,
+	)
 }
 
 export function cursorGateProbe(eden: EdenOptionsProxy<App>) {
