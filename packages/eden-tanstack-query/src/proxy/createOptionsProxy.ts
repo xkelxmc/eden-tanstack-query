@@ -130,6 +130,25 @@ function hasExactInitialPageParam(query: Query, expected: unknown) {
 	return queryKeyHashFn(expectedQueryKey) === query.queryHash
 }
 
+function isWrappedQueryInput(input: Record<string, unknown>) {
+	return (
+		Object.hasOwn(input, "query") &&
+		Object.hasOwn(input, "headers") &&
+		Object.keys(input).every((key) => key === "query" || key === "headers")
+	)
+}
+
+function normalizeQueryKeyInput(input: unknown) {
+	if (
+		isRecord(input) &&
+		isWrappedQueryInput(input) &&
+		input.headers === undefined
+	) {
+		return { ...input, headers: {} }
+	}
+	return input
+}
+
 /**
  * Parse query input into Eden's request shape.
  * Supports:
@@ -140,17 +159,13 @@ function hasExactInitialPageParam(query: Query, expected: unknown) {
 function parseQueryRequestInput(input: unknown): ParsedQueryRequestInput {
 	if (!isRecord(input)) return { query: input }
 
-	const hasQuery = Object.hasOwn(input, "query")
 	const hasHeaders = Object.hasOwn(input, "headers")
 	const headersValue = hasHeaders ? input.headers : undefined
 	const hasRecordHeaders = isRecord(headersValue)
-	const hasOnlyWrappedKeys = Object.keys(input).every(
-		(key) => key === "query" || key === "headers",
-	)
 
 	// A lone { query: value } is a valid query object for routes with a
 	// query parameter named "query"; require the headers key to opt in.
-	if (hasQuery && hasHeaders && hasOnlyWrappedKeys) {
+	if (isWrappedQueryInput(input)) {
 		return {
 			query: input.query,
 			headers: hasRecordHeaders ? headersValue : undefined,
@@ -274,7 +289,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 		queryOptions: (input?: unknown, queryOpts?: unknown) => {
 			return edenQueryOptions({
 				path: paths,
-				input,
+				input: normalizeQueryKeyInput(input),
 				pathParams,
 				fetch: async (_inputForKey, signal) => {
 					const actualInput = input
@@ -326,7 +341,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			}
 			return getQueryKey({
 				path: paths,
-				input,
+				input: normalizeQueryKeyInput(input),
 				pathParams,
 				type: "query",
 			})
@@ -340,7 +355,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 				...filters,
 				queryKey: getQueryKey({
 					path: paths,
-					input,
+					input: normalizeQueryKeyInput(input),
 					pathParams,
 					type: filters?.exact === true ? "query" : "any",
 				}),
@@ -359,7 +374,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 
 			return edenInfiniteQueryOptions({
 				path: paths,
-				input,
+				input: normalizeQueryKeyInput(input),
 				pathParams,
 				initialPageParam: initialCursor,
 				fetch: async (inputWithCursor, signal) => {
@@ -428,7 +443,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 			}
 			return getQueryKey({
 				path: paths,
-				input,
+				input: normalizeQueryKeyInput(input),
 				pathParams,
 				type: "infinite",
 				initialPageParam: keyOpts?.initialCursor ?? null,
@@ -456,7 +471,7 @@ function createQueryProcedure(opts: ProcedureOptions) {
 					: {}),
 				queryKey: getQueryKey({
 					path: paths,
-					input,
+					input: normalizeQueryKeyInput(input),
 					pathParams,
 					type: "infinite",
 					...(filters?.exact === true

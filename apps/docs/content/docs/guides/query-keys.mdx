@@ -54,6 +54,24 @@ Per-request headers are included in the `input` part of the query key. Different
 Header values are visible in TanStack Query Devtools and can be serialized by dehydration or persistence. Treat raw secrets in per-request headers as an explicit cache-identity trade-off, and only use them when that exposure is understood and controlled.
 </Callout>
 
+### Wrapped input migration
+
+An explicit `{ query: value, headers: undefined }` wrapper now uses
+`{ query: value, headers: {} }` in its cache key. The request still receives no
+per-request headers. This separates its cache entry from direct
+`{ query: value }` input, which sends a query parameter named `query`.
+All query and infinite-query option, key, and filter helpers use this normalization.
+
+When upgrading, discard all old persisted entries for affected route/input
+combinations, including entries whose keys look like direct input, or reset the
+persisted cache. Old serialized keys cannot distinguish wrapper requests from
+direct requests. Regenerate manually stored keys with the helpers.
+Existing direct-input keys and wrappers with header values are unchanged.
+Filters retain TanStack Query's partial
+matching, so a direct-input filter can still match wrappers with the same
+`query` value, and an empty-headers wrapper filter can match wrappers with
+additional headers.
+
 ### skipToken
 
 `skipToken` is supported by `queryOptions()` and `infiniteQueryOptions()` to create disabled queries. It is not valid input for key-only helpers: `queryKey(skipToken)` and `infiniteQueryKey(skipToken)` throw an error.
