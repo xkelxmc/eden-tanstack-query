@@ -43,15 +43,23 @@ function OrganizationList() {
 
 function OrganizationDetail({ id }: { id: string }) {
 	const eden = useEden()
-	const { data, isLoading } = useQuery(
+	const { data, isLoading, error } = useQuery(
 		eden.organizations({ id }).get.queryOptions(),
 	)
 
 	if (isLoading) return <LoadingState />
-	if (!data) return <EmptyState message="Organization not found" />
+	if (error && data === undefined) return <ErrorState error={error} />
+	if (!data)
+		return (
+			<>
+				{error && <ErrorState error={error} />}
+				<EmptyState message="Organization not found" />
+			</>
+		)
 
 	return (
 		<div className="space-y-2">
+			{error && <ErrorState error={error} />}
 			<div className="flex items-center gap-2">
 				<h3 className="font-semibold">{data.name}</h3>
 				<Badge variant="secondary">{data.slug}</Badge>
@@ -199,7 +207,7 @@ function CreateMember({ orgId }: { orgId: string }) {
 function SettingsForm({ orgId }: { orgId: string }) {
 	const eden = useEden()
 	const qc = useQueryClient()
-	const { data, isLoading } = useQuery(
+	const { data, isLoading, error } = useQuery(
 		eden.organizations({ id: orgId }).settings.get.queryOptions(),
 	)
 	const [theme, setTheme] = useState("")
@@ -214,6 +222,7 @@ function SettingsForm({ orgId }: { orgId: string }) {
 	})
 
 	if (isLoading) return <LoadingState />
+	if (error && data === undefined) return <ErrorState error={error} />
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
@@ -225,6 +234,7 @@ function SettingsForm({ orgId }: { orgId: string }) {
 
 	return (
 		<div className="space-y-4">
+			{error && <ErrorState error={error} />}
 			<div className="flex gap-4 text-sm">
 				<span>
 					Theme: <Badge variant="outline">{data?.theme ?? "default"}</Badge>
@@ -269,7 +279,7 @@ function SettingsForm({ orgId }: { orgId: string }) {
 function SubscriptionForm({ orgId }: { orgId: string }) {
 	const eden = useEden()
 	const qc = useQueryClient()
-	const { data, isLoading } = useQuery(
+	const { data, isLoading, error } = useQuery(
 		eden.organizations({ id: orgId }).subscription.get.queryOptions(),
 	)
 	const [plan, setPlan] = useState("")
@@ -283,6 +293,7 @@ function SubscriptionForm({ orgId }: { orgId: string }) {
 	})
 
 	if (isLoading) return <LoadingState />
+	if (error && data === undefined) return <ErrorState error={error} />
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
@@ -291,6 +302,7 @@ function SubscriptionForm({ orgId }: { orgId: string }) {
 
 	return (
 		<div className="space-y-4">
+			{error && <ErrorState error={error} />}
 			<div className="flex gap-4 text-sm">
 				<span>
 					Plan: <Badge>{data?.plan ?? "none"}</Badge>

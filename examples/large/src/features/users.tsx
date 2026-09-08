@@ -43,13 +43,23 @@ function UserList() {
 
 function UserDetail({ id }: { id: string }) {
 	const eden = useEden()
-	const { data, isLoading } = useQuery(eden.users({ id }).get.queryOptions())
+	const { data, isLoading, error } = useQuery(
+		eden.users({ id }).get.queryOptions(),
+	)
 
 	if (isLoading) return <LoadingState />
-	if (!data) return <EmptyState message="User not found" />
+	if (error && data === undefined) return <ErrorState error={error} />
+	if (!data)
+		return (
+			<>
+				{error && <ErrorState error={error} />}
+				<EmptyState message="User not found" />
+			</>
+		)
 
 	return (
 		<div className="space-y-2">
+			{error && <ErrorState error={error} />}
 			<div className="flex items-center gap-2">
 				<h3 className="font-semibold">{data.name || "Unnamed"}</h3>
 				<Badge variant="secondary">{data.email}</Badge>
