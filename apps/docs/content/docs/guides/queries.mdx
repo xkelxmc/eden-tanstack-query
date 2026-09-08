@@ -49,6 +49,23 @@ const { data } = useQuery(
 The input argument is optional only when every query field is optional. A route
 with required query fields must receive the complete input or `skipToken`.
 
+For per-request headers, use a wrapped input:
+
+```tsx
+eden.users.get.queryOptions({
+  query: { role: 'admin' },
+  headers: { authorization: 'Bearer token' },
+})
+```
+
+Wrapped input requires an explicit `headers` property. Without headers, pass
+`{ role: 'admin' }` directly or `{ query: { role: 'admin' }, headers: undefined }`.
+A lone `{ query: value }` is treated as a query parameter named `query`, not a
+request wrapper. These rules also apply to `infiniteQueryOptions()`.
+
+If an existing wrapper variable declares `headers?`, pass
+`{ ...input, headers: input.headers }` to make the property explicit.
+
 Pass additional TanStack Query options as the second argument:
 
 ```tsx

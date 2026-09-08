@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-08
+
+### Breaking Changes
+
+- Wrapped inputs to `queryOptions()` and `infiniteQueryOptions()` now require an explicit `headers` property. Pass query parameters directly, or use `{ query, headers: undefined }` when no headers are needed. Variables typed with optional `headers?` must also supply the property explicitly, for example `{ ...input, headers: input.headers }`. This aligns the types with existing request parsing; a query parameter named `query` remains supported ([#20](https://github.com/xkelxmc/eden-tanstack-query/pull/20)).
+- Mutation options no longer accept the unused `eden` settings: `eden.abortOnUnmount` on proxy mutations and `eden.context` on `edenMutationOptions()`. Remove these settings and any empty `eden` object. Neither setting affected mutation behavior; TanStack Query `onMutate` context and `meta` remain supported ([#25](https://github.com/xkelxmc/eden-tanstack-query/pull/25)).
+
+### Fixed
+
+- `GetRoute` resolves root and nested schema paths, including dynamic segments such as `/users/:id`, with or without a leading slash ([#21](https://github.com/xkelxmc/eden-tanstack-query/pull/21)).
+
+### Deprecated
+
+- `queryClient` on `EdenProvider` and `createEdenOptionsProxy()` is unused and remains accepted for compatibility. It is now optional on `EdenProvider`. Continue supplying the client to TanStack Query's `QueryClientProvider` ([#24](https://github.com/xkelxmc/eden-tanstack-query/pull/24)).
+
+### Documentation and Examples
+
+- Correct provider setup in the API reference, SSR guide, and testing guide.
+- Keep documentation copy actions from copying HTTP error responses as Markdown.
+- Fix example row actions, preserve form drafts after failed requests, distinguish query errors from missing records, and refresh both comment views after creation.
+
+Request parsing, query-key format, and peer dependency requirements are unchanged from 0.2.0. Existing persisted query caches do not need to be discarded for this update.
+
 ## [0.2.0] - 2026-08-05
 
 ### Breaking Changes
