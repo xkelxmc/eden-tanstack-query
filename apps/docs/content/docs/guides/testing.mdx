@@ -76,7 +76,7 @@ export function createTestWrapper(mockClient: any) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <EdenProvider client={mockClient} queryClient={queryClient}>
+        <EdenProvider client={mockClient}>
           {children}
         </EdenProvider>
       </QueryClientProvider>

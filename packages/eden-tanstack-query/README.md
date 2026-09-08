@@ -96,7 +96,7 @@ const queryClient = new QueryClient()
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <EdenProvider client={edenClient} queryClient={queryClient}>
+      <EdenProvider client={edenClient}>
         <YourApp />
       </EdenProvider>
     </QueryClientProvider>

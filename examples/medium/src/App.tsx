@@ -268,7 +268,7 @@ function CreateComment({ postId }: { postId: string }) {
 export default function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<EdenProvider client={edenClient} queryClient={queryClient}>
+			<EdenProvider client={edenClient}>
 				<div className="min-h-screen bg-background">
 					<div className="mx-auto max-w-4xl p-6">
 						<header className="mb-8">

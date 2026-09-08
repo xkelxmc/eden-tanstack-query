@@ -37,7 +37,7 @@ The `useEden` hook is called outside the provider tree.
 function App() {
   const eden = useEden() // Error!
   return (
-    <EdenProvider client={edenClient} queryClient={queryClient}>
+    <EdenProvider client={edenClient}>
       <YourApp />
     </EdenProvider>
   )
@@ -46,7 +46,7 @@ function App() {
 // Correct — useEden inside provider
 function App() {
   return (
-    <EdenProvider client={edenClient} queryClient={queryClient}>
+    <EdenProvider client={edenClient}>
       <YourApp /> {/* useEden works here */}
     </EdenProvider>
   )
@@ -61,7 +61,7 @@ Ensure `QueryClientProvider` wraps `EdenProvider`:
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <EdenProvider client={edenClient} queryClient={queryClient}>
+      <EdenProvider client={edenClient}>
         <YourApp />
       </EdenProvider>
     </QueryClientProvider>
