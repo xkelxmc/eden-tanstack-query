@@ -162,9 +162,27 @@ Treaty treats every status from `200` through `299` as successful and returns an
 empty string for bodyless `204` and `205` responses, regardless of their declared
 response schema.
 
+Response types reflect Treaty's decoded values. Elysia `form()` responses expose
+their payload object, and `ReadableStream<T>` becomes
+`AsyncGenerator<T, void, unknown>`. Sync and async generators that yield no values
+and return an object resolve to that object type. Generators that can both yield
+and return a value include the async generator and return value in their union.
+
+When updating existing code, read form payload fields directly and consume streams
+with `for await...of`. A generator with a non-void return type may need narrowing
+before iteration.
+
+### InferRouteOutputAll
+
+Extract the response record for every declared status, with the same decoded value
+types. This utility preserves status keys and declared `204`/`205` values;
+`InferRouteOutput` applies the bodyless-status override.
+
 ### InferRouteError
 
 Extract the union of non-success response and transport error types from a route.
+Declared error `value` types use the same form, stream, and generator conversions
+as successful responses.
 The union also includes Treaty's `EdenFetchError<503, unknown>` transport failure
 because a custom fetcher can reject with any JavaScript value.
 Routes without a declared non-success response fall back to

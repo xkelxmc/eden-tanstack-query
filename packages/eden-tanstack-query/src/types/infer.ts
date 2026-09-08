@@ -4,7 +4,7 @@
  * These types help extract input/output/error types from Elysia routes
  * via Eden Treaty's type inference.
  */
-import type { AnyElysia, RouteSchema } from "elysia"
+import type { AnyElysia, ELYSIA_FORM_DATA, RouteSchema } from "elysia"
 
 import type { IsAny, IsNever, IsUnknown, Simplify } from "../utils/types"
 
@@ -125,14 +125,38 @@ export type InferRouteInput<
 // Route Output Extraction
 // ============================================================================
 
-/**
- * Helper type to replace Generator with AsyncGenerator in response types.
- * Elysia may return Generator for streaming responses.
- */
-type ReplaceGeneratorWithAsyncGenerator<T extends Record<string, unknown>> = {
-	[K in keyof T]: T[K] extends Generator<infer Y, infer R, infer N>
-		? AsyncGenerator<Y, R, N>
-		: T[K]
+// Treaty can resolve a generator's return value before a stream starts.
+type NormalizeResponseTransport<T> =
+	IsNever<T> extends true
+		? T
+		: T extends Generator<infer Y, infer R, infer N>
+			? void extends R
+				? AsyncGenerator<Y, R, N>
+				: IsNever<Y> extends true
+					? R
+					: AsyncGenerator<Y, R, N> | R
+			: T extends AsyncGenerator<infer Y, infer R, infer N>
+				? IsNever<Y> extends true
+					? void extends R
+						? AsyncGenerator<Y, R, N> | R
+						: R
+					: void extends R
+						? AsyncGenerator<Y, R, N>
+						: AsyncGenerator<Y, R, N> | R
+				: T extends ReadableStream<infer Y>
+					? AsyncGenerator<Y, void, unknown>
+					: T
+
+type UnwrapFormResponse<T> = T extends { [ELYSIA_FORM_DATA]: infer Data }
+	? Data
+	: T
+
+type NormalizeResponseValue<T> = UnwrapFormResponse<
+	NormalizeResponseTransport<T>
+>
+
+type NormalizeResponseValues<T extends Record<number, unknown>> = {
+	[K in keyof T]: NormalizeResponseValue<T[K]>
 }
 
 type NumericStatusCode<TStatus> = TStatus extends number
@@ -165,9 +189,7 @@ type ExtractSuccessResponses<TResponse extends Record<number, unknown>> = {
 export type InferRouteOutput<TRoute extends RouteSchema> =
 	TRoute extends RouteSchema
 		? TRoute["response"] extends Record<number, unknown>
-			? ExtractSuccessResponses<
-					ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>
-				>
+			? ExtractSuccessResponses<NormalizeResponseValues<TRoute["response"]>>
 			: never
 		: never
 
@@ -176,7 +198,7 @@ export type InferRouteOutput<TRoute extends RouteSchema> =
  */
 export type InferRouteOutputAll<TRoute extends RouteSchema> =
 	TRoute["response"] extends Record<number, unknown>
-		? ReplaceGeneratorWithAsyncGenerator<TRoute["response"]>
+		? NormalizeResponseValues<TRoute["response"]>
 		: never
 
 // ============================================================================
@@ -216,7 +238,10 @@ type ExtractErrorsFromResponse<TResponse extends Record<number, unknown>> = {
 	[K in keyof NormalizeResponseStatusKeys<TResponse>]: K extends number
 		? K extends SuccessStatusCode
 			? never
-			: EdenFetchError<K, NormalizeResponseStatusKeys<TResponse>[K]>
+			: EdenFetchError<
+					K,
+					NormalizeResponseValue<NormalizeResponseStatusKeys<TResponse>[K]>
+				>
 		: never
 }[keyof NormalizeResponseStatusKeys<TResponse>]
 
