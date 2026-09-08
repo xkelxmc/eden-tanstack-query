@@ -192,9 +192,14 @@ function CreateComment({ postId }: { postId: string }) {
 		...eden.comments.post.mutationOptions(),
 		onSuccess: () => {
 			setText("")
-			return qc.invalidateQueries({
-				queryKey: eden.posts({ id: postId }).comments.get.queryKey(),
-			})
+			return Promise.all([
+				qc.invalidateQueries({
+					queryKey: eden.posts({ id: postId }).comments.get.queryKey(),
+				}),
+				qc.invalidateQueries({
+					queryKey: eden.posts({ id: postId }).get.queryKey(),
+				}),
+			])
 		},
 	})
 
