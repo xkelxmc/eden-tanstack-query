@@ -1044,6 +1044,17 @@ type DecorateProcedurePathSegments<
 	>]: DecoratePathNode<TRoutes[K], K>
 }
 
+type SuppliedPathParams<TRoutes> = {
+	[K in keyof RouteParamsInput<TRoutes> &
+		string as `:${K}`]: `:${K}` extends keyof TRoutes
+		? `:${K}?` extends keyof TRoutes
+			? MergeRouteNodes<TRoutes[`:${K}`], TRoutes[`:${K}?`], never>
+			: TRoutes[`:${K}`]
+		: `:${K}?` extends keyof TRoutes
+			? TRoutes[`:${K}?`]
+			: never
+}
+
 /**
  * Handle sibling path parameters with separate call signatures.
  *
@@ -1052,7 +1063,7 @@ type DecorateProcedurePathSegments<
  */
 type DecoratePathParams<
 	TRoutes extends Record<string, unknown>,
-	TRouteParams = ExtractRouteParams<TRoutes>,
+	TRouteParams = SuppliedPathParams<TRoutes>,
 	// biome-ignore lint/complexity/noBannedTypes: {} check is standard pattern for empty object
 > = {} extends TRouteParams
 	? // biome-ignore lint/complexity/noBannedTypes: Returns empty intersection when no path params

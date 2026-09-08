@@ -57,6 +57,17 @@ const optionalSiblingsApp = new Elysia()
 	.get("/calls/:a?/:first/detail", ({ params }) => ({ first: params.first }))
 	.get("/calls/:b?/:second/other", ({ params }) => ({ second: params.second }))
 
+const matchingParamsApp = new Elysia()
+	.get("/matching/:id?/optional", () => ({ optional: true }))
+	.get("/matching/:id/required", () => ({ required: true }))
+
+export function matchingParamCalls(
+	eden: EdenOptionsProxy<typeof matchingParamsApp>,
+) {
+	eden.matching({ id: "value" }).optional.get.queryOptions()
+	eden.matching({ id: "value" }).required.get.queryOptions()
+}
+
 type Proxy = EdenOptionsProxy<typeof app>
 
 export function optionalSiblingCalls(
@@ -121,6 +132,32 @@ export function optionalPathCalls(eden: Proxy) {
 }
 
 describe("optional path parameters", () => {
+	test("combines required and optional branches with the same parameter name", async () => {
+		const eden = createEdenOptionsProxy<typeof matchingParamsApp>({
+			client: treaty(matchingParamsApp),
+		})
+		const supplied = eden.matching({ id: "value" })
+		assertType<
+			Equals<inferOutput<typeof supplied.optional.get>, { optional: boolean }>
+		>()
+		assertType<
+			Equals<inferOutput<typeof supplied.required.get>, { required: boolean }>
+		>()
+		const queryClient = createTestQueryClient()
+		try {
+			expect(
+				await queryClient.fetchQuery(supplied.optional.get.queryOptions()),
+			).toEqual({ optional: true })
+			expect(
+				await queryClient.fetchQuery(supplied.required.get.queryOptions()),
+			).toEqual({ required: true })
+			expect(
+				await queryClient.fetchQuery(eden.matching.optional.get.queryOptions()),
+			).toEqual({ optional: true })
+		} finally {
+			queryClient.clear()
+		}
+	})
 	test("merges omitted descendants under literal response paths", async () => {
 		const response = createEdenOptionsProxy<typeof responsePathApp>({
 			client: treaty(responsePathApp),
