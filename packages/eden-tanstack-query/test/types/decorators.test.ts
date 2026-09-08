@@ -24,7 +24,7 @@ import type {
 	inferOutput,
 } from "../../src/types/decorators"
 import type { EdenFetchError, ExtractRoutes } from "../../src/types/infer"
-import type { Equals } from "../../test-utils/type-assert"
+import { assertType, type Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
@@ -767,12 +767,7 @@ describe("EdenQueryOptions callable interface", () => {
 	test("~types correctly exposes output type", () => {
 		// The ~types helper should expose the correct output
 		type OutputType = TestQueryProcedure["~types"]["output"]
-		type IsCorrect = OutputType extends { id: string; name: string }
-			? true
-			: false
-
-		const isCorrect: IsCorrect = true
-		expect(isCorrect).toBe(true)
+		assertType<Equals<OutputType, { id: string; name: string }>>()
 	})
 })
 

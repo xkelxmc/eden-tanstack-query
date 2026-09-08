@@ -513,24 +513,4 @@ export function useStandaloneInfiniteSelectProbe(qc: QueryClient) {
 	}
 }
 
-describe("select soundness (compile-time probes)", () => {
-	test("query select probe compiles", () => {
-		expect(typeof querySelectProbe).toBe("function")
-	})
-
-	test("infinite select probe compiles", () => {
-		expect(typeof useInfiniteSelectProbe).toBe("function")
-	})
-
-	test("standalone infinite select probe compiles", () => {
-		expect(typeof useStandaloneInfiniteSelectProbe).toBe("function")
-	})
-
-	test("standalone query select probe compiles", () => {
-		expect(typeof useStandaloneQuerySelectProbe).toBe("function")
-	})
-
-	test("union placeholder probe compiles", () => {
-		expect(typeof unionPlaceholderProbe).toBe("function")
-	})
-})
+test("select soundness (compile-time probes)", () => {})

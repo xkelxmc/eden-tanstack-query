@@ -16,6 +16,7 @@ import { Elysia, t } from "elysia"
 import type { ReactNode } from "react"
 
 import { createEdenTanStackQuery } from "../../src"
+import { assertType, type Equals } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
@@ -133,7 +134,20 @@ describe("useMutation integration", () => {
 			const { result } = renderHook(
 				() => {
 					const eden = useEden()
-					return useMutation(eden.users.post.mutationOptions())
+					const mutation = useMutation(eden.users.post.mutationOptions())
+					assertType<
+						Equals<
+							typeof mutation.data,
+							{ id: string; name: string; email: string } | undefined
+						>
+					>()
+					assertType<
+						Equals<
+							typeof mutation.variables,
+							{ name: string; email: string } | undefined
+						>
+					>()
+					return mutation
 				},
 				{ wrapper: Wrapper },
 			)
@@ -147,6 +161,11 @@ describe("useMutation integration", () => {
 			// Wait for success
 			await waitFor(() => {
 				expect(result.current.isSuccess).toBe(true)
+			})
+
+			expect(result.current.variables).toEqual({
+				name: "John",
+				email: "john@example.com",
 			})
 
 			// Check data
@@ -206,100 +225,6 @@ describe("useMutation integration", () => {
 				deleted: true,
 				id: "99",
 			})
-		})
-	})
-
-	describe("type inference", () => {
-		test("data type is correctly inferred for post mutation", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const mutation = useMutation(eden.users.post.mutationOptions())
-
-					// CRITICAL: Compile-time type check
-					// If this fails, data would be wrong type
-					if (mutation.data) {
-						const _typeCheck: { id: string; name: string; email: string } =
-							mutation.data
-						void _typeCheck
-					}
-
-					return mutation
-				},
-				{ wrapper: Wrapper },
-			)
-
-			result.current.mutate({ name: "Test", email: "test@example.com" })
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			expect(result.current.data?.id).toBe("new-123")
-		})
-
-		test("variables type is correctly inferred", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const mutation = useMutation(eden.users.post.mutationOptions())
-
-					// CRITICAL: Compile-time type check for variables
-					if (mutation.variables) {
-						const _typeCheck: { name: string; email: string } =
-							mutation.variables
-						void _typeCheck
-					}
-
-					return mutation
-				},
-				{ wrapper: Wrapper },
-			)
-
-			result.current.mutate({ name: "Test", email: "test@example.com" })
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			expect(result.current.variables?.name).toBe("Test")
-		})
-
-		test("data type is not a function (catches () => never bug)", async () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const mutation = useMutation(eden.users.post.mutationOptions())
-
-					// Type-level assertion: data should NOT be a function
-					type DataType = typeof mutation.data
-					type IsNotFunction = DataType extends (...args: unknown[]) => unknown
-						? false
-						: true
-
-					const _isNotFunction: IsNotFunction = true
-					void _isNotFunction
-
-					return mutation
-				},
-				{ wrapper: Wrapper },
-			)
-
-			result.current.mutate({ name: "Test", email: "test@example.com" })
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true)
-			})
-
-			// Runtime verification
-			expect(typeof result.current.data).not.toBe("function")
-			expect(typeof result.current.data).toBe("object")
 		})
 	})
 
