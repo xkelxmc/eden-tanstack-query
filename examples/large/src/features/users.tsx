@@ -108,20 +108,40 @@ function CreateUser() {
 // Notifications
 // ============================================================================
 
-function NotificationList({ userId }: { userId: string }) {
+function MarkNotificationReadButton({
+	notificationId,
+	userId,
+}: {
+	notificationId: string
+	userId: string
+}) {
 	const eden = useEden()
 	const qc = useQueryClient()
-	const { data, isLoading, error } = useQuery(
-		eden.users({ id: userId }).notifications.get.queryOptions(),
-	)
-
 	const markRead = useMutation({
-		...eden.notifications({ id: "" }).read.put.mutationOptions(),
+		...eden.notifications({ id: notificationId }).read.put.mutationOptions(),
 		onSuccess: () =>
 			qc.invalidateQueries({
 				queryKey: eden.users({ id: userId }).notifications.get.queryKey(),
 			}),
 	})
+
+	return (
+		<Button
+			size="sm"
+			variant="outline"
+			onClick={() => markRead.mutate(undefined)}
+			disabled={markRead.isPending}
+		>
+			Mark read
+		</Button>
+	)
+}
+
+function NotificationList({ userId }: { userId: string }) {
+	const eden = useEden()
+	const { data, isLoading, error } = useQuery(
+		eden.users({ id: userId }).notifications.get.queryOptions(),
+	)
 
 	if (isLoading) return <LoadingState />
 	if (error) return <ErrorState error={error} />
@@ -143,14 +163,7 @@ function NotificationList({ userId }: { userId: string }) {
 						)}
 					</div>
 					{!n.read && (
-						<Button
-							size="sm"
-							variant="outline"
-							onClick={() => markRead.mutate(undefined, {})}
-							disabled={markRead.isPending}
-						>
-							Mark read
-						</Button>
+						<MarkNotificationReadButton notificationId={n.id} userId={userId} />
 					)}
 				</li>
 			))}
@@ -162,20 +175,41 @@ function NotificationList({ userId }: { userId: string }) {
 // Sessions
 // ============================================================================
 
+function RevokeSessionButton({
+	sessionId,
+	userId,
+}: {
+	sessionId: string
+	userId: string
+}) {
+	const eden = useEden()
+	const qc = useQueryClient()
+	const deleteSession = useMutation({
+		...eden.sessions({ id: sessionId }).delete.mutationOptions(),
+		onSuccess: () =>
+			qc.invalidateQueries({
+				queryKey: eden.users({ id: userId }).sessions.get.queryKey(),
+			}),
+	})
+
+	return (
+		<Button
+			size="sm"
+			variant="outline"
+			onClick={() => deleteSession.mutate(undefined)}
+			disabled={deleteSession.isPending}
+		>
+			Revoke
+		</Button>
+	)
+}
+
 function SessionList({ userId }: { userId: string }) {
 	const eden = useEden()
 	const qc = useQueryClient()
 	const { data, isLoading, error } = useQuery(
 		eden.users({ id: userId }).sessions.get.queryOptions(),
 	)
-
-	const deleteSession = useMutation({
-		...eden.sessions({ id: "" }).delete.mutationOptions(),
-		onSuccess: () =>
-			qc.invalidateQueries({
-				queryKey: eden.users({ id: userId }).sessions.get.queryKey(),
-			}),
-	})
 
 	const deleteAll = useMutation({
 		...eden.users({ id: userId }).sessions.delete.mutationOptions(),
@@ -209,14 +243,7 @@ function SessionList({ userId }: { userId: string }) {
 							<div>{s.userAgent}</div>
 							<div className="text-muted-foreground">{s.ip}</div>
 						</div>
-						<Button
-							size="sm"
-							variant="outline"
-							onClick={() => deleteSession.mutate(undefined)}
-							disabled={deleteSession.isPending}
-						>
-							Revoke
-						</Button>
+						<RevokeSessionButton sessionId={s.id} userId={userId} />
 					</li>
 				))}
 			</ul>
@@ -228,20 +255,40 @@ function SessionList({ userId }: { userId: string }) {
 // API Keys
 // ============================================================================
 
-function ApiKeyList({ userId }: { userId: string }) {
+function DeleteApiKeyButton({
+	apiKeyId,
+	userId,
+}: {
+	apiKeyId: string
+	userId: string
+}) {
 	const eden = useEden()
 	const qc = useQueryClient()
-	const { data, isLoading, error } = useQuery(
-		eden.users({ id: userId })["api-keys"].get.queryOptions(),
-	)
-
 	const deleteKey = useMutation({
-		...eden["api-keys"]({ id: "" }).delete.mutationOptions(),
+		...eden["api-keys"]({ id: apiKeyId }).delete.mutationOptions(),
 		onSuccess: () =>
 			qc.invalidateQueries({
 				queryKey: eden.users({ id: userId })["api-keys"].get.queryKey(),
 			}),
 	})
+
+	return (
+		<Button
+			size="sm"
+			variant="destructive"
+			onClick={() => deleteKey.mutate(undefined)}
+			disabled={deleteKey.isPending}
+		>
+			Delete
+		</Button>
+	)
+}
+
+function ApiKeyList({ userId }: { userId: string }) {
+	const eden = useEden()
+	const { data, isLoading, error } = useQuery(
+		eden.users({ id: userId })["api-keys"].get.queryOptions(),
+	)
 
 	if (isLoading) return <LoadingState />
 	if (error) return <ErrorState error={error} />
@@ -260,14 +307,7 @@ function ApiKeyList({ userId }: { userId: string }) {
 							{k.key.slice(0, 12)}...
 						</div>
 					</div>
-					<Button
-						size="sm"
-						variant="destructive"
-						onClick={() => deleteKey.mutate(undefined)}
-						disabled={deleteKey.isPending}
-					>
-						Delete
-					</Button>
+					<DeleteApiKeyButton apiKeyId={k.id} userId={userId} />
 				</li>
 			))}
 		</ul>
