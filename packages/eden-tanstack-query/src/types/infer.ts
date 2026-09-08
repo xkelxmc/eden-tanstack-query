@@ -323,9 +323,13 @@ export type GetRoute<
  * type Params = ExtractPathParams<'/users/:id/posts/:postId'>
  * // 'id' | 'postId'
  */
-export type ExtractPathParams<TPath extends string> =
+export type ExtractPathParams<TPath extends string> = {
+	[K in PathParamSegments<TPath>]: K extends `${infer Param}?` ? Param : K
+}[PathParamSegments<TPath>]
+
+type PathParamSegments<TPath extends string> =
 	TPath extends `${string}:${infer Param}/${infer Rest}`
-		? Param | ExtractPathParams<`/${Rest}`>
+		? Param | PathParamSegments<`/${Rest}`>
 		: TPath extends `${string}:${infer Param}`
 			? Param
 			: never
@@ -337,9 +341,17 @@ export type ExtractPathParams<TPath extends string> =
  * type Params = PathParamsToObject<'/users/:id/posts/:postId'>
  * // { id: string; postId: string }
  */
-export type PathParamsToObject<TPath extends string> = {
-	[K in ExtractPathParams<TPath>]: string
-}
+export type PathParamsToObject<TPath extends string> = Simplify<
+	{
+		[K in PathParamSegments<TPath> as K extends `${string}?`
+			? never
+			: K]: string
+	} & {
+		[K in PathParamSegments<TPath> as K extends `${infer Param}?`
+			? Param
+			: never]?: string
+	}
+>
 
 // ============================================================================
 // HTTP Method Types
