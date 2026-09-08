@@ -14,9 +14,7 @@ import { type CreateEdenContextResult, createEdenContext } from "./context"
 
 /** Result of createEdenTanStackQuery */
 export interface CreateEdenTanStackQueryResult<TApp extends AnyElysia>
-	extends CreateEdenContextResult<TApp> {
-	// Future: add additional utilities like prefetch helpers, SSR utils, etc.
-}
+	extends CreateEdenContextResult<TApp> {}
 
 // ============================================================================
 // Main Factory
@@ -46,7 +44,7 @@ export interface CreateEdenTanStackQueryResult<TApp extends AnyElysia>
  * function App() {
  *   return (
  *     <QueryClientProvider client={queryClient}>
- *       <EdenProvider client={edenClient} queryClient={queryClient}>
+ *       <EdenProvider client={edenClient}>
  *         <UserList />
  *       </EdenProvider>
  *     </QueryClientProvider>
@@ -75,10 +73,5 @@ export interface CreateEdenTanStackQueryResult<TApp extends AnyElysia>
 export function createEdenTanStackQuery<
 	TApp extends AnyElysia,
 >(): CreateEdenTanStackQueryResult<TApp> {
-	const context = createEdenContext<TApp>()
-
-	return {
-		...context,
-		// Future: add additional utilities
-	}
+	return createEdenContext<TApp>()
 }

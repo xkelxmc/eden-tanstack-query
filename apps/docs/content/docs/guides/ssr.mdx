@@ -9,14 +9,13 @@ Eden TanStack Query supports SSR with `createEdenOptionsProxy`, which creates a 
 
 ## createEdenOptionsProxy
 
-The key to SSR is `createEdenOptionsProxy` -- it creates an Eden proxy bound to a specific client and QueryClient, generating the same query keys as the client-side `useEden()` hook:
+`createEdenOptionsProxy` binds to an Eden client and generates the same query keys as the client-side `useEden()` hook. Pass its options to `QueryClient` methods to prefetch data:
 
 ```ts
 import { createEdenOptionsProxy } from 'eden-tanstack-react-query'
 
 const eden = createEdenOptionsProxy<App>({
-  client: serverClient,
-  queryClient
+  client: serverClient
 })
 
 // Use the same API as useEden()
@@ -54,7 +53,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <EdenProvider client={edenClient} queryClient={queryClient}>
+      <EdenProvider client={edenClient}>
         {children}
       </EdenProvider>
     </QueryClientProvider>
@@ -105,8 +104,7 @@ export default async function UsersPage() {
   const serverClient = getServerEdenClient()
 
   const eden = createEdenOptionsProxy<App>({
-    client: serverClient,
-    queryClient
+    client: serverClient
   })
 
   // Prefetch on server
@@ -147,7 +145,7 @@ export function UserList() {
 ```tsx
 export default async function DashboardPage() {
   const queryClient = getQueryClient()
-  const eden = createEdenOptionsProxy<App>({ client: getServerEdenClient(), queryClient })
+  const eden = createEdenOptionsProxy<App>({ client: getServerEdenClient() })
 
   await Promise.all([
     queryClient.prefetchQuery(eden.users.get.queryOptions()),
@@ -177,7 +175,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const queryClient = new QueryClient()
   const serverClient = treaty<App>(process.env.INTERNAL_API_URL!)
 
-  const eden = createEdenOptionsProxy<App>({ client: serverClient, queryClient })
+  const eden = createEdenOptionsProxy<App>({ client: serverClient })
   await queryClient.prefetchQuery(eden.users.get.queryOptions())
 
   return {
@@ -201,7 +199,7 @@ import type { App } from '@/lib/server'
 export const Route = createFileRoute('/users')({
   loader: async ({ context: { queryClient } }) => {
     const serverClient = treaty<App>(import.meta.env.VITE_API_URL)
-    const eden = createEdenOptionsProxy<App>({ client: serverClient, queryClient })
+    const eden = createEdenOptionsProxy<App>({ client: serverClient })
     await queryClient.ensureQueryData(eden.users.get.queryOptions())
   },
   component: UsersPage

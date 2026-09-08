@@ -46,7 +46,7 @@ function HelloMessage() {
 export default function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<EdenProvider client={edenClient} queryClient={queryClient}>
+			<EdenProvider client={edenClient}>
 				<div>
 					<h1>Eden TanStack Query Example</h1>
 					<p>

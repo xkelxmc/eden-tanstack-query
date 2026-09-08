@@ -168,6 +168,51 @@ describe("React Context", () => {
 	})
 
 	describe("EdenProvider", () => {
+		test("updates both hooks when the Eden client changes without queryClient", () => {
+			let client = createMockTreatyClient()
+			const wrapper = ({ children }: { children: React.ReactNode }) => (
+				<EdenProvider client={client}>{children}</EdenProvider>
+			)
+			const { result, rerender } = renderHook(
+				() => ({ proxy: useEden(), client: useEdenClient() }),
+				{ wrapper },
+			)
+			const firstProxy = result.current.proxy
+
+			expect(result.current.client).toBe(client)
+			expect(firstProxy.hello.get.queryKey()).toEqual([
+				["hello", "get"],
+				{ type: "query" },
+			])
+
+			client = createMockTreatyClient()
+			rerender()
+
+			expect(result.current.client).toBe(client)
+			expect(result.current.proxy === firstProxy).toBe(false)
+		})
+
+		test("keeps the proxy when only the legacy queryClient changes", () => {
+			const client = createMockTreatyClient()
+			let queryClient = new QueryClient()
+			const wrapper = ({ children }: { children: React.ReactNode }) => (
+				<EdenProvider client={client} queryClient={queryClient}>
+					{children}
+				</EdenProvider>
+			)
+			const { result, rerender } = renderHook(
+				() => ({ proxy: useEden(), client: useEdenClient() }),
+				{ wrapper },
+			)
+			const firstProxy = result.current.proxy
+
+			queryClient = new QueryClient()
+			rerender()
+
+			expect(result.current.proxy === firstProxy).toBe(true)
+			expect(result.current.client).toBe(client)
+		})
+
 		test("provides context to children", () => {
 			const wrapper = createWrapper()
 

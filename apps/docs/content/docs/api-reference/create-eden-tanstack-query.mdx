@@ -57,7 +57,7 @@ const queryClient = new QueryClient()
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <EdenProvider client={edenClient} queryClient={queryClient}>
+      <EdenProvider client={edenClient}>
         <YourApp />
       </EdenProvider>
     </QueryClientProvider>
@@ -114,14 +114,14 @@ function UserList() {
 | Property | Type | Description |
 |----------|------|-------------|
 | `client` | `Treaty.Create<TApp>` | Eden Treaty client instance |
-| `queryClient` | `QueryClient` | TanStack Query client instance |
+| `queryClient` | `QueryClient` | Optional, deprecated, and unused. Pass it to `QueryClientProvider` instead. |
 | `children` | `React.ReactNode` | React children |
 
 ## How It Works
 
 1. **Type Extraction**: The factory uses TypeScript's type inference to extract route definitions from your Elysia app type.
 
-2. **Provider Creation**: Creates a React context provider that holds both the Eden client and query client references.
+2. **Provider Creation**: Creates a React context provider that holds the Eden client and its options proxy.
 
 3. **Proxy Generation**: When `useEden()` is called, it creates a proxy object that mirrors your API structure but returns TanStack Query options instead of making API calls directly.
 
@@ -144,8 +144,8 @@ const externalApi = createEdenTanStackQuery<ExternalApp>()
 Then use separate providers (or nest them):
 
 ```tsx
-<internalApi.EdenProvider client={internalClient} queryClient={queryClient}>
-  <externalApi.EdenProvider client={externalClient} queryClient={queryClient}>
+<internalApi.EdenProvider client={internalClient}>
+  <externalApi.EdenProvider client={externalClient}>
     <App />
   </externalApi.EdenProvider>
 </internalApi.EdenProvider>

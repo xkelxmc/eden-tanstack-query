@@ -10,10 +10,7 @@ import type { QueryClient } from "@tanstack/react-query"
 import type { AnyElysia } from "elysia"
 import * as React from "react"
 
-import {
-	type CreateEdenOptionsProxyOptions,
-	createEdenOptionsProxy,
-} from "./proxy/createOptionsProxy"
+import { createEdenOptionsProxy } from "./proxy/createOptionsProxy"
 import type { EdenOptionsProxy } from "./types/decorators"
 
 // ============================================================================
@@ -24,8 +21,8 @@ import type { EdenOptionsProxy } from "./types/decorators"
 export interface EdenProviderProps<TApp extends AnyElysia> {
 	/** Eden Treaty client instance */
 	client: Treaty.Create<TApp>
-	/** TanStack QueryClient instance */
-	queryClient: QueryClient
+	/** @deprecated Unused. Pass the QueryClient to TanStack QueryClientProvider. */
+	queryClient?: QueryClient
 	/** React children */
 	children: React.ReactNode
 }
@@ -61,7 +58,7 @@ export interface CreateEdenContextResult<TApp extends AnyElysia> {
  * function App() {
  *   return (
  *     <QueryClientProvider client={queryClient}>
- *       <EdenProvider client={edenClient} queryClient={queryClient}>
+ *       <EdenProvider client={edenClient}>
  *         <UserList />
  *       </EdenProvider>
  *     </QueryClientProvider>
@@ -89,16 +86,12 @@ export function createEdenContext<
 
 	// Provider component
 	const EdenProvider: React.FC<EdenProviderProps<TApp>> = (props) => {
-		const { client, queryClient, children } = props
+		const { client, children } = props
 
 		// Memoize proxy to prevent recreating on every render
 		const proxy = React.useMemo(
-			() =>
-				createEdenOptionsProxy<TApp>({
-					client,
-					queryClient,
-				} as CreateEdenOptionsProxyOptions<TApp>),
-			[client, queryClient],
+			() => createEdenOptionsProxy<TApp>({ client }),
+			[client],
 		)
 
 		return (

@@ -38,9 +38,8 @@ export interface CreateEdenOptionsProxyOptions<TApp extends AnyElysia> {
 	/** Eden Treaty client instance */
 	client: Treaty.Create<TApp>
 	/**
-	 * QueryClient instance or getter function.
-	 * Reserved for future use (SSR prefetching, React context integration).
-	 * Use a getter when the client may not be available at proxy creation time.
+	 * @deprecated Unused. Call QueryClient methods with the generated options instead.
+	 * Accepted for compatibility; getter functions are not called.
 	 */
 	queryClient?: QueryClient | (() => QueryClient)
 }
@@ -625,7 +624,7 @@ function createProcedureProxy<TApp extends AnyElysia>(
  * const client = treaty<App>('http://localhost:3000')
  * const queryClient = new QueryClient()
  *
- * const eden = createEdenOptionsProxy<App>({ client, queryClient })
+ * const eden = createEdenOptionsProxy<App>({ client })
  *
  * // Query options
  * const options = eden.api.users.get.queryOptions({ search: 'test' })

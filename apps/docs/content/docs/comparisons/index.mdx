@@ -90,7 +90,7 @@ const { EdenProvider, useEden } = createEdenTanStackQuery<App>()
 const edenClient = treaty<App>('http://localhost:3000')
 
 <QueryClientProvider client={queryClient}>
-  <EdenProvider client={edenClient} queryClient={queryClient}>
+  <EdenProvider client={edenClient}>
     <App />
   </EdenProvider>
 </QueryClientProvider>
