@@ -822,6 +822,86 @@ describe("createEdenOptionsProxy", () => {
 	})
 
 	describe("query filter generation", () => {
+		test.each([undefined, { limit: 10 }])(
+			"exact filters select only the normal cache entry for input %j",
+			(input) => {
+				const eden = createEden()
+				const client = createTestQueryClient()
+				const normalKey = eden.api.posts.get.queryOptions(input).queryKey
+				const otherKey = eden.api.posts.get.queryOptions({ limit: 20 }).queryKey
+				const infiniteKey = eden.api.posts.get.infiniteQueryOptions(input, {
+					getNextPageParam: (page) => page.nextCursor,
+				}).queryKey
+				client.setQueryData(normalKey, { items: [], nextCursor: "next" })
+				client.setQueryData(otherKey, { items: [], nextCursor: "next" })
+				client.setQueryData(infiniteKey, {
+					pages: [{ items: [], nextCursor: "next" }],
+					pageParams: [null],
+				})
+
+				expect(
+					client
+						.getQueryCache()
+						.findAll(eden.api.posts.get.queryFilter(input, { exact: true }))
+						.map((query) => query.queryKey),
+				).toEqual([normalKey])
+			},
+		)
+
+		test.each([undefined, false])(
+			"broad filters retain normal and infinite matches when exact is %j",
+			(exact) => {
+				const eden = createEden()
+				const client = createTestQueryClient()
+				const input = { limit: 10 }
+				const normalKey = eden.api.posts.get.queryOptions(input).queryKey
+				const infiniteKey = eden.api.posts.get.infiniteQueryOptions(input, {
+					getNextPageParam: (page) => page.nextCursor,
+				}).queryKey
+				const otherKey = eden.api.posts.get.queryOptions({ limit: 20 }).queryKey
+				client.setQueryData(normalKey, { items: [], nextCursor: "next" })
+				client.setQueryData(infiniteKey, {
+					pages: [{ items: [], nextCursor: "next" }],
+					pageParams: [null],
+				})
+				client.setQueryData(otherKey, { items: [], nextCursor: "next" })
+
+				expect(
+					client
+						.getQueryCache()
+						.findAll(eden.api.posts.get.queryFilter(input, { exact }))
+						.map((query) => query.queryKey),
+				).toEqual([normalKey, infiniteKey])
+			},
+		)
+
+		test("exact filters apply caller predicates and stale options", async () => {
+			const eden = createEden()
+			const client = createTestQueryClient()
+			const input = { limit: 10 }
+			const key = eden.api.posts.get.queryOptions(input).queryKey
+			client.setQueryData(key, { items: [], nextCursor: "next" })
+			const predicate = vi.fn(() => true)
+			const filter = eden.api.posts.get.queryFilter(input, {
+				exact: true,
+				stale: true,
+				predicate,
+			})
+
+			expect(client.getQueryCache().findAll(filter)).toEqual([])
+			await client.invalidateQueries({ queryKey: key, exact: true })
+			expect(
+				client
+					.getQueryCache()
+					.findAll(filter)
+					.map((query) => query.queryKey),
+			).toEqual([key])
+			expect(predicate).toHaveBeenCalledTimes(1)
+			predicate.mockReturnValue(false)
+			expect(client.getQueryCache().findAll(filter)).toEqual([])
+			expect(predicate).toHaveBeenCalledTimes(2)
+		})
+
 		test("generates query filter without input", () => {
 			const eden = createEden()
 
