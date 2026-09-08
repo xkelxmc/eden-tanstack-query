@@ -131,25 +131,57 @@ function UserList() {
 
 ## Multiple API Instances
 
-You can create multiple instances for different backends:
+Each factory call creates separate Eden contexts, but all instances use the same query key format. Keys do not include the backend URL or Eden context. If two backends expose the same route with the same input, their queries collide in a shared `QueryClient`.
 
-```ts
-// Internal API
-const internalApi = createEdenTanStackQuery<InternalApp>()
-
-// External API
-const externalApi = createEdenTanStackQuery<ExternalApp>()
-```
-
-Then use separate providers (or nest them):
+Use a separate `QueryClient` for each backend. This example puts each API in a sibling provider scope. Both backends expose `GET /users` returning an array of users:
 
 ```tsx
-<internalApi.EdenProvider client={internalClient}>
-  <externalApi.EdenProvider client={externalClient}>
-    <App />
-  </externalApi.EdenProvider>
-</internalApi.EdenProvider>
+import { treaty } from '@elysiajs/eden'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { createEdenTanStackQuery } from 'eden-tanstack-react-query'
+import { useState } from 'react'
+import type { InternalApp } from './internal-server'
+import type { ExternalApp } from './external-server'
+
+const internalApi = createEdenTanStackQuery<InternalApp>()
+const externalApi = createEdenTanStackQuery<ExternalApp>()
+const internalClient = treaty<InternalApp>('http://localhost:3000')
+const externalClient = treaty<ExternalApp>('http://localhost:4000')
+
+function App() {
+  const [internalQueryClient] = useState(() => new QueryClient())
+  const [externalQueryClient] = useState(() => new QueryClient())
+
+  return (
+    <>
+      <QueryClientProvider client={internalQueryClient}>
+        <internalApi.EdenProvider client={internalClient}>
+          <InternalUsers />
+        </internalApi.EdenProvider>
+      </QueryClientProvider>
+      <QueryClientProvider client={externalQueryClient}>
+        <externalApi.EdenProvider client={externalClient}>
+          <ExternalUsers />
+        </externalApi.EdenProvider>
+      </QueryClientProvider>
+    </>
+  )
+}
+
+function InternalUsers() {
+  const eden = internalApi.useEden()
+  const { data } = useQuery(eden.users.get.queryOptions())
+  return <p>Internal users: {data?.length}</p>
+}
+
+function ExternalUsers() {
+  const eden = externalApi.useEden()
+  const { data } = useQuery(eden.users.get.queryOptions())
+  return <p>External users: {data?.length}</p>
+}
 ```
+
+`useQuery` and `useQueryClient` use the nearest `QueryClientProvider`. Nesting Eden providers does not select a cache. If one component queries both APIs, pass the corresponding `QueryClient` explicitly as the second argument to each `useQuery(options, queryClient)` call, and use that same client for invalidation or prefetching.
 
 ## See Also
 
