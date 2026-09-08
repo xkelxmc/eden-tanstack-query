@@ -99,7 +99,7 @@ function createMockClient() {
 // Test Wrapper
 // ============================================================================
 
-function createWrapper() {
+function createWrapper(client = createMockClient()) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			mutations: {
@@ -107,18 +107,15 @@ function createWrapper() {
 			},
 		},
 	})
-	const client = createMockClient()
 
-	return {
-		queryClient,
-		client,
-		Wrapper: ({ children }: { children: ReactNode }) => (
+	return function Wrapper({ children }: { children: ReactNode }) {
+		return (
 			<QueryClientProvider client={queryClient}>
 				<EdenProvider client={client} queryClient={queryClient}>
 					{children}
 				</EdenProvider>
 			</QueryClientProvider>
-		),
+		)
 	}
 }
 
@@ -129,7 +126,7 @@ function createWrapper() {
 describe("useMutation integration", () => {
 	describe("basic mutation flow", () => {
 		test("useMutation with eden.users.post.mutationOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -177,7 +174,7 @@ describe("useMutation integration", () => {
 		})
 
 		test("useMutation with path params: eden.users({ id }).put.mutationOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -203,7 +200,7 @@ describe("useMutation integration", () => {
 		})
 
 		test("useMutation with delete: eden.users({ id }).delete.mutationOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -229,8 +226,8 @@ describe("useMutation integration", () => {
 	})
 
 	describe("mutationOptions structure", () => {
-		test("mutationOptions has correct mutationKey", () => {
-			const { Wrapper } = createWrapper()
+		test("mutationOptions exposes its key, metadata and function", () => {
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -241,33 +238,7 @@ describe("useMutation integration", () => {
 			)
 
 			expect(result.current.mutationKey).toEqual([["users", "post"]])
-		})
-
-		test("mutationOptions has eden metadata", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.users.post.mutationOptions()
-				},
-				{ wrapper: Wrapper },
-			)
-
 			expect(result.current.eden.path).toBe("users.post")
-		})
-
-		test("mutationOptions has mutationFn", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.users.post.mutationOptions()
-				},
-				{ wrapper: Wrapper },
-			)
-
 			expect(typeof result.current.mutationFn).toBe("function")
 		})
 	})
@@ -306,51 +277,8 @@ describe("useMutation integration", () => {
 			return mockClient as unknown as ReturnType<typeof treaty<App>>
 		}
 
-		function createErrorWrapper() {
-			const queryClient = new QueryClient({
-				defaultOptions: {
-					mutations: {
-						retry: false,
-					},
-				},
-			})
-			const client = createErrorMockClient()
-
-			return {
-				queryClient,
-				client,
-				Wrapper: ({ children }: { children: ReactNode }) => (
-					<QueryClientProvider client={queryClient}>
-						<EdenProvider client={client} queryClient={queryClient}>
-							{children}
-						</EdenProvider>
-					</QueryClientProvider>
-				),
-			}
-		}
-
-		test("useMutation handles error state", async () => {
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useMutation(eden.users.post.mutationOptions())
-				},
-				{ wrapper: Wrapper },
-			)
-
-			result.current.mutate({ name: "Test", email: "test@example.com" })
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
-			expect(result.current.error).toBeDefined()
-		})
-
-		test("error type has status and value properties", async () => {
-			const { Wrapper } = createErrorWrapper()
+		test("useMutation preserves error state and undeclared error details", async () => {
+			const Wrapper = createWrapper(createErrorMockClient())
 
 			const { result } = renderHook(
 				() => {
@@ -366,6 +294,15 @@ describe("useMutation integration", () => {
 						const _hasValue: HasValue = true
 						void _hasStatus
 						void _hasValue
+
+						type ValueType = ErrorType["value"]
+
+						type IsNotNever = [ValueType] extends [never] ? false : true
+						const _isNotNever: IsNotNever = true
+						void _isNotNever
+
+						const _value: unknown = mutation.error.value
+						void _value
 					}
 
 					return mutation
@@ -379,37 +316,19 @@ describe("useMutation integration", () => {
 				expect(result.current.isError).toBe(true)
 			})
 
-			// Runtime check - error should have status and value
 			expect(result.current.error).toHaveProperty("status")
 			expect(result.current.error).toHaveProperty("value")
-		})
-
-		test("error.value contains validation errors", async () => {
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useMutation(eden.users.post.mutationOptions())
-				},
-				{ wrapper: Wrapper },
-			)
-
-			result.current.mutate({ name: "Test", email: "test@example.com" })
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
+			expect(result.current.error).toBeDefined()
 			expect(result.current.error?.status).toBe(400)
 			expect(result.current.error?.value).toEqual({
 				message: "Validation failed",
 				errors: ["email is required"],
 			})
+			expect(result.current.error?.value).toBeDefined()
 		})
 
 		test("error with path params mutation", async () => {
-			const { Wrapper } = createErrorWrapper()
+			const Wrapper = createWrapper(createErrorMockClient())
 
 			const { result } = renderHook(
 				() => {
@@ -429,48 +348,6 @@ describe("useMutation integration", () => {
 			expect(result.current.error?.value).toEqual({
 				message: "User 999 not found",
 			})
-		})
-
-		test("error.value is NOT never when route has no defined error responses", async () => {
-			// CRITICAL: This test verifies the InferRouteError fix
-			// When a route only has success responses (200), error.value should be 'unknown', not 'never'
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const mutation = useMutation(eden.users.post.mutationOptions())
-
-					// CRITICAL: Compile-time type check
-					// error.value should be accessible (not never)
-					// If InferRouteError returns never, this would fail to compile
-					if (mutation.error) {
-						type ErrorType = typeof mutation.error
-						type ValueType = ErrorType["value"]
-
-						// value should NOT be never - it should be unknown (the fallback)
-						type IsNotNever = [ValueType] extends [never] ? false : true
-						const _isNotNever: IsNotNever = true
-						void _isNotNever
-
-						// We should be able to access value without TS error
-						const _value: unknown = mutation.error.value
-						void _value
-					}
-
-					return mutation
-				},
-				{ wrapper: Wrapper },
-			)
-
-			result.current.mutate({ name: "Test", email: "test@example.com" })
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
-			// Runtime check - value should be accessible
-			expect(result.current.error?.value).toBeDefined()
 		})
 	})
 })

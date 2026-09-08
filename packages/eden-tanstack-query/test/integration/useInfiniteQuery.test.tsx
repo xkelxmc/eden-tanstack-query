@@ -132,7 +132,7 @@ function createMockClient() {
 // Test Wrapper
 // ============================================================================
 
-function createWrapper() {
+function createWrapper(client = createMockClient()) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {
@@ -140,18 +140,15 @@ function createWrapper() {
 			},
 		},
 	})
-	const client = createMockClient()
 
-	return {
-		queryClient,
-		client,
-		Wrapper: ({ children }: { children: ReactNode }) => (
+	return function Wrapper({ children }: { children: ReactNode }) {
+		return (
 			<QueryClientProvider client={queryClient}>
 				<EdenProvider client={client} queryClient={queryClient}>
 					{children}
 				</EdenProvider>
 			</QueryClientProvider>
-		),
+		)
 	}
 }
 
@@ -162,7 +159,7 @@ function createWrapper() {
 describe("useInfiniteQuery integration", () => {
 	describe("basic infinite query flow", () => {
 		test("useInfiniteQuery with eden.posts.get.infiniteQueryOptions()", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -221,7 +218,7 @@ describe("useInfiniteQuery integration", () => {
 		})
 
 		test("fetchNextPage loads more data", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -259,7 +256,7 @@ describe("useInfiniteQuery integration", () => {
 		})
 
 		test("useInfiniteQuery with path params", async () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -286,8 +283,8 @@ describe("useInfiniteQuery integration", () => {
 	})
 
 	describe("infiniteQueryOptions structure", () => {
-		test("infiniteQueryOptions has correct queryKey", () => {
-			const { Wrapper } = createWrapper()
+		test("infiniteQueryOptions exposes its key, metadata and function", () => {
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -308,48 +305,13 @@ describe("useInfiniteQuery integration", () => {
 				type: "infinite",
 				infinite: { initialPageParam: null },
 			})
-		})
-
-		test("infiniteQueryOptions has eden metadata", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.posts.get.infiniteQueryOptions(
-						{ limit: 10 },
-						{
-							getNextPageParam: () => undefined,
-						},
-					)
-				},
-				{ wrapper: Wrapper },
-			)
-
 			expect(result.current.eden.path).toBe("posts.get")
-		})
-
-		test("infiniteQueryOptions has queryFn", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.posts.get.infiniteQueryOptions(
-						{ limit: 10 },
-						{
-							getNextPageParam: () => undefined,
-						},
-					)
-				},
-				{ wrapper: Wrapper },
-			)
-
 			expect(typeof result.current.queryFn).toBe("function")
+			expect(result.current.initialPageParam).toBe(null)
 		})
 
 		test("infiniteQueryOptions has initialPageParam", () => {
-			const { Wrapper } = createWrapper()
+			const Wrapper = createWrapper()
 
 			const { result } = renderHook(
 				() => {
@@ -366,25 +328,6 @@ describe("useInfiniteQuery integration", () => {
 			)
 
 			expect(result.current.initialPageParam).toBe("start")
-		})
-
-		test("infiniteQueryOptions defaults initialPageParam to null", () => {
-			const { Wrapper } = createWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return eden.posts.get.infiniteQueryOptions(
-						{ limit: 10 },
-						{
-							getNextPageParam: () => undefined,
-						},
-					)
-				},
-				{ wrapper: Wrapper },
-			)
-
-			expect(result.current.initialPageParam).toBe(null)
 		})
 	})
 
@@ -410,56 +353,8 @@ describe("useInfiniteQuery integration", () => {
 			return mockClient as unknown as ReturnType<typeof treaty<App>>
 		}
 
-		function createErrorWrapper() {
-			const queryClient = new QueryClient({
-				defaultOptions: {
-					queries: {
-						retry: false,
-					},
-				},
-			})
-			const client = createErrorMockClient()
-
-			return {
-				queryClient,
-				client,
-				Wrapper: ({ children }: { children: ReactNode }) => (
-					<QueryClientProvider client={queryClient}>
-						<EdenProvider client={client} queryClient={queryClient}>
-							{children}
-						</EdenProvider>
-					</QueryClientProvider>
-				),
-			}
-		}
-
-		test("useInfiniteQuery handles error state", async () => {
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useInfiniteQuery(
-						eden.posts.get.infiniteQueryOptions(
-							{ limit: 10 },
-							{
-								getNextPageParam: () => undefined,
-							},
-						),
-					)
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
-			expect(result.current.error).toBeDefined()
-		})
-
-		test("error type has status and value properties", async () => {
-			const { Wrapper } = createErrorWrapper()
+		test("useInfiniteQuery preserves error state and undeclared error details", async () => {
+			const Wrapper = createWrapper(createErrorMockClient())
 
 			const { result } = renderHook(
 				() => {
@@ -482,6 +377,15 @@ describe("useInfiniteQuery integration", () => {
 						const _hasValue: HasValue = true
 						void _hasStatus
 						void _hasValue
+
+						type ValueType = ErrorType["value"]
+
+						type IsNotNever = [ValueType] extends [never] ? false : true
+						const _isNotNever: IsNotNever = true
+						void _isNotNever
+
+						const _value: unknown = query.error.value
+						void _value
 					}
 
 					return query
@@ -493,41 +397,18 @@ describe("useInfiniteQuery integration", () => {
 				expect(result.current.isError).toBe(true)
 			})
 
-			// Runtime check - error should have status and value
 			expect(result.current.error).toHaveProperty("status")
 			expect(result.current.error).toHaveProperty("value")
-		})
-
-		test("error.value contains error details", async () => {
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					return useInfiniteQuery(
-						eden.posts.get.infiniteQueryOptions(
-							{ limit: 10 },
-							{
-								getNextPageParam: () => undefined,
-							},
-						),
-					)
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
+			expect(result.current.error).toBeDefined()
 			expect(result.current.error?.status).toBe(500)
 			expect(result.current.error?.value).toEqual({
 				message: "Failed to fetch posts",
 			})
+			expect(result.current.error?.value).toBeDefined()
 		})
 
 		test("error with path params infinite query", async () => {
-			const { Wrapper } = createErrorWrapper()
+			const Wrapper = createWrapper(createErrorMockClient())
 
 			const { result } = renderHook(
 				() => {
@@ -552,53 +433,6 @@ describe("useInfiniteQuery integration", () => {
 			expect(result.current.error?.value).toEqual({
 				message: "Post 999 not found",
 			})
-		})
-
-		test("error.value is NOT never when route has no defined error responses", async () => {
-			// CRITICAL: This test verifies the InferRouteError fix
-			// When a route only has success responses (200), error.value should be 'unknown', not 'never'
-			const { Wrapper } = createErrorWrapper()
-
-			const { result } = renderHook(
-				() => {
-					const eden = useEden()
-					const query = useInfiniteQuery(
-						eden.posts.get.infiniteQueryOptions(
-							{ limit: 10 },
-							{
-								getNextPageParam: () => undefined,
-							},
-						),
-					)
-
-					// CRITICAL: Compile-time type check
-					// error.value should be accessible (not never)
-					// If InferRouteError returns never, this would fail to compile
-					if (query.error) {
-						type ErrorType = typeof query.error
-						type ValueType = ErrorType["value"]
-
-						// value should NOT be never - it should be unknown (the fallback)
-						type IsNotNever = [ValueType] extends [never] ? false : true
-						const _isNotNever: IsNotNever = true
-						void _isNotNever
-
-						// We should be able to access value without TS error
-						const _value: unknown = query.error.value
-						void _value
-					}
-
-					return query
-				},
-				{ wrapper: Wrapper },
-			)
-
-			await waitFor(() => {
-				expect(result.current.isError).toBe(true)
-			})
-
-			// Runtime check - value should be accessible
-			expect(result.current.error?.value).toBeDefined()
 		})
 	})
 })
