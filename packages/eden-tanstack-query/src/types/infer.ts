@@ -69,11 +69,7 @@ export type InferRouteHeaders<TRoute extends RouteSchema> =
  * type Body = InferRouteBody<RouteSchema> // { name: string }
  */
 export type InferRouteBody<TRoute extends RouteSchema> =
-	IsUnknown<TRoute["body"]> extends true
-		? undefined
-		: undefined extends TRoute["body"]
-			? TRoute["body"] | undefined
-			: TRoute["body"]
+	IsUnknown<TRoute["body"]> extends true ? undefined : TRoute["body"]
 
 /**
  * Combined route options (params + query + headers).
@@ -122,9 +118,7 @@ export type InferRouteInput<
 type ReplaceGeneratorWithAsyncGenerator<T extends Record<string, unknown>> = {
 	[K in keyof T]: T[K] extends Generator<infer Y, infer R, infer N>
 		? AsyncGenerator<Y, R, N>
-		: T[K] extends AsyncGenerator
-			? T[K]
-			: T[K]
+		: T[K]
 }
 
 type NumericStatusCode<TStatus> = TStatus extends number
@@ -252,8 +246,19 @@ export type ExtractRoutes<TApp extends AnyElysia> = TApp extends {
 	? TRoutes
 	: never
 
+type RouteAtPath<TRoutes, TPath extends string> = TPath extends ""
+	? TRoutes
+	: TPath extends `${infer Segment}/${infer Rest}`
+		? Segment extends keyof TRoutes
+			? RouteAtPath<TRoutes[Segment], Rest>
+			: never
+		: TPath extends keyof TRoutes
+			? TRoutes[TPath]
+			: never
+
 /**
  * Get a specific route from the app by path and method.
+ * Paths use schema segments such as `:id`, with an optional leading slash.
  *
  * @example
  * type UserRoute = GetRoute<typeof app, '/users/:id', 'get'>
@@ -263,12 +268,13 @@ export type GetRoute<
 	TPath extends string,
 	TMethod extends string,
 > =
-	ExtractRoutes<TApp> extends infer Routes
-		? TPath extends keyof Routes
-			? Routes[TPath] extends Record<string, unknown>
-				? TMethod extends keyof Routes[TPath]
-					? Routes[TPath][TMethod]
-					: never
+	RouteAtPath<
+		ExtractRoutes<TApp>,
+		TPath extends `/${infer Path}` ? Path : TPath
+	> extends infer Route
+		? Route extends Record<string, unknown>
+			? TMethod extends keyof Route
+				? Route[TMethod]
 				: never
 			: never
 		: never

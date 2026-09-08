@@ -10,6 +10,7 @@ import type {
 	EdenFetchError,
 	ExtractPathParams,
 	ExtractRoutes,
+	GetRoute,
 	HttpMutationMethod,
 	HttpQueryMethod,
 	InferRouteBody,
@@ -23,12 +24,14 @@ import type {
 	PathParamsToObject,
 } from "../../src/types/infer"
 import type { Equals, IsNever } from "../../test-utils/type-assert"
+import { assertType } from "../../test-utils/type-assert"
 
 // ============================================================================
 // Test App Setup
 // ============================================================================
 
 const app = new Elysia()
+	.get("/", () => ({ ok: true }))
 	// GET route with path params
 	.get("/users/:id", ({ params }) => ({
 		id: params.id,
@@ -216,6 +219,40 @@ describe("Type Inference", () => {
 			type HasRoutes = Routes extends Record<string, unknown> ? true : false
 			const hasRoutes: HasRoutes = true
 			expect(hasRoutes).toBe(true)
+		})
+	})
+
+	describe("GetRoute", () => {
+		type Routes = ExtractRoutes<App>
+
+		test("looks up root and top-level routes", () => {
+			assertType<Equals<GetRoute<App, "/", "get">, Routes["get"]>>()
+			assertType<
+				Equals<GetRoute<App, "/users", "get">, Routes["users"]["get"]>
+			>()
+			assertType<
+				Equals<GetRoute<App, "users", "post">, Routes["users"]["post"]>
+			>()
+		})
+
+		test("looks up nested schema paths with optional leading slashes", () => {
+			assertType<
+				Equals<
+					GetRoute<App, "/users/:id", "get">,
+					Routes["users"][":id"]["get"]
+				>
+			>()
+			assertType<
+				Equals<GetRoute<App, "users/:id", "put">, Routes["users"][":id"]["put"]>
+			>()
+		})
+
+		test("returns never for missing schema paths and methods", () => {
+			assertType<Equals<GetRoute<App, "/missing", "get">, never>>()
+			assertType<Equals<GetRoute<App, "/users/missing", "get">, never>>()
+			assertType<Equals<GetRoute<App, "/users/123", "get">, never>>()
+			assertType<Equals<GetRoute<App, "/users/:id", "patch">, never>>()
+			assertType<Equals<GetRoute<App, "/", "post">, never>>()
 		})
 	})
 })
