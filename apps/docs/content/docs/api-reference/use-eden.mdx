@@ -207,7 +207,10 @@ eden.users.get.queryKey({ role: 'admin' })
 // => [['users', 'get'], { input: { role: 'admin' }, type: 'query' }]
 
 eden.users({ id: '1' }).get.queryKey()
-// => [['users', 'get'], { input: { id: '1' }, type: 'query' }]
+// => [['users', 'get'], {
+//   pathParams: [{ pathIndex: 0, entries: [['id', '1']] }],
+//   type: 'query'
+// }]
 ```
 
 ---

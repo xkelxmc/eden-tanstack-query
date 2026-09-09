@@ -206,7 +206,7 @@ export default async function DashboardPage() {
 
 ## Next.js Pages Router
 
-The same pattern works with `getServerSideProps`:
+The same pattern works with `getServerSideProps` when the entire dehydrated state is JSON-compatible, as required by the [Next.js Pages props contract](https://nextjs.org/docs/pages/api-reference/functions/get-server-side-props#props):
 
 ```tsx title="pages/users/index.tsx"
 import type { GetServerSideProps } from 'next'
@@ -228,7 +228,15 @@ export const getServerSideProps: GetServerSideProps = async () => {
 }
 ```
 
-Wrap your app with `HydrationBoundary` in `_app.tsx` and provide `EdenProvider` as shown in the [Getting Started](/docs/getting-started) guide. See the [TanStack Query SSR docs](https://tanstack.com/query/latest/docs/framework/react/guides/ssr) for the full Pages Router setup.
+Treaty [parses date strings into `Date` objects by default](https://elysiajs.com/eden/treaty/config#parsedate). `dehydrate` retains those objects, and Pages Router rejects them in raw props. If your cache contains dates or other non-JSON values, serialize the dehydrated state with a serializer that supports those types before returning it in props. Apply its matching deserializer in `_app.tsx` before passing the state to `HydrationBoundary`, during both server rendering and browser hydration.
+
+This whole-state serialization also preserves dates in `queryKey`. Eden retains `Date` objects in query-key inputs, so use a Date-aware whole-state serializer when those inputs contain dates.
+
+If only query data needs conversion and the rest of the dehydrated state is JSON-compatible, you can instead pair `dehydrate(queryClient, { serializeData })` with `HydrationBoundary`'s `options={{ defaultOptions: { deserializeData } }}`. Alternatively, configure `defaultOptions.dehydrate.serializeData` and `defaultOptions.hydrate.deserializeData` on your QueryClients, as shown in the [TanStack Query advanced SSR guide](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr#streaming-with-server-components). These hooks transform query data only, not query keys. Configure deserialization for both server rendering and browser hydration. Whole-state serialization already handles query data, so it does not require these hooks as well.
+
+A plain `JSON.parse(JSON.stringify(...))` round trip turns dates into strings and loses the runtime types expected by query consumers. Disabling date parsing only on the server also makes hydrated data differ from browser refetches. Keep the response parsing consistent across server and browser clients.
+
+Wrap your app with `HydrationBoundary` in `_app.tsx` and provide `EdenProvider` as shown in the [Getting Started](/docs/getting-started) guide. See the [TanStack Query SSR docs](https://tanstack.com/query/latest/docs/framework/react/guides/ssr) for the full Pages Router setup and serialization options.
 
 ## TanStack Start
 

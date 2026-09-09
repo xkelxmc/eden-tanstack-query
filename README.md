@@ -56,28 +56,33 @@ function UserList() {
 | [basic](./examples/basic) | Simple CRUD with users |
 | [medium](./examples/medium) | Blog with posts, comments, users |
 | [large](./examples/large) | Full app with organizations, members, posts, comments, categories, tags |
+| [authenticated-start](./examples/authenticated-start) | TanStack Start SSR with cookie sessions and per-user lists |
+| [astro](./examples/astro) | Astro SSR with a hydrated React island and Elysia API |
+
+Run the basic example from the repository root:
 
 ```bash
-# Run an example
-cd examples/basic
 bun install
-bun run dev
+bun run build
+bun run example:basic
 ```
 
 ## Development
+
+Run these commands from the repository root:
 
 ```bash
 # Install dependencies
 bun install
 
 # Run tests
-bun test
+bun run unit-test:run
 
 # Build
 bun run build
 
-# Type check
-bun run typecheck
+# Type checks, linting, and formatting
+bun run check:fix
 ```
 
 ## License
