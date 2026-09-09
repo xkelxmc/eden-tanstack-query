@@ -99,25 +99,37 @@ type HasAmbiguousQueryHeaders<TInput> = TInput extends unknown
 		? object extends TInput["headers"]
 			? true
 			: [Extract<TInput["headers"], object>] extends [never]
-				? false
+				? "query" extends keyof TInput
+					? undefined extends TInput["headers"]
+						? true
+						: false
+					: false
 				: true
+		: false
+	: never
+
+type HasQueryField<TInput> = TInput extends unknown
+	? "query" extends keyof TInput
+		? true
 		: false
 	: never
 
 type EdenDirectQueryInput<
 	TInput,
-	THasAmbiguousHeaders = HasAmbiguousQueryHeaders<TInput>,
+	TRequiresWrappedHeaders =
+		| HasAmbiguousQueryHeaders<TInput>
+		| HasQueryField<TInput>,
 > = TInput extends unknown
 	? HasAmbiguousQueryHeaders<TInput> extends true
 		? never
-		: true extends THasAmbiguousHeaders
+		: true extends TRequiresWrappedHeaders
 			? "headers" extends keyof TInput
 				? TInput
 				: Simplify<TInput & { headers?: never }>
 			: TInput | Simplify<TInput & { headers?: EdenRequestHeaders }>
 	: never
 
-/** Object-valued query headers need a wrapper to avoid transport parsing. */
+/** Colliding query fields require wrappers to avoid transport parsing. */
 type EdenQueryProcedureInput<TInput> =
 	IsAny<TInput> extends true
 		? TInput

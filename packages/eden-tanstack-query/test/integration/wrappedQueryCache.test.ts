@@ -16,7 +16,6 @@ const app = new Elysia().get(
 		query: t.Object({
 			query: t.Optional(t.Object({ x: t.String() })),
 			x: t.Optional(t.String()),
-			headers: t.Optional(t.String()),
 			cursor: t.Optional(t.String()),
 		}),
 	},
@@ -155,11 +154,6 @@ describe("wrapped query cache identity", () => {
 			query: { x: "a" },
 			x: "extra",
 		})
-		const headerField = { headers: "query-value" }
-		expect(route.queryKey(headerField)[1]).toMatchObject({ input: headerField })
-		expect(
-			(await client.fetchQuery(route.queryOptions(headerField))).query,
-		).toEqual(headerField)
 		expect(hashKey(eden.search({ id: "two" }).get.queryKey(wrapped))).not.toBe(
 			hashKey(route.queryKey(wrapped)),
 		)
