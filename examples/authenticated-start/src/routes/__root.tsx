@@ -6,7 +6,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router"
-import type { ReactNode } from "react"
+import { type ReactNode, useEffect } from "react"
 import type { getEden } from "../lib/client"
 import css from "../styles.css?url"
 
@@ -23,7 +23,27 @@ export const Route = createRootRouteWithContext<{
 		links: [{ rel: "stylesheet", href: css }],
 	}),
 	shellComponent: Document,
-	component: () => (
+	component: Layout,
+	errorComponent: () => (
+		<section role="alert">
+			<h1>Could not load this page</h1>
+			<p>Your session may have expired.</p>
+			<a href="/">Reload and sign in</a>
+		</section>
+	),
+})
+function Layout() {
+	const { queryClient } = Route.useRouteContext()
+	useEffect(() => {
+		const channel = new BroadcastChannel("demo-session")
+		channel.onmessage = () => {
+			document.documentElement.style.visibility = "hidden"
+			queryClient.clear()
+			window.location.reload()
+		}
+		return () => channel.close()
+	}, [queryClient])
+	return (
 		<main>
 			<header>
 				<p className="eyebrow">EDEN + TANSTACK START</p>
@@ -34,15 +54,8 @@ export const Route = createRootRouteWithContext<{
 			</header>
 			<Outlet />
 		</main>
-	),
-	errorComponent: () => (
-		<section role="alert">
-			<h1>Could not load this page</h1>
-			<p>Your session may have expired.</p>
-			<a href="/">Reload and sign in</a>
-		</section>
-	),
-})
+	)
+}
 function Document({ children }: { children: ReactNode }) {
 	return (
 		<html lang="en">

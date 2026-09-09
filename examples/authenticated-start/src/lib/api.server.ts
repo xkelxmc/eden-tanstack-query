@@ -17,6 +17,7 @@ const sessions = new Map<
 	{ identity: keyof typeof identities; expires: number }
 >()
 const lifetime = 60 * 60
+const maxSessions = 1000
 
 function sessionToken(request: Request) {
 	return request.headers
@@ -60,11 +61,15 @@ export const api = new Elysia({ prefix: "/api" })
 	})
 	.post(
 		"/login",
-		({ body, request, set }) => {
+		({ body, request, set, status }) => {
 			const previous = sessionToken(request)
 			if (previous) sessions.delete(previous)
 			for (const [token, session] of sessions)
 				if (session.expires <= Date.now()) sessions.delete(token)
+			if (sessions.size >= maxSessions)
+				return status(503, {
+					message: "Session capacity reached. Try again later.",
+				})
 			const token = crypto.randomUUID()
 			sessions.set(token, {
 				identity: body.identity,

@@ -12,7 +12,7 @@ bun run --filter=eden-tanstack-react-query build
 bun run example:authenticated-start
 ```
 
-Open <http://localhost:3002>. Choose Alice, follow **About this demo**, then return to the list. Choose Bob or log out. A session change reloads the document to discard both Router and Query caches. Ordinary links use client navigation. After switching identity or logging out, reload any other open tabs to clear their cached data.
+Open <http://localhost:3002>. Choose Alice, follow **About this demo**, then return to the list. Choose Bob or log out. A session change reloads the document to discard both Router and Query caches. Ordinary links use client navigation. Switching identity or logging out broadcasts the change to other open tabs, which clear their caches and reload too.
 
 Build and run the same application as one Bun server:
 
@@ -33,7 +33,7 @@ Use `localhost` for local production testing. Production cookies have `Secure`; 
 - Every dynamic response uses `Cache-Control: private, no-store` and varies on Cookie. Do not prerender these pages or put their HTML, API responses, or dehydrated query state into a shared cache.
 - Session changes hide the list, cancel pending queries, rotate or revoke the session token, clear the QueryClient, and replace the document. No cache persistence is configured.
 
-The server stores opaque random session tokens in memory. Cookies are HttpOnly, SameSite=Lax, and expire after one hour. Login and logout reject requests whose Origin does not match the request URL. Session tokens never enter query keys, loader data, or the rendered page.
+The server stores up to 1,000 opaque random session tokens in memory. Login removes expired sessions and returns HTTP 503 when the store is full; existing sessions can still rotate or log out. Cookies are HttpOnly, SameSite=Lax, and expire after one hour. Login and logout reject requests whose Origin does not match the request URL. Session tokens never enter query keys, loader data, or the rendered page.
 
 Run a single server instance. Restarting it clears all sessions; multiple instances do not share sessions. A production application needs an actual authentication flow and a persistent shared session store. This example deliberately has neither real credentials nor a database.
 

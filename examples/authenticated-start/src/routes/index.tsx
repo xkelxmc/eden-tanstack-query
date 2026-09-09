@@ -31,6 +31,9 @@ function Home() {
 				: await client.api.logout.post()
 			if (result.error)
 				throw new Error("Session change failed. Please try again.")
+			const channel = new BroadcastChannel("demo-session")
+			channel.postMessage("changed")
+			channel.close()
 			queryClient.clear()
 			window.location.replace("/")
 		} catch {
