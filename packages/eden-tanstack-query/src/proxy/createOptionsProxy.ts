@@ -493,7 +493,12 @@ function createMutationProcedure(opts: ProcedureOptions) {
 	const { client, paths, pathParams } = opts
 
 	return {
-		mutationOptions: (mutationOpts?: unknown) => {
+		mutationOptions: (
+			mutationOpts?: Parameters<typeof edenMutationOptions>[0]["opts"] & {
+				request?: boolean
+			},
+		) => {
+			const { request = false, ...tanstackOptions } = mutationOpts ?? {}
 			return edenMutationOptions({
 				path: paths,
 				mutate: async (input) => {
@@ -508,17 +513,30 @@ function createMutationProcedure(opts: ProcedureOptions) {
 						pathParams,
 					)
 
-					// Call the method with body
 					const methodFn = (edenEndpoint as Record<string, unknown>)[
 						method
-					] as (body: unknown) => Promise<{ data: unknown; error: unknown }>
+					] as (
+						body: unknown,
+						options?: { query?: unknown; headers?: unknown },
+					) => Promise<{ data: unknown; error: unknown }>
 
-					const result = await methodFn(input)
+					// Only explicit request mode unwraps variables, so body field names stay unrestricted.
+					const variables = request
+						? (input as
+								| { body?: unknown; query?: unknown; headers?: unknown }
+								| undefined)
+						: undefined
+					const result = request
+						? await methodFn(variables?.body, {
+								query: variables?.query,
+								headers: variables?.headers,
+							})
+						: await methodFn(input)
 
 					if (result.error) throw result.error
 					return result.data
 				},
-				opts: mutationOpts as Parameters<typeof edenMutationOptions>[0]["opts"],
+				opts: tanstackOptions,
 			})
 		},
 

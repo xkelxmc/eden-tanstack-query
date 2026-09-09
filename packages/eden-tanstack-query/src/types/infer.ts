@@ -121,6 +121,43 @@ export type InferRouteInput<
 	? NormalizeRouteQuery<InferRouteQuery<TRoute>>
 	: InferRouteBody<TRoute>
 
+type MutationRequestField<
+	TKey extends string,
+	TValue,
+> = undefined extends TValue
+	? { [K in TKey]?: TValue }
+	: Record<never, never> extends TValue
+		? { [K in TKey]?: TValue }
+		: { [K in TKey]: TValue }
+
+/** Per-invocation variables for explicit mutation request mode. */
+export type MutationRequestInput<
+	TBody,
+	TQuery = Record<string, unknown>,
+	THeaders = Record<string, string | undefined>,
+> = OptionalMutationRequest<
+	Simplify<
+		(undefined extends TBody ? { body?: TBody } : { body: TBody }) &
+			MutationRequestField<"query", TQuery> &
+			MutationRequestField<"headers", THeaders>
+	>
+>
+
+type OptionalMutationRequest<TRequest> =
+	Record<never, never> extends TRequest ? TRequest | undefined : TRequest
+
+/** Path parameters stay bound through the callable route proxy. */
+export type InferRouteMutationInput<TRoute extends RouteSchema> =
+	MutationRequestInput<
+		InferRouteBody<TRoute>,
+		IsUnknown<TRoute["query"]> extends true
+			? Record<string, unknown>
+			: TRoute["query"],
+		IsUnknown<TRoute["headers"]> extends true
+			? Record<string, string | undefined>
+			: TRoute["headers"]
+	>
+
 // ============================================================================
 // Route Output Extraction
 // ============================================================================

@@ -39,7 +39,9 @@ import type {
 	HttpQueryMethod,
 	InferRouteError,
 	InferRouteInput,
+	InferRouteMutationInput,
 	InferRouteOutput,
+	MutationRequestInput,
 	RouteDefinition,
 } from "./infer"
 
@@ -282,21 +284,32 @@ interface EdenMutationOptionsOut<TInput, TError, TOutput, TContext>
 /**
  * Mutation options function type.
  */
-export type EdenMutationOptions<TDef extends RouteDefinition> = <
-	TContext = unknown,
->(
-	opts?: EdenMutationOptionsIn<
+export interface EdenMutationOptions<
+	TDef extends RouteDefinition,
+	TRequest = MutationRequestInput<TDef["input"]>,
+> {
+	<TContext = unknown>(
+		opts: EdenMutationOptionsIn<
+			TRequest,
+			TDef["error"],
+			TDef["output"],
+			TContext
+		> & { request: true },
+	): EdenMutationOptionsOut<TRequest, TDef["error"], TDef["output"], TContext>
+	<TContext = unknown>(
+		opts?: EdenMutationOptionsIn<
+			TDef["input"],
+			TDef["error"],
+			TDef["output"],
+			TContext
+		> & { request?: false },
+	): EdenMutationOptionsOut<
 		TDef["input"],
 		TDef["error"],
 		TDef["output"],
 		TContext
-	>,
-) => EdenMutationOptionsOut<
-	TDef["input"],
-	TDef["error"],
-	TDef["output"],
-	TContext
->
+	>
+}
 
 // ============================================================================
 // Infinite Query Types
@@ -880,14 +893,16 @@ export interface DecorateInfiniteQueryProcedure<TDef extends RouteDefinition>
  * Decorator for mutation procedures (POST, PUT, PATCH, DELETE).
  * Adds mutationOptions and mutationKey.
  */
-export interface DecorateMutationProcedure<TDef extends RouteDefinition>
-	extends TypeHelper<TDef> {
+export interface DecorateMutationProcedure<
+	TDef extends RouteDefinition,
+	TRequest = MutationRequestInput<TDef["input"]>,
+> extends TypeHelper<TDef> {
 	/**
 	 * Create type-safe mutation options for useMutation.
 	 *
 	 * @see https://tanstack.com/query/latest/docs/framework/react/reference/useMutation
 	 */
-	mutationOptions: EdenMutationOptions<TDef>
+	mutationOptions: EdenMutationOptions<TDef, TRequest>
 
 	/**
 	 * Generate a mutation key for cache operations.
@@ -928,7 +943,10 @@ export type DecorateRoute<
 				? DecorateInfiniteQueryProcedure<ExtractRouteDef<TRoute, TMethod>>
 				: unknown)
 	: TMethod extends HttpMutationMethod
-		? DecorateMutationProcedure<ExtractRouteDef<TRoute, TMethod>>
+		? DecorateMutationProcedure<
+				ExtractRouteDef<TRoute, TMethod>,
+				InferRouteMutationInput<TRoute>
+			>
 		: never
 
 /**

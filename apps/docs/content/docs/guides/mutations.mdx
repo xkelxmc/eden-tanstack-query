@@ -58,6 +58,59 @@ Routes without a body and optional object bodies, such as `t.Optional(t.Object({
 
 Some Elysia versions encode optional object bodies as `Partial<Body> | null`. The proxy also allows omission for this shape. A declared required nullable object with all optional fields has the same type, so the proxy cannot distinguish it from an optional body. Pass an object explicitly for that schema; server handling of an omitted body depends on Elysia. Optional primitive bodies can share their type with required nullable primitives; pass variables explicitly for those schemas.
 
+## Per-invocation query and headers
+
+Pass `request: true` to send `{ body, query, headers }` variables. Query values and headers are inferred from the Elysia route, including required fields. For example, this route requires a body, a query parameter, and an idempotency header:
+
+```ts
+const app = new Elysia().post(
+  '/jobs',
+  ({ body, query }) => ({ name: body.name, dryRun: query.dryRun }),
+  {
+    body: t.Object({ name: t.String() }),
+    query: t.Object({ dryRun: t.Boolean() }),
+    headers: t.Object({ 'idempotency-key': t.String() }),
+  },
+)
+```
+
+```tsx
+const createJob = useMutation(
+  eden.jobs.post.mutationOptions({
+    request: true,
+    onMutate: (variables) => ({ key: variables.headers['idempotency-key'] }),
+    onError: (error, variables, context) => {
+      console.error(context?.key, variables.body.name, error)
+    },
+  }),
+)
+
+const submission = {
+  body: { name: 'Import contacts' },
+  query: { dryRun: false },
+  headers: { 'idempotency-key': crypto.randomUUID() },
+}
+
+await createJob.mutateAsync(submission)
+```
+
+Create the key once per logical submission and reuse `submission` when retrying it. TanStack retries reuse the same variables. The server must implement idempotency handling; the header alone does not prevent duplicate writes.
+
+Lifecycle callbacks receive the complete variables object, and `onMutate` still infers the context passed to later callbacks. Bind dynamic path parameters before calling `mutationOptions`:
+
+```tsx
+const deleteUser = useMutation(
+  eden.users({ id: userId }).delete.mutationOptions({ request: true }),
+)
+
+// A route without a body can still send per-call headers.
+deleteUser.mutate({ headers: { 'if-match': revision } })
+```
+
+The `body` field is required when the route requires a body, even if every body property is optional. Omit `body` for a bodyless route. You may omit the entire variables argument when the body, query, and headers are all optional. Request mode supports query values and headers; configure other request settings through Treaty.
+
+Without `request: true`, variables remain the body. A body containing fields named `body`, `query`, or `headers` is sent unchanged. Both modes use the same mutation key.
+
 ## Cache Invalidation
 
 Invalidate related queries after a successful mutation using `queryKey()` or `queryFilter()`:
