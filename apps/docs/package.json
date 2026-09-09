@@ -13,29 +13,29 @@
 	},
 	"dependencies": {
 		"eden-tanstack-react-query": "workspace:*",
-		"@radix-ui/react-popover": "^1.1.23",
-		"@tanstack/react-router": "^1.170.18",
-		"@tanstack/react-start": "^1.168.33",
-		"class-variance-authority": "^0.7.1",
+		"@radix-ui/react-popover": "1.1.23",
+		"@tanstack/react-router": "1.170.18",
+		"@tanstack/react-start": "1.168.33",
+		"class-variance-authority": "0.7.1",
 		"fumadocs-core": "16.15.8",
 		"fumadocs-mdx": "15.4.0",
 		"fumadocs-typescript": "5.4.0",
 		"fumadocs-ui": "16.15.8",
 		"lucide-react": "1.28.0",
-		"react": "^19.2.8",
-		"react-dom": "^19.2.8",
-		"server-only": "^0.0.1",
-		"tailwind-merge": "^3.6.0"
+		"react": "19.2.8",
+		"react-dom": "19.2.8",
+		"server-only": "0.0.1",
+		"tailwind-merge": "3.6.0"
 	},
 	"devDependencies": {
-		"@tailwindcss/vite": "^4.3.3",
-		"@types/mdx": "^2.0.14",
-		"@types/react": "^19.2.17",
-		"@types/react-dom": "^19.2.3",
-		"@vitejs/plugin-react": "^6.0.5",
+		"@tailwindcss/vite": "4.3.3",
+		"@types/mdx": "2.0.14",
+		"@types/react": "19.2.17",
+		"@types/react-dom": "19.2.3",
+		"@vitejs/plugin-react": "6.0.5",
 		"nitro": "3.0.260610-beta",
-		"tailwindcss": "^4.3.3",
-		"typescript": "^7.0.2",
-		"vite": "^8.2.0"
+		"tailwindcss": "4.3.3",
+		"typescript": "7.0.2",
+		"vite": "8.2.0"
 	}
 }
