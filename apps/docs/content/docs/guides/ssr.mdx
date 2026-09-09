@@ -22,6 +22,14 @@ const eden = createEdenOptionsProxy<App>({
 await queryClient.prefetchQuery(eden.users.get.queryOptions())
 ```
 
+## Astro
+
+The [runnable Astro example](https://github.com/xkelxmc/eden-tanstack-query/tree/main/examples/astro) uses an Astro SSR page and one React `client:load` island. The page creates a request-local QueryClient, prefetches through `createEdenOptionsProxy`, and passes its dehydrated state as serializable island props.
+
+Keep QueryClientProvider, EdenProvider, HydrationBoundary, and the components that use them inside the same React island. React context does not cross Astro island boundaries. Create a fresh server QueryClient per request and keep the browser instance stable across renders. A shared stale time prevents an immediate refetch after hydration; mutations invalidate the same list query key.
+
+The example includes a same-origin Elysia API and a Bun start command for the standalone Astro adapter output. Its README covers development, builds, and the shared in-memory demo storage.
+
 ## Next.js App Router
 
 ### Eden clients

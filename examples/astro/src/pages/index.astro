@@ -1,0 +1,36 @@
+---
+import { treaty } from "@elysiajs/eden"
+import { dehydrate } from "@tanstack/react-query"
+import { createEdenOptionsProxy } from "eden-tanstack-react-query"
+import Items from "../components/Items"
+import { createQueryClient } from "../lib/query-client"
+import { app, type App } from "../server/app"
+import "../styles.css"
+
+Astro.response.headers.set("Cache-Control", "no-store")
+const queryClient = createQueryClient()
+const eden = createEdenOptionsProxy<App>({ client: treaty(app) })
+await queryClient.prefetchQuery(eden.api.items.get.queryOptions())
+const dehydratedState = dehydrate(queryClient)
+queryClient.clear()
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Astro SSR · Eden TanStack Query</title>
+	</head>
+	<body>
+		<main>
+			<header>
+				<p class="eyebrow">Eden TanStack Query / Astro</p>
+				<h1>A shared list.</h1>
+				<p>The server loads the items. React hydrates the query and handles new entries.</p>
+			</header>
+			<Items dehydratedState={dehydratedState} client:load />
+			<footer>Demo data is shared by all visitors and resets when the server restarts.</footer>
+		</main>
+	</body>
+</html>

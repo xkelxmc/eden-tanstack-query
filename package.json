@@ -28,11 +28,12 @@
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"unit-test:run": "vitest run --coverage",
-		"typecheck": "bun run --filter=eden-tanstack-react-query build:types && bunx tsc --noEmit && bun run --filter=@eden-tanstack-query/docs typecheck && bun run --filter=@eden-tanstack-query/example-basic typecheck && bun run --filter=@examples/medium typecheck && bun run --filter=@examples/large typecheck && bun run --filter=@eden-tanstack-query/example-authenticated-start typecheck",
+		"typecheck": "bun run --filter=eden-tanstack-react-query build:types && bunx tsc --noEmit && bun run --filter=@eden-tanstack-query/docs typecheck && bun run --filter=@eden-tanstack-query/example-basic typecheck && bun run --filter=@examples/medium typecheck && bun run --filter=@examples/large typecheck && bun run --filter=@eden-tanstack-query/example-authenticated-start typecheck && bun run --filter=@eden-tanstack-query/example-astro typecheck",
 		"check": "bunx biome check . && bun run typecheck",
 		"check:fix": "bunx biome check --write . && bun run typecheck",
-		"build:all": "bun run --filter=eden-tanstack-react-query build && bun run --filter=@eden-tanstack-query/docs build && bun run --filter=@eden-tanstack-query/example-basic build && bun run --filter=@examples/medium build && bun run --filter=@examples/large build && bun run --filter=@eden-tanstack-query/example-authenticated-start build",
-		"example:authenticated-start": "bun run --filter=@eden-tanstack-query/example-authenticated-start dev"
+		"build:all": "bun run --filter=eden-tanstack-react-query build && bun run --filter=@eden-tanstack-query/docs build && bun run --filter=@eden-tanstack-query/example-basic build && bun run --filter=@examples/medium build && bun run --filter=@examples/large build && bun run --filter=@eden-tanstack-query/example-authenticated-start build && bun run --filter=@eden-tanstack-query/example-astro build",
+		"example:authenticated-start": "bun run --filter=@eden-tanstack-query/example-authenticated-start dev",
+		"example:astro": "bun run --filter=@eden-tanstack-query/example-astro dev"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",
