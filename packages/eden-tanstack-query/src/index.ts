@@ -78,6 +78,7 @@ export type {
 	InferRouteError,
 	InferRouteHeaders,
 	InferRouteInput,
+	InferRouteMutationInput,
 	InferRouteOptions,
 	InferRouteOutput,
 	InferRouteOutputAll,
@@ -85,6 +86,7 @@ export type {
 	InferRouteQuery,
 	IsMutationMethod,
 	IsQueryMethod,
+	MutationRequestInput,
 	PathParamsToObject,
 	RouteDefinition,
 } from "./types/infer"

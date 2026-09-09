@@ -105,13 +105,17 @@ Creates type-safe options for `useMutation`.
 
 ```ts
 eden.route.post.mutationOptions(opts?): MutationOptions
+eden.route.post.mutationOptions({ request: true, ...opts }): MutationOptions
 ```
 
 ### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `opts` | `EdenMutationOptionsIn` | TanStack Query mutation options (excluding reserved) |
+| `opts` | `EdenMutationOptionsIn` | TanStack Query mutation options, excluding reserved options, plus the proxy-only `request` flag |
+| `opts.request` | `true \| false` | Defaults to `false`. Set to `true` for typed `{ body, query, headers }` mutation variables |
+
+With `request: true`, each invocation supplies its own body, query values, and headers. Required route fields remain required, and lifecycle callbacks receive the complete variables object. Omitted or false `request` keeps body-only variables. See [per-invocation query and headers](/docs/guides/mutations#per-invocation-query-and-headers) for examples and omission rules.
 
 ### Returns
 
