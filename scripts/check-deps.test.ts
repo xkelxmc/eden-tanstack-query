@@ -77,8 +77,9 @@ describe("dependency report", () => {
 			},
 		})
 		const result = await cli(root, registry)
-		expect(result.stderr).toBe("")
+		expect(result.error).toBeUndefined()
 		expect(result.status).toBe(0)
+		expect(result.stderr).toBe("")
 		expect(result.stdout).toContain(
 			"<root> devDependencies shared declared=2.0.0; locked=2.0.0; stable 2.0.0 is not newer",
 		)
@@ -134,6 +135,7 @@ describe("dependency report", () => {
 			return Response.json(${JSON.stringify(metadata)})
 		}`,
 		)
+		expect(result.error).toBeUndefined()
 		expect(result.status).toBe(1)
 		expect(result.stdout).toContain(
 			"packages/old dependencies catalogued declared=catalog:missing; UNRESOLVED unsupported declaration",
@@ -246,7 +248,10 @@ describe("registry metadata", () => {
 		expect(timeout).toHaveBeenCalledWith(15_000)
 		expect(fetch).toHaveBeenCalledWith(
 			"https://registry.npmjs.org/%40scope%2Fpackage",
-			{ signal: expect.any(AbortSignal) },
+			{
+				headers: { accept: "application/vnd.npm.install-v1+json" },
+				signal: expect.any(AbortSignal),
+			},
 		)
 	})
 })

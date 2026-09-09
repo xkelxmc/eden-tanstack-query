@@ -150,7 +150,10 @@ export function parseMetadata(value: unknown): Metadata {
 export async function fetchMetadata(name: string) {
 	const response = await fetch(
 		`https://registry.npmjs.org/${encodeURIComponent(name)}`,
-		{ signal: AbortSignal.timeout(15_000) },
+		{
+			headers: { accept: "application/vnd.npm.install-v1+json" },
+			signal: AbortSignal.timeout(15_000),
+		},
 	)
 	if (!response.ok) throw new Error(`Registry HTTP ${response.status}`)
 	return parseMetadata(await response.json())
