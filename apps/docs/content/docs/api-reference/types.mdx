@@ -120,8 +120,20 @@ Metadata included in query keys.
 ```ts
 type EdenQueryKeyMeta<TInput = unknown> = {
   input?: TInput
+  pathParams?: EdenQueryKeyPathParam[]
   type?: 'query' | 'infinite'
   infinite?: { initialPageParam?: unknown }
+}
+```
+
+### EdenQueryKeyPathParam
+
+An ordered path-parameter application, exported by `eden-tanstack-react-query`. `pathIndex` is the zero-based index of the path segment where the parameters were applied. It is `-1` for parameters applied directly to the root proxy. `entries` records the parameter names and values separately from request input.
+
+```ts
+interface EdenQueryKeyPathParam {
+  pathIndex: number
+  entries: [name: string, value: unknown][]
 }
 ```
 
