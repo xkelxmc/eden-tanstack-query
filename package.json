@@ -33,16 +33,19 @@
 		"check:fix": "bunx biome check --write . && bun run typecheck",
 		"build:all": "bun run --filter=eden-tanstack-react-query build && bun run --filter=@eden-tanstack-query/docs build && bun run --filter=@eden-tanstack-query/example-basic build && bun run --filter=@examples/medium build && bun run --filter=@examples/large build && bun run --filter=@eden-tanstack-query/example-authenticated-start build && bun run --filter=@eden-tanstack-query/example-astro build",
 		"example:authenticated-start": "bun run --filter=@eden-tanstack-query/example-authenticated-start dev",
-		"example:astro": "bun run --filter=@eden-tanstack-query/example-astro dev"
+		"example:astro": "bun run --filter=@eden-tanstack-query/example-astro dev",
+		"deps:check": "bun --no-install run scripts/check-deps.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",
 		"@testing-library/jest-dom": "7.0.0",
 		"@testing-library/react": "16.3.2",
 		"@types/bun": "1.4.2",
+		"@types/semver": "7.8.0",
 		"@vitest/coverage-v8": "4.1.11",
 		"@vitest/ui": "4.1.11",
 		"happy-dom": "20.14.0",
+		"semver": "7.8.5",
 		"typescript": "7.0.2",
 		"vitest": "4.1.11"
 	}
