@@ -17,9 +17,10 @@ function Home() {
 	const { queryClient, eden } = Route.useRouteContext()
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState("")
-	const { data: session } = useSuspenseQuery(
-		eden.api.session.get.queryOptions(),
-	)
+	const { data: session } = useSuspenseQuery({
+		...eden.api.session.get.queryOptions(),
+		refetchInterval: 60_000,
+	})
 	async function changeSession(identity?: "alice" | "bob") {
 		setBusy(true)
 		setError("")

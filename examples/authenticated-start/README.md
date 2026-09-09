@@ -32,6 +32,7 @@ Use `localhost` for local production testing. Production cookies have `Secure`; 
 - The list loader awaits `ensureQueryData` using Eden's generated options. The component uses the same options and query key. Native `setupRouterSsrQueryIntegration` hydrates the cache; a 60-second stale time prevents an immediate duplicate request.
 - Every dynamic response uses `Cache-Control: private, no-store` and varies on Cookie. Do not prerender these pages or put their HTML, API responses, or dehydrated query state into a shared cache.
 - Session changes hide the list, cancel pending queries, rotate or revoke the session token, clear the QueryClient, and replace the document. No cache persistence is configured.
+- The list page polls the session every minute while visible, hiding the private list when the server reports that the session has expired.
 
 The server stores up to 1,000 opaque random session tokens in memory. Login removes expired sessions and returns HTTP 503 when the store is full; existing sessions can still rotate or log out. Cookies are HttpOnly, SameSite=Lax, and expire after one hour. Login and logout reject requests whose Origin does not match the request URL. Session tokens never enter query keys, loader data, or the rendered page.
 
