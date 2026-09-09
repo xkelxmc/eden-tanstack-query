@@ -35,13 +35,17 @@ export const Route = createRootRouteWithContext<{
 function Layout() {
 	const { queryClient } = Route.useRouteContext()
 	useEffect(() => {
-		const channel = new BroadcastChannel("demo-session")
-		channel.onmessage = () => {
-			document.documentElement.style.visibility = "hidden"
-			queryClient.clear()
-			window.location.reload()
+		try {
+			const channel = new BroadcastChannel("demo-session")
+			channel.onmessage = () => {
+				document.documentElement.style.visibility = "hidden"
+				queryClient.clear()
+				window.location.reload()
+			}
+			return () => channel.close()
+		} catch {
+			// Browsers may disable cross-tab messaging.
 		}
-		return () => channel.close()
 	}, [queryClient])
 	return (
 		<main>

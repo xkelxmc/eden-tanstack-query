@@ -12,7 +12,7 @@ bun run --filter=eden-tanstack-react-query build
 bun run example:authenticated-start
 ```
 
-Open <http://localhost:3002>. Choose Alice, follow **About this demo**, then return to the list. Choose Bob or log out. A session change reloads the document to discard both Router and Query caches. Ordinary links use client navigation. Switching identity or logging out broadcasts the change to other open tabs, which clear their caches and reload too.
+Open <http://localhost:3002>. Choose Alice, follow **About this demo**, then return to the list. Choose Bob or log out. A session change reloads the document to discard both Router and Query caches. Ordinary links use client navigation. Switching identity or logging out broadcasts the change to other open tabs, which clear their caches and reload too. If browser messaging is unavailable, the current tab still reloads; reload other tabs manually after switching identity.
 
 Build and run the same application as one Bun server:
 

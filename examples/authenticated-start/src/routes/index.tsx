@@ -32,9 +32,16 @@ function Home() {
 				: await client.api.logout.post()
 			if (result.error)
 				throw new Error("Session change failed. Please try again.")
-			const channel = new BroadcastChannel("demo-session")
-			channel.postMessage("changed")
-			channel.close()
+			try {
+				const channel = new BroadcastChannel("demo-session")
+				try {
+					channel.postMessage("changed")
+				} finally {
+					channel.close()
+				}
+			} catch {
+				// Local caches must reset even when browser messaging is unavailable.
+			}
 			queryClient.clear()
 			window.location.replace("/")
 		} catch {
