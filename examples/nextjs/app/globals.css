@@ -1,0 +1,19 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #faf9f6; color: #262a2e; font: 17px/1.6 system-ui, sans-serif; }
+main { max-width: 660px; margin: 0 auto; padding: 72px 24px 40px; }
+.eyebrow { color: #4a6075; font-size: 13px; letter-spacing: .05em; }
+h1 { font: 400 clamp(2rem, 7vw, 3rem)/1.15 Georgia, serif; margin: 20px 0; }
+.intro { color: #59616a; margin-bottom: 36px; }
+ul { padding: 0; list-style: none; margin-bottom: 36px; }
+li { padding: 15px 0; border-bottom: 1px solid #d9dcde; overflow-wrap: anywhere; }
+label { display: block; font-weight: 600; margin-bottom: 8px; }
+.form-row { display: flex; gap: 10px; }
+input, button { font: inherit; border: 1px solid #8995a1; border-radius: 4px; padding: 9px 12px; }
+input { min-width: 0; flex: 1; background: #fff; color: inherit; }
+button { cursor: pointer; background: #365775; color: #fff; }
+button:disabled { opacity: .6; cursor: default; }
+:focus-visible { outline: 3px solid #759fc5; outline-offset: 3px; }
+.status { min-height: 26px; color: #435f49; font-size: 14px; }
+[role="alert"] { color: #8a3030; }
+footer { margin-top: 48px; border-top: 1px solid #d9dcde; padding-top: 20px; color: #59616a; font-size: 13px; }
+@media (max-width: 420px) { main { padding-top: 36px; } .form-row { flex-direction: column; } }
