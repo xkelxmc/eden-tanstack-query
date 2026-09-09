@@ -162,9 +162,10 @@ Treaty treats every status from `200` through `299` as successful and returns an
 empty string for bodyless `204` and `205` responses, regardless of their declared
 response schema.
 
-Response types reflect Treaty's decoded values. Elysia `form()` responses expose
-their payload object, and `ReadableStream<T>` becomes
-`AsyncGenerator<T, void, unknown>`. Sync and async generators that yield no values
+Response types follow Treaty's response conversions, with the serialization
+limits described below. Elysia `form()` responses expose their payload object,
+and `ReadableStream<T>` is typed as `AsyncGenerator<T, void, unknown>`.
+Sync and async generators that yield no values
 and return an object resolve to that object type. Generators that can both yield
 and return a value include the async generator and return value in their union.
 The streamed branch completes with `void`; its server-side return value is not
@@ -175,17 +176,39 @@ When updating existing code, read form payload fields directly and consume strea
 with `for await...of`. A generator response may need narrowing
 before iteration.
 
+#### Multipart and stream decoding limits
+
+These types inherit limitations from native Treaty. Multipart fields and stream
+chunks can decode to values that differ from their inferred types.
+
+For multipart responses, `form()` preserves the original payload field types in
+inference, but non-file fields are serialized as strings. For example,
+`form({ age: 42, active: true })` decodes to
+`{ age: '42', active: 'true' }`, although the fields are still typed as `number`
+and `boolean`. Prefer string and `File`
+fields in multipart responses, and explicitly parse and validate fields that need
+other types.
+
+For streams, the inferred yield type retains the original chunk type, but Treaty
+can decode bytes to text and parse text as JSON. A `ReadableStream<Uint8Array>`
+containing encoded `hello` can yield a string, and a `ReadableStream<string>`
+containing `42` can yield the number `42`. Decoding depends on content type,
+parser configuration, and wire boundaries. When the decoded shape is uncertain,
+pass each value to a validator that accepts `unknown` before using methods such
+as `subarray()` or relying on a particular object shape.
+
 ### InferRouteOutputAll
 
-Extract the response record for every declared status, with the same decoded value
-types. This utility preserves status keys and declared `204`/`205` values;
+Extract the response record for every declared status, with the same response
+conversions and decoding limits described above. This utility preserves status
+keys and declared `204`/`205` values;
 `InferRouteOutput` applies the bodyless-status override.
 
 ### InferRouteError
 
 Extract the union of non-success response and transport error types from a route.
 Declared error `value` types use the same form, stream, and generator conversions
-as successful responses.
+and decoding limits as successful responses.
 The union also includes Treaty's `EdenFetchError<503, unknown>` transport failure
 because a custom fetcher can reject with any JavaScript value.
 Routes without a declared non-success response fall back to
