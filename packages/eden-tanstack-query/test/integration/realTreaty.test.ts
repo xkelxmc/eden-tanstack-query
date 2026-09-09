@@ -529,7 +529,92 @@ describe("query request forwarding through real Treaty", () => {
 	)
 })
 
-function createRequestForwardingFixture() {
+describe.each(["ordinary", "infinite"])(
+	"configured Treaty signal for %s queries",
+	(kind) => {
+		test.each([undefined, false])(
+			"preserves client cancellation with abortOnUnmount=%s",
+			async (abortOnUnmount) => {
+				const controller = new AbortController()
+				const { eden, requests, release } = createRequestForwardingFixture(
+					controller.signal,
+				)
+				const queryClient = createTestQueryClient()
+				const options = { eden: { abortOnUnmount } }
+				const pending = (
+					kind === "ordinary"
+						? queryClient.fetchQuery(
+								eden.transport.get.queryOptions({}, options),
+							)
+						: queryClient.fetchInfiniteQuery(
+								eden.transport.get.infiniteQueryOptions(
+									{},
+									{
+										...options,
+										getNextPageParam: () => undefined,
+									},
+								),
+							)
+				).catch((error: unknown) => error)
+
+				try {
+					await until(() => requests.length === 1)
+					const request = requests[0]!
+					expect(request.signal.aborted).toBe(false)
+
+					await queryClient.cancelQueries()
+					expect(request.signal.aborted).toBe(false)
+
+					controller.abort("client cancelled")
+					expect(request.signal.aborted).toBe(true)
+					expect(request.signal.reason).toBe("client cancelled")
+				} finally {
+					release()
+					await pending
+					queryClient.clear()
+				}
+			},
+		)
+
+		test("opt-in cancellation uses the query signal instead of the client signal", async () => {
+			const controller = new AbortController()
+			const { eden, requests, release } = createRequestForwardingFixture(
+				controller.signal,
+			)
+			const queryClient = createTestQueryClient()
+			const options = { eden: { abortOnUnmount: true } }
+			const pending = (
+				kind === "ordinary"
+					? queryClient.fetchQuery(eden.transport.get.queryOptions({}, options))
+					: queryClient.fetchInfiniteQuery(
+							eden.transport.get.infiniteQueryOptions(
+								{},
+								{
+									...options,
+									getNextPageParam: () => undefined,
+								},
+							),
+						)
+			).catch((error: unknown) => error)
+
+			try {
+				await until(() => requests.length === 1)
+				const request = requests[0]!
+				controller.abort("client cancelled")
+				expect(request.signal.aborted).toBe(false)
+
+				await queryClient.cancelQueries()
+				expect(request.signal.aborted).toBe(true)
+			} finally {
+				release()
+				await pending
+				queryClient.clear()
+			}
+		})
+	},
+)
+
+function createRequestForwardingFixture(signal?: AbortSignal) {
 	const requests: Request[] = []
 	const { promise, resolve: release } = Promise.withResolvers<void>()
 	const handle = async (request: Request) => {
@@ -547,7 +632,9 @@ function createRequestForwardingFixture() {
 		.get("/transport", ({ request }) => handle(request), schema)
 		.head("/transport", ({ request }) => handle(request), schema)
 		.options("/transport", ({ request }) => handle(request), schema)
-	const eden = createEdenOptionsProxy<typeof app>({ client: treaty(app) })
+	const eden = createEdenOptionsProxy<typeof app>({
+		client: treaty(app, { fetch: { signal } }),
+	})
 
 	return { eden, requests, release }
 }

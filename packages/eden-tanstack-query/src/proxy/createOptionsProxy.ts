@@ -316,10 +316,9 @@ function createQueryProcedure(opts: ProcedureOptions) {
 						error: unknown
 					}>
 
-					const requestInput: Record<string, unknown> = {
-						fetch: { signal },
-					}
+					const requestInput: Record<string, unknown> = {}
 
+					if (signal !== undefined) requestInput.fetch = { signal }
 					if (query !== undefined) requestInput.query = query
 					if (headers !== undefined) requestInput.headers = headers
 
@@ -411,10 +410,9 @@ function createQueryProcedure(opts: ProcedureOptions) {
 						error: unknown
 					}>
 
-					const requestInput: Record<string, unknown> = {
-						fetch: { signal },
-					}
+					const requestInput: Record<string, unknown> = {}
 
+					if (signal !== undefined) requestInput.fetch = { signal }
 					if (fullInput !== undefined) requestInput.query = fullInput
 					if (headers !== undefined) requestInput.headers = headers
 
