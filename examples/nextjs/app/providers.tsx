@@ -22,6 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
 			typeof window === "undefined"
 				? "http://localhost"
 				: window.location.origin,
+			{ parseDate: false },
 		),
 	)
 	return (
