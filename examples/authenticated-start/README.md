@@ -38,6 +38,6 @@ The server stores up to 1,000 opaque random session tokens in memory. Login remo
 
 Run a single server instance. Restarting it clears all sessions; multiple instances do not share sessions. A production application needs an actual authentication flow and a persistent shared session store. This example deliberately has neither real credentials nor a database.
 
-The SSR integration is pinned to `@tanstack/react-router-ssr-query@1.167.1`, which supports the workspace's Query 5.101.4. Later integration releases require Query 5.102 or newer.
+The example pins `@tanstack/react-router-ssr-query` to 1.167.2 and React Query to 5.102.8. This integration requires React Query and Query core 5.102.0 or newer; React Query 5.102.8 installs Query core 5.102.8.
 
 See the [native TanStack Query integration](https://tanstack.com/router/latest/docs/integrations/query) and [Start server routes](https://tanstack.com/start/latest/docs/framework/react/guide/server-routes).

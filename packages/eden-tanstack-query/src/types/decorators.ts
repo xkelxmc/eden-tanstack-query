@@ -722,9 +722,11 @@ interface TypeHelper<TDef extends RouteDefinition> {
 	}
 }
 
-/** Helper type to make some properties required */
-type WithRequired<TObj, TKey extends keyof TObj> = TObj & {
-	[P in TKey]-?: TObj[P]
+type EdenQueryFilterResult<TQueryKey extends EdenQueryKey> = Omit<
+	QueryFilters<TQueryKey>,
+	"queryKey"
+> & {
+	queryKey: TQueryKey
 }
 
 /**
@@ -767,9 +769,8 @@ export interface DecorateQueryProcedure<TDef extends RouteDefinition>
 		filters?: QueryFilters<
 			DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
 		>,
-	) => WithRequired<
-		QueryFilters<DataTag<EdenQueryKey, TDef["output"], TDef["error"]>>,
-		"queryKey"
+	) => EdenQueryFilterResult<
+		DataTag<EdenQueryKey, TDef["output"], TDef["error"]>
 	>
 }
 
@@ -813,10 +814,8 @@ type EdenInfiniteQueryFilterTag<TDef extends RouteDefinition> = DataTag<
 	TDef["error"]
 >
 
-type EdenInfiniteQueryFilterResult<TDef extends RouteDefinition> = WithRequired<
-	QueryFilters<EdenInfiniteQueryFilterTag<TDef>>,
-	"queryKey"
->
+type EdenInfiniteQueryFilterResult<TDef extends RouteDefinition> =
+	EdenQueryFilterResult<EdenInfiniteQueryFilterTag<TDef>>
 
 type RequiredBroadInfiniteQueryFilterArgs<TDef extends RouteDefinition> =
 	ValidRequiredInfiniteRoute<TDef> extends never

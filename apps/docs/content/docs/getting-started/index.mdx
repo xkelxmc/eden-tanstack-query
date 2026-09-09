@@ -9,6 +9,8 @@ Eden TanStack Query brings end-to-end type safety to your React applications usi
 
 ## Installation
 
+Requires `@tanstack/react-query` 5.102.8 or newer within v5. The peer range is `^5.102.8`.
+
 Install the package, its peer dependencies, and the CORS plugin used in this guide:
 
 <Tabs items={["bun", "npm", "pnpm", "yarn"]}>
@@ -39,6 +41,12 @@ The `elysia` package is only needed for its type definitions. You don't need to 
 </Callout>
 
 Ensure your `tsconfig.json` has `strict: true` and `moduleResolution` set to `"bundler"`.
+
+## Upgrading from an earlier release
+
+The next release raises the React Query minimum from 5.62.0 to 5.102.8. This narrows the supported peer range and is a breaking dependency requirement for applications using an older version. Upgrade `@tanstack/react-query` to 5.102.8 or a later v5 release before upgrading Eden TanStack Query. If you use Query devtools, choose a version whose React Query peer range includes your installed version.
+
+The public filter types and mutation function signature require the newer Query types. No Eden API migration is needed once your dependencies meet the new minimum.
 
 ## Define Your Elysia Server
 
