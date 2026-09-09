@@ -96,6 +96,15 @@ await createJob.mutateAsync(submission)
 
 Create the key once per logical submission and reuse `submission` when retrying it. TanStack retries reuse the same variables. The server must implement idempotency handling; the header alone does not prevent duplicate writes.
 
+When extracting request options into a variable, preserve the literal `true` type with `satisfies`:
+
+```tsx
+const requestOptions = { request: true } satisfies { request: true }
+const createJob = useMutation(eden.jobs.post.mutationOptions(requestOptions))
+```
+
+A plain `const requestOptions = { request: true }` infers a mutable `boolean` field. `mutationOptions` rejects that type because the flag determines whether mutation variables are a body or a request object. For reusable options with callbacks, extract the result of `mutationOptions({ request: true, ... })` so callback types are inferred at that call.
+
 Lifecycle callbacks receive the complete variables object, and `onMutate` still infers the context passed to later callbacks. Bind dynamic path parameters before calling `mutationOptions`:
 
 ```tsx

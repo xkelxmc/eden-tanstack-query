@@ -65,6 +65,15 @@ const variables: JobVariables = {
 }
 
 export function useMutationRequestProbe() {
+	const requestOptions = { request: true } satisfies { request: true }
+	const extracted = useMutation(jobs.mutationOptions(requestOptions))
+	extracted.mutate(variables)
+	// @ts-expect-error extracted request options still require the request envelope
+	extracted.mutate(variables.body)
+	const widenedOptions = { request: true }
+	// @ts-expect-error a boolean cannot determine the mutation variable format
+	jobs.mutationOptions(widenedOptions)
+
 	const mutation = useMutation(
 		jobs.mutationOptions({
 			request: true,
