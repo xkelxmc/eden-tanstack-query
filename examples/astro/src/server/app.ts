@@ -15,6 +15,10 @@ export const app = new Elysia({ prefix: "/api" })
 		({ body, status }) => {
 			const name = body.name.trim()
 			if (!name) return status(422, { message: "Enter an item name." })
+			if (items.length >= 100)
+				return status(409, {
+					message: "The demo list is full. Restart the server to reset it.",
+				})
 			const item = { id: crypto.randomUUID(), name }
 			items.push(item)
 			return status(201, item)

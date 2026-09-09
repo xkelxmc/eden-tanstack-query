@@ -45,4 +45,6 @@ Only the Astro page and API route import the Elysia app at runtime. The React mo
 
 All visitors share an in-memory list. It resets on restart and works only within one server process. Multiple replicas would each have their own list. There is no authentication or private user data.
 
+The list holds at most 100 items, including the initial entries. Further additions return HTTP 409 until the server restarts. Add authentication and request rate limits before exposing this demo as a public service.
+
 The page and API responses use `Cache-Control: no-store` so HTTP caches do not serve an old list. The API route requires the request's Origin to match the page origin for mutations. This also means a command-line POST must supply the matching Origin header. Deploy the page and API together and preserve the public request origin when configuring a reverse proxy.

@@ -73,7 +73,11 @@ function ItemList() {
 							: ""}
 				</p>
 				{addItem.isError && (
-					<p role="alert">Could not add the item. Try again.</p>
+					<p role="alert">
+						{addItem.error.status === 409
+							? "The demo list is full. Restart the server to reset it."
+							: "Could not add the item. Try again."}
+					</p>
 				)}
 			</form>
 		</section>
