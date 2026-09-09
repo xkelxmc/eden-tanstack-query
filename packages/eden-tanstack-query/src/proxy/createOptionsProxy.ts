@@ -134,6 +134,7 @@ function isWrappedQueryInput(input: Record<string, unknown>) {
 	return (
 		Object.hasOwn(input, "query") &&
 		Object.hasOwn(input, "headers") &&
+		(input.headers === undefined || isRecord(input.headers)) &&
 		Object.keys(input).every((key) => key === "query" || key === "headers")
 	)
 }

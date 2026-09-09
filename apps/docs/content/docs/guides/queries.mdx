@@ -63,6 +63,29 @@ Wrapped input requires an explicit `headers` property. Without headers, pass
 A lone `{ query: value }` is treated as a query parameter named `query`, not a
 request wrapper. These rules also apply to `infiniteQueryOptions()`.
 
+If your schema has a field named `query`, use an outer wrapper for HTTP headers:
+
+```tsx
+eden.search.get.queryOptions({
+  query: { query: 'hello' },
+  headers: { authorization: 'Bearer token' },
+})
+```
+
+The flattened form `{ query: 'hello', headers: { authorization: 'Bearer token' } }`
+has the same shape as a wrapper around a string query, so it is rejected for this
+schema. Direct `{ query: 'hello', headers: 'query-value' }` remains valid when both
+fields are scalar query parameters. If the schema's `headers` field can be
+`undefined` and it also declares `query`, use a wrapper for all inputs, including
+inputs that omit `headers`.
+
+For a direct `{ query: value }`, omit the transport `headers` property entirely.
+Without TypeScript's `exactOptionalPropertyTypes`, an optional `never` property
+still accepts `undefined`, so types cannot reject every explicit
+`headers: undefined`. At runtime, an object containing only `query` and `headers`
+is a wrapper when `headers` is `undefined` or a non-null, non-array object. This also applies to
+untyped inputs and partial inputs passed to key and filter helpers.
+
 If an existing wrapper variable declares `headers?`, pass
 `{ ...input, headers: input.headers }` to make the property explicit.
 
@@ -81,12 +104,13 @@ This restriction also covers optional fields and fields that allow both object
 and scalar values. Array and other object types require a wrapper too, even when
 the runtime would accept them directly.
 
-For a query union, members without an object-valued `headers` field still accept
-direct input. If any member has the collision, use a wrapper for HTTP headers on
-all members. This prevents a variable with ambiguous `headers` from matching a
-member that does not declare that field. Schemas without a collision continue to
-accept flattened HTTP headers, such as `{ role: 'admin', headers: { authorization:
-'Bearer token' } }`. The same input rules apply to infinite queries.
+For a query union, members without colliding fields still accept direct input.
+If any member has a `query` field or an object-valued `headers` field, use a wrapper
+for HTTP headers on all members. This prevents a variable with ambiguous `headers`
+from matching a member that does not declare that field. Schemas without a
+collision continue to accept flattened HTTP headers, such as `{ role: 'admin',
+headers: { authorization: 'Bearer token' } }`. The same input rules apply to
+infinite queries.
 
 Pass additional TanStack Query options as the second argument:
 
