@@ -21,6 +21,8 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 
 ## Usage Preview
 
+Requires `@tanstack/react-query` 5.102.8 or newer within v5. The peer range is `^5.102.8`.
+
 This shows the component API. See the [Getting Started guide](https://eden-query.xkel.me/docs/getting-started) for the complete client and provider setup.
 
 ```bash

@@ -19,6 +19,8 @@ Type-safe TanStack Query integration for Elysia Eden. Like @trpc/react-query, bu
 
 ## 📦 Installation
 
+Requires `@tanstack/react-query` 5.102.8 or newer within v5. The peer range is `^5.102.8`.
+
 ```bash
 bun add eden-tanstack-react-query @tanstack/react-query @elysiajs/eden elysia @elysiajs/cors
 ```
