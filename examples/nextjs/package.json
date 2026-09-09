@@ -1,0 +1,30 @@
+{
+	"name": "@eden-tanstack-query/example-nextjs",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "bun run --parallel dev:api dev:web",
+		"dev:api": "bun --watch server/index.ts",
+		"dev:web": "bun --bun next dev",
+		"build": "bun --bun next build",
+		"start": "bun run --parallel start:api start:web",
+		"start:api": "bun server/index.ts",
+		"start:web": "bun --bun next start",
+		"typecheck": "bun --bun next typegen && bun --bun tsc --noEmit"
+	},
+	"dependencies": {
+		"@elysiajs/eden": "1.4.9",
+		"@tanstack/react-query": "5.102.8",
+		"eden-tanstack-react-query": "workspace:*",
+		"elysia": "1.4.29",
+		"next": "16.3.4",
+		"react": "19.2.8",
+		"react-dom": "19.2.8",
+		"server-only": "0.0.1"
+	},
+	"devDependencies": {
+		"@types/react": "19.2.17",
+		"@types/react-dom": "19.2.3",
+		"typescript": "7.0.2"
+	}
+}

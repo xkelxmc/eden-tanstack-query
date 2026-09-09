@@ -32,6 +32,8 @@ The example includes a same-origin Elysia API and a Bun start command for the st
 
 ## Next.js App Router
 
+The [runnable Next.js example](https://github.com/xkelxmc/eden-tanstack-query/tree/main/examples/nextjs) includes a request-local QueryClient, server prefetching, native HydrationBoundary, and a client mutation that invalidates the list. It runs one Bun Elysia API behind a same-origin Next.js rewrite, so server renders and browser requests share the same demo data. Its README covers the root development and production commands.
+
 ### Eden clients
 
 These examples import your Elysia app's `App` type from `@/lib/server`. Set `NEXT_PUBLIC_API_URL` to the API URL reachable by the browser and `INTERNAL_API_URL` to the same API's URL reachable by the Next.js server.

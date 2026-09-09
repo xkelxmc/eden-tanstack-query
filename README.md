@@ -55,6 +55,7 @@ function UserList() {
 
 | Example | Description |
 |---------|-------------|
+| [nextjs](./examples/nextjs) | Next.js App Router SSR, hydration, and list mutations |
 | [basic](./examples/basic) | Simple CRUD with users |
 | [medium](./examples/medium) | Blog with posts, comments, users |
 | [large](./examples/large) | Full app with organizations, members, posts, comments, categories, tags |
