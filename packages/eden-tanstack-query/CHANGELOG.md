@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-14
+
+### Breaking Changes
+
+- Raise the minimum supported TanStack React Query version from 5.62.0 to 5.102.8. Upgrade `@tanstack/react-query` to 5.102.8 or a later v5 release before upgrading this package, and use a compatible Query devtools version ([#53](https://github.com/xkelxmc/eden-tanstack-query/pull/53)).
+- Infer explicit infinite-query cursors from the full non-nullable route cursor type. For a `string | number` cursor, `initialCursor: 0` no longer narrows callback page parameters to `number`. Handle the union or supply an explicit page-parameter generic when intentionally narrowing it ([#48](https://github.com/xkelxmc/eden-tanstack-query/pull/48)).
+- Tighten query input typing around fields named `query` and `headers`. Use an outer `{ query: input, headers }` wrapper to add HTTP headers when the schema has a `query` field. Schemas combining `query` with an optional `headers` field require a wrapper even when that field is omitted. For unions with a colliding member, use wrappers for HTTP headers on every member ([#47](https://github.com/xkelxmc/eden-tanstack-query/pull/47)).
+
+### Added
+
+- Add opt-in `mutationOptions({ request: true })` for per-invocation `{ body, query, headers }` variables. Required route fields and lifecycle callback variables/context remain typed. Existing body-only mutation calls and mutation keys are unchanged ([#49](https://github.com/xkelxmc/eden-tanstack-query/pull/49)).
+
+### Fixed
+
+- Preserve a signal configured on the Treaty client when query cancellation forwarding is disabled, for both regular and infinite queries ([#45](https://github.com/xkelxmc/eden-tanstack-query/pull/45)).
+- Keep scalar `headers` fields in direct query input instead of treating them as HTTP headers when paired with a `query` field ([#47](https://github.com/xkelxmc/eden-tanstack-query/pull/47)).
+- Preserve the exact data-tagged keys returned by `queryFilter` and `infiniteQueryFilter` with React Query 5.102.8, retaining inferred cache reads and rejecting invalid cache writes ([#53](https://github.com/xkelxmc/eden-tanstack-query/pull/53)).
+
+### Documentation and Examples
+
+- Add runnable authenticated TanStack Start, Astro, and Next.js App Router examples covering SSR, hydration, and client interactions ([#50](https://github.com/xkelxmc/eden-tanstack-query/pull/50), [#51](https://github.com/xkelxmc/eden-tanstack-query/pull/51), [#59](https://github.com/xkelxmc/eden-tanstack-query/pull/59)).
+- Clarify Treaty response decoding limits, correct query-key metadata and setup commands, and document Pages Router serialization for dates and other non-JSON values ([#46](https://github.com/xkelxmc/eden-tanstack-query/pull/46), [#52](https://github.com/xkelxmc/eden-tanstack-query/pull/52)).
+
+### Maintenance
+
+- Update test and documentation tooling, pin development/example versions, and move repository tooling to Bun 1.4.2. Add a read-only dependency checker with semver-aware reporting and explicit incomplete-check errors ([#54](https://github.com/xkelxmc/eden-tanstack-query/pull/54), [#55](https://github.com/xkelxmc/eden-tanstack-query/pull/55), [#56](https://github.com/xkelxmc/eden-tanstack-query/pull/56), [#57](https://github.com/xkelxmc/eden-tanstack-query/pull/57), [#58](https://github.com/xkelxmc/eden-tanstack-query/pull/58)).
+
+Query-key structure is unchanged. Inputs previously misclassified as wrappers, such as `{ query: 'hello', headers: 'query-value' }`, now produce keys for their complete direct query input. Discard affected persisted entries or regenerate manually stored keys with the helpers. Unaffected inputs do not require a cache reset. Elysia, Eden, and React peer ranges are unchanged.
+
 ## [0.4.0] - 2026-09-09
 
 ### Breaking Changes
