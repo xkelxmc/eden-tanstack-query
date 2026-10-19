@@ -15,7 +15,7 @@
 		"eden-tanstack-react-query": "workspace:*",
 		"@radix-ui/react-popover": "1.1.23",
 		"@tanstack/react-router": "1.170.18",
-		"@tanstack/react-start": "1.168.33",
+		"@tanstack/react-start": "1.168.60",
 		"class-variance-authority": "0.7.1",
 		"fumadocs-core": "16.15.8",
 		"fumadocs-mdx": "15.4.0",
