@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-10-26
+
+### Maintenance
+
+- Refresh development, documentation, example, and transitive dependencies, including fixes for known vulnerabilities in the workspace lockfile ([#68](https://github.com/xkelxmc/eden-tanstack-query/pull/68)).
+- Build and test with Bun 1.4.4, React 19.3.1, TanStack Query 5.104.5, and Elysia 1.4.30.
+- Require newly resolved packages to be at least 24 hours old and scan installations with Socket. Add `bun run deps:audit` for npm advisory checks.
+
+The public API, query-key format, and peer dependency requirements are unchanged. Consumers do not need to reset persisted caches or change their code.
+
 ## [0.5.0] - 2026-09-14
 
 ### Breaking Changes
