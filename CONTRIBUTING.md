@@ -21,7 +21,7 @@ Thanks for contributing. This project uses a strict fork-based workflow: all cha
 
 ## Prerequisites
 
-- Bun `1.4.2` (see `packageManager` in `package.json`)
+- Bun `1.4.4` (see `packageManager` in `package.json`)
 - Node `24.18.0` (see `.node-version`) — used by the publish workflow
 - Git
 - A GitHub account with a fork of this repository
@@ -71,6 +71,34 @@ Optional fast pass during iteration:
 ```bash
 bun run test
 ```
+
+## Dependency updates
+
+Run `bun run deps:check` from the repository root to inspect every workspace,
+peer range, and the pinned Bun version. It reports available versions without
+changing files. Review stable release tags, publication dates, and peer requirements
+before changing exact pins. A `latest` tag can point to a prerelease.
+
+After editing the selected pins, refresh direct and transitive resolutions and
+audit the resulting lockfile before running lifecycle scripts:
+
+```bash
+bun update --recursive --lockfile-only --ignore-scripts
+bun run deps:audit
+bun install --frozen-lockfile
+bun run build:all
+bun run check:fix
+bun run unit-test:run
+```
+
+`bunfig.toml` requires newly resolved releases to be at least 24 hours old and
+enables Socket's security scanner during installation. Socket works without an
+API token. `bun run deps:audit` checks the whole lockfile against npm advisories.
+Release age and clean scan results do not guarantee that a package is safe.
+
+The Astro example keeps TypeScript 6 because `@astrojs/check` does not support
+TypeScript 7. The Biome factory-rule exceptions cover the context factory and
+test wrappers, which are created outside React render functions.
 
 ## Commit Style
 

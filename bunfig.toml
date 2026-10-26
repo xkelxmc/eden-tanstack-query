@@ -1,5 +1,9 @@
 [install]
 cache = true
+minimumReleaseAge = 86400
+
+[install.security]
+scanner = "@socketsecurity/bun-security-scanner"
 
 [run]
 silent = false
