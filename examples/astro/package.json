@@ -9,20 +9,20 @@
 		"typecheck": "bun --bun astro check"
 	},
 	"dependencies": {
-		"@astrojs/node": "11.1.5",
-		"@astrojs/react": "6.0.5",
+		"@astrojs/node": "11.1.9",
+		"@astrojs/react": "7.1.1",
 		"@elysiajs/eden": "1.4.9",
-		"@tanstack/react-query": "5.102.8",
-		"astro": "7.3.2",
+		"@tanstack/react-query": "5.104.5",
+		"astro": "7.4.2",
 		"eden-tanstack-react-query": "workspace:*",
-		"elysia": "1.4.29",
-		"react": "19.2.8",
-		"react-dom": "19.2.8"
+		"elysia": "1.4.30",
+		"react": "19.3.1",
+		"react-dom": "19.3.1"
 	},
 	"devDependencies": {
-		"@astrojs/check": "0.9.10",
-		"@types/react": "19.2.17",
-		"@types/react-dom": "19.2.3",
+		"@astrojs/check": "0.9.12",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
 		"typescript": "6.0.3"
 	}
 }
